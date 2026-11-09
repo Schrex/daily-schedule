@@ -9,6 +9,7 @@ import {
 } from '../schedule-rules';
 import { NoteEditor } from './NoteEditor';
 import { TasksCell } from './TasksCell';
+import { UndoButton } from './UndoButton';
 
 interface ScheduleScreenProps {
   roster: Roster;
@@ -31,6 +32,9 @@ interface ScheduleScreenProps {
   onClearNote: () => void;
   /** The Scheduler finished typing a Job's Tasks: the whole text, one Task per line. */
   onSetTasks: (jobId: string, text: string) => void;
+  /** Whether there is a change for Undo to take back. */
+  canUndo: boolean;
+  onUndo: () => void;
 }
 
 /**
@@ -57,6 +61,8 @@ export function ScheduleScreen({
   onSaveNote,
   onClearNote,
   onSetTasks,
+  canUndo,
+  onUndo,
 }: ScheduleScreenProps) {
   const view = scheduleView(roster, schedule);
   const selected = roster.crewMembers.find((member) => member.id === selectedCrewMemberId);
@@ -94,6 +100,7 @@ export function ScheduleScreen({
   return (
     <main className={`screen${moving ? ' moving' : ''}`}>
       <h1 className="date-heading">{fullDate(view.date)}</h1>
+      <UndoButton canUndo={canUndo} onUndo={onUndo} />
 
       <div
         className={`move-hint${moving ? ' move-hint-active' : ''}${typingNote ? ' move-hint-note' : ''}`}

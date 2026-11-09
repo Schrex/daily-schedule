@@ -1,0 +1,41 @@
+/* --- The Undo button: large, always top right, greyed out with nothing to undo */
+
+.screen {
+  position: relative;
+}
+
+.undo {
+  position: absolute;
+  top: 0.7rem;
+  right: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0.3rem 1.4rem;
+  border: 3px solid #111111;
+  border-radius: 0.4rem;
+  background: #ffffff;
+  color: #111111;
+  font: inherit;
+  font-size: 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.undo-arrow {
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.undo:hover:not(:disabled),
+.undo:focus-visible {
+  background: #fff3bf;
+}
+
+.undo:disabled {
+  border-color: #b5b5b5;
+  background: #f1f1f1;
+  color: #9a9a9a;
+  cursor: default;
+}

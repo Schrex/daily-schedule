@@ -1,36 +1,48 @@
 import { useEffect, useState } from 'react';
 import {
+  canUndo,
+  change as changeEditing,
   clearNote,
   placeCrewMember,
   returnToNotPlaced,
   setNote,
   setTasks,
+  startEditing,
+  undo,
   type DailySchedule,
   type Destination,
+  type Editing,
 } from '../schedule-rules';
 import type { Opened, ScheduleStore } from '../storage';
 import { ScheduleScreen } from './ScheduleScreen';
 
 /**
- * Holds the Daily Schedule being edited and which Crew Member is selected to
- * move or to have a Note typed. Every change to the schedule goes through
- * `change`, which applies one schedule rule and saves the result; the screen
- * below only draws and reports clicks. `opened` is what the store held when
- * the page loaded.
+ * Holds the Daily Schedule being edited (with what Undo can step back through,
+ * for this sitting only) and which Crew Member is selected to move or to have
+ * a Note typed. Every change to the schedule goes through `change`, which
+ * applies one schedule rule and saves the result; Undo saves what it puts
+ * back the same way. The screen below only draws and reports clicks. `opened`
+ * is what the store held when the page loaded.
  */
 export function App({ store, opened }: { store: ScheduleStore; opened: Opened }) {
   const roster = opened.roster;
-  const [schedule, setSchedule] = useState<DailySchedule>(opened.schedule);
+  const [editing, setEditing] = useState<Editing>(() => startEditing(opened.schedule));
+  const schedule = editing.schedule;
   const [selectedCrewMemberId, setSelectedCrewMemberId] = useState<string | null>(null);
   /** True while a Note is being typed for the selected Crew Member. */
   const [editingNote, setEditingNote] = useState(false);
 
   /** The one place the Daily Schedule changes. Every change is saved by itself. */
-  const change = (rule: (schedule: DailySchedule) => DailySchedule) => {
-    const next = rule(schedule);
-    if (next === schedule) return;
-    setSchedule(next);
-    store.saveSchedule(next).catch((error) => console.error('Could not save the Daily Schedule', error));
+  const change = (rule: (schedule: DailySchedule) => DailySchedule) =>
+    keep(changeEditing(editing, rule));
+
+  /** Shows and saves the Daily Schedule as it now stands; nothing to do if it is unchanged. */
+  const keep = (next: Editing) => {
+    if (next === editing) return;
+    setEditing(next);
+    store
+      .saveSchedule(next.schedule)
+      .catch((error) => console.error('Could not save the Daily Schedule', error));
   };
 
   const select = (crewMemberId: string | null) => {
@@ -45,6 +57,12 @@ export function App({ store, opened }: { store: ScheduleStore; opened: Opened })
     if (selectedCrewMemberId === null) return;
     const crewMemberId = selectedCrewMemberId;
     change((current) => rule(current, crewMemberId));
+    select(null);
+  };
+
+  /** Takes back the last change and lets go of anyone selected. What is put back is saved. */
+  const undoLastChange = () => {
+    keep(undo(editing));
     select(null);
   };
 
@@ -74,6 +92,8 @@ export function App({ store, opened }: { store: ScheduleStore; opened: Opened })
       }
       onClearNote={() => changeSelected(clearNote)}
       onSetTasks={(jobId, text) => change((current) => setTasks(current, jobId, text))}
+      canUndo={canUndo(editing)}
+      onUndo={undoLastChange}
     />
   );
 }
