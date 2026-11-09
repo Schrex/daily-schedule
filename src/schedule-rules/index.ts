@@ -350,3 +350,120 @@ export function dailyScheduleFor(
     sends: [],
   };
 }
+
+
+// ---------------------------------------------------------------------------
+// The roster (managed on the settings page)
+// ---------------------------------------------------------------------------
+
+/** What the office fills in for a Crew Member. */
+export interface CrewMemberDetails {
+  name: string;
+  color: Color;
+  foreman: boolean;
+}
+
+/** Adds a Crew Member at the end of the roster. On any Daily Schedule they are Not Placed. */
+export function addCrewMember(roster: Roster, details: CrewMemberDetails): Roster {
+  const name = details.name.trim();
+  if (name === '') return roster;
+  const crewMember: CrewMember = {
+    id: newId(name, roster.crewMembers),
+    name,
+    color: details.color,
+    foreman: details.foreman,
+  };
+  return { ...roster, crewMembers: [...roster.crewMembers, crewMember] };
+}
+
+/**
+ * Changes a Crew Member's name, color or Foreman flag; whatever is not given
+ * stays as it is. Their id, and so their Placements, are untouched. A blank
+ * name changes nothing.
+ */
+export function changeCrewMember(
+  roster: Roster,
+  crewMemberId: string,
+  changes: Partial<CrewMemberDetails>,
+): Roster {
+  const name = changes.name?.trim();
+  if (name === '') return roster;
+  return {
+    ...roster,
+    crewMembers: roster.crewMembers.map((crewMember) =>
+      crewMember.id === crewMemberId
+        ? {
+            id: crewMember.id,
+            name: name ?? crewMember.name,
+            color: changes.color ?? crewMember.color,
+            foreman: changes.foreman ?? crewMember.foreman,
+          }
+        : crewMember,
+    ),
+  };
+}
+
+/**
+ * Removes a Crew Member from the roster. They no longer appear on the Daily
+ * Schedule being edited or on later ones; saved Daily Schedules are not rewritten.
+ */
+export function removeCrewMember(roster: Roster, crewMemberId: string): Roster {
+  return {
+    ...roster,
+    crewMembers: roster.crewMembers.filter((crewMember) => crewMember.id !== crewMemberId),
+  };
+}
+
+/** What the office fills in for a Job. The job number may be left out or blank. */
+export interface JobDetails {
+  name: string;
+  jobNumber?: string;
+}
+
+/** Adds a Job after the other Jobs, above the Standing Rows. A blank name changes nothing. */
+export function addJob(roster: Roster, details: JobDetails): Roster {
+  const name = details.name.trim();
+  if (name === '') return roster;
+  const jobNumber = details.jobNumber?.trim();
+  const labelled: Omit<Job, 'id'> = jobNumber ? { name, jobNumber } : { name };
+  const job: Job = { id: newId(jobLabel({ id: '', ...labelled }), roster.jobs), ...labelled };
+  return { ...roster, jobs: [...roster.jobs, job] };
+}
+
+/**
+ * Removes a Job from the roster. It no longer appears on the Daily Schedule
+ * being edited or on later ones, and anyone placed on it is Not Placed; saved
+ * Daily Schedules are not rewritten.
+ */
+export function removeJob(roster: Roster, jobId: string): Roster {
+  return { ...roster, jobs: roster.jobs.filter((job) => job.id !== jobId) };
+}
+
+/**
+ * Moves a Job one place up or down the display order. A Job that is already
+ * first cannot move up and one that is last cannot move down: nothing changes.
+ */
+export function moveJob(roster: Roster, jobId: string, direction: 'up' | 'down'): Roster {
+  const from = roster.jobs.findIndex((job) => job.id === jobId);
+  const to = direction === 'up' ? from - 1 : from + 1;
+  const moved = roster.jobs[from];
+  const swapped = roster.jobs[to];
+  if (moved === undefined || swapped === undefined) return roster;
+  const jobs = [...roster.jobs];
+  jobs[from] = swapped;
+  jobs[to] = moved;
+  return { ...roster, jobs };
+}
+
+/**
+ * An id not used by anything in the list: the label in lower case with dashes
+ * ("Dee Young" gives "dee-young"), then "-2", "-3", ... if that is taken.
+ * Once given, an id never changes.
+ */
+function newId(label: string, existing: { id: string }[]): string {
+  const taken = new Set(existing.map((item) => item.id));
+  const base = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
+  let id = base;
+  for (let count = 2; taken.has(id); count += 1) id = `${base}-${count}`;
+  return id;
+}

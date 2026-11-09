@@ -541,3 +541,170 @@ describe('the Daily Schedule for a date', () => {
     expect(dailyScheduleFor(roster, [], '2026-11-09')).toEqual(monday);
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// The roster, as managed on the settings page
+// ---------------------------------------------------------------------------
+
+import {
+  addCrewMember,
+  addJob,
+  changeCrewMember,
+  moveJob,
+  removeCrewMember,
+  removeJob,
+} from './index';
+
+describe('adding a Crew Member to the roster', () => {
+  it('adds them with their name, color and Foreman flag, and they are Not Placed', () => {
+    const added = addCrewMember(roster, { name: 'Dee Young', color: 'yellow', foreman: true });
+
+    expect(added.crewMembers.at(-1)).toMatchObject({
+      name: 'Dee Young',
+      color: 'yellow',
+      foreman: true,
+    });
+    const daily = schedule({ placements: [placement('ann', onJob('tower'), 1)] });
+    expect(scheduleView(added, daily).notPlaced.map((member) => member.name)).toEqual([
+      'bob',
+      'fay',
+      'cal',
+      'Dee Young',
+    ]);
+  });
+
+  it('gives two Crew Members with the same name different ids', () => {
+    const details = { name: 'Dee Young', color: 'blue', foreman: false } as const;
+
+    const added = addCrewMember(addCrewMember(roster, details), details);
+
+    const ids = added.crewMembers.map((member) => member.id);
+    expect(new Set(ids).size).toBe(6);
+  });
+
+  it('trims the name', () => {
+    const added = addCrewMember(roster, { name: '  Dee Young ', color: 'blue', foreman: false });
+
+    expect(added.crewMembers.at(-1)?.name).toBe('Dee Young');
+  });
+
+  it('changes nothing when the name is blank', () => {
+    expect(addCrewMember(roster, { name: '   ', color: 'blue', foreman: false })).toBe(roster);
+  });
+});
+
+describe('changing a Crew Member', () => {
+  it('changes their name, color and Foreman flag and keeps their Placement', () => {
+    const changed = changeCrewMember(roster, 'ann', {
+      name: ' Ann Lee ',
+      color: 'red',
+      foreman: true,
+    });
+
+    const daily = schedule({
+      placements: [placement('bob', onJob('tower'), 1), placement('ann', onJob('tower'), 2)],
+    });
+    const tower = scheduleView(changed, daily).rows.find((row) => row.label === 'J100 Tower');
+    expect(tower?.who.map((placed) => placed.crewMember)).toEqual([
+      { id: 'ann', name: 'Ann Lee', color: 'red', foreman: true },
+      { id: 'bob', name: 'bob', color: 'blue', foreman: false },
+    ]);
+  });
+
+  it('changes only what is given', () => {
+    const changed = changeCrewMember(roster, 'fay', { color: 'orange' });
+
+    expect(changed.crewMembers.find((member) => member.id === 'fay')).toEqual({
+      id: 'fay',
+      name: 'fay',
+      color: 'orange',
+      foreman: true,
+    });
+  });
+
+  it('changes nothing when the new name is blank', () => {
+    expect(changeCrewMember(roster, 'ann', { name: '  ' })).toBe(roster);
+  });
+});
+
+describe('removing a Crew Member from the roster', () => {
+  it('takes them off the Daily Schedule being edited, placed or Not Placed', () => {
+    const daily = schedule({ placements: [placement('ann', onJob('tower'), 1)] });
+
+    const withoutAnn = scheduleView(removeCrewMember(roster, 'ann'), daily);
+    const withoutBob = scheduleView(removeCrewMember(roster, 'bob'), daily);
+
+    expect(withoutAnn.rows.flatMap((row) => row.who)).toEqual([]);
+    expect(withoutAnn.notPlaced.map((member) => member.name)).toEqual(['bob', 'fay', 'cal']);
+    expect(withoutBob.notPlaced.map((member) => member.name)).toEqual(['fay', 'cal']);
+  });
+
+  it('does not reuse the id of someone still in the roster when a name is added again', () => {
+    const added = addCrewMember(removeCrewMember(roster, 'bob'), {
+      name: 'Ann',
+      color: 'blue',
+      foreman: false,
+    });
+
+    expect(added.crewMembers.map((member) => member.id)).toEqual(['ann', 'fay', 'cal', 'ann-2']);
+  });
+});
+
+const jobLabels = (ofRoster: Roster) =>
+  scheduleView(ofRoster, schedule())
+    .rows.filter((row) => row.destination.kind === 'job')
+    .map((row) => row.label);
+
+describe('adding a Job to the roster', () => {
+  it('adds it after the other Jobs, with or without a job number', () => {
+    const added = addJob(addJob(roster, { name: ' Depot ', jobNumber: ' J300 ' }), {
+      name: 'Quarry',
+      jobNumber: '  ',
+    });
+
+    expect(jobLabels(added)).toEqual(['J100 Tower', 'Bridge', 'J300 Depot', 'Quarry']);
+    expect(added.jobs.at(-1)).toEqual({ id: 'quarry', name: 'Quarry' });
+  });
+
+  it('gives two Jobs with the same name different ids', () => {
+    const added = addJob(addJob(roster, { name: 'Bridge' }), { name: 'Bridge' });
+
+    expect(new Set(added.jobs.map((job) => job.id)).size).toBe(4);
+  });
+
+  it('changes nothing when the name is blank', () => {
+    expect(addJob(roster, { name: ' ', jobNumber: 'J300' })).toBe(roster);
+  });
+});
+
+describe('removing a Job from the roster', () => {
+  it('takes the Job off the Daily Schedule and makes everyone on it Not Placed', () => {
+    const daily = schedule({
+      placements: [
+        placement('ann', onJob('tower'), 1),
+        placement('fay', onJob('tower'), 2),
+        placement('bob', onJob('bridge'), 3),
+      ],
+    });
+
+    const view = scheduleView(removeJob(roster, 'tower'), daily);
+
+    expect(view.rows.map((row) => row.label)).toEqual(['Bridge', 'Shop', 'Trucking', 'Off Work']);
+    expect(view.notPlaced.map((member) => member.name)).toEqual(['ann', 'fay', 'cal']);
+  });
+});
+
+describe('reordering Jobs', () => {
+  it('moves a Job up or down one place in the display order', () => {
+    const three = addJob(roster, { name: 'Depot' });
+
+    expect(jobLabels(moveJob(three, 'depot', 'up'))).toEqual(['J100 Tower', 'Depot', 'Bridge']);
+    expect(jobLabels(moveJob(three, 'tower', 'down'))).toEqual(['Bridge', 'J100 Tower', 'Depot']);
+  });
+
+  it('changes nothing when the Job is already first or last', () => {
+    expect(moveJob(roster, 'tower', 'up')).toBe(roster);
+    expect(moveJob(roster, 'bridge', 'down')).toBe(roster);
+  });
+});
