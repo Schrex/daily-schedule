@@ -1,0 +1,177 @@
+/* The look of the existing Excel sheet: a ruled grid, colored name cells, large text.
+   Sizes are in rem off one root size so the whole screen can be scaled in one place. */
+
+:root {
+  font-size: 22px; /* the one knob for "bigger / smaller" */
+  --grid: #1f1f1f;
+  --header-bg: #1f3864;
+  --header-fg: #ffffff;
+  --standing-bg: #f1f1f1;
+
+  /* Crew Member colors (the fixed palette) */
+  --grey: #bfbfbf;
+  --blue: #9dc3e6;
+  --orange: #f4b183;
+  --yellow: #ffe066;
+  --red: #e03131;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: #111111;
+  font-family: Calibri, 'Segoe UI', Arial, Helvetica, sans-serif;
+  line-height: 1.25;
+}
+
+.screen {
+  padding: 0.8rem 1.5rem 1rem;
+}
+
+.date-heading {
+  margin: 0 0 0.8rem;
+  font-size: 2.4rem;
+  font-weight: 700;
+}
+
+.layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+/* --- The schedule grid --------------------------------------------------- */
+
+.schedule {
+  flex: 1 1 auto;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: 3px solid var(--grid);
+}
+
+.schedule th,
+.schedule td {
+  border: 2px solid var(--grid);
+  padding: 0.5rem 0.7rem;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.schedule thead th {
+  background: var(--header-bg);
+  color: var(--header-fg);
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
+}
+
+.col-job {
+  width: 22%;
+}
+
+.col-tasks {
+  width: 28%;
+}
+
+.row {
+  height: 3.6rem;
+}
+
+.job {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.row-standing-row .job,
+.row-standing-row .tasks,
+.row-standing-row .who {
+  background: var(--standing-bg);
+}
+
+.task {
+  font-size: 1.1rem;
+}
+
+/* --- Names --------------------------------------------------------------- */
+
+.names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.names li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.names-stacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.name {
+  display: inline-block;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  font-size: 1.15rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #111111;
+}
+
+.color-grey {
+  background: var(--grey);
+}
+
+.color-blue {
+  background: var(--blue);
+}
+
+.color-orange {
+  background: var(--orange);
+}
+
+.color-yellow {
+  background: var(--yellow);
+}
+
+.color-red {
+  background: var(--red);
+  color: #ffffff;
+}
+
+.note {
+  color: #d00000;
+  font-size: 1.1rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* --- Not Placed ---------------------------------------------------------- */
+
+.not-placed {
+  flex: 0 0 15rem;
+  border: 3px dashed #c00000;
+  background: #fff5f5;
+  padding: 0.7rem 0.9rem 1rem;
+}
+
+.not-placed h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.3rem;
+  letter-spacing: 0.06em;
+  color: #c00000;
+}
+
+.not-placed-empty {
+  margin: 0;
+  font-size: 1.1rem;
+}
