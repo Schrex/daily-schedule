@@ -275,3 +275,61 @@ const destinationKey = (destination: Destination): string =>
   destination.kind === 'job'
     ? `job:${destination.jobId}`
     : `standing-row:${destination.standingRow}`;
+
+// ---------------------------------------------------------------------------
+// Undo
+// ---------------------------------------------------------------------------
+
+/**
+ * One sitting of editing one Daily Schedule: the schedule as it stands, plus
+ * what Undo can step back through. Start a new one with `startEditing` each
+ * time a Daily Schedule is opened (a reload, a different date); nothing to
+ * undo carries over, and only `schedule` is ever saved.
+ */
+export interface Editing {
+  /** The Daily Schedule as it stands now. */
+  readonly schedule: DailySchedule;
+  /** What earlier changes replaced, oldest first. Ask `canUndo`; do not read this. */
+  readonly earlier: readonly Undoable[];
+}
+
+/** The part of a Daily Schedule that Undo puts back. The send record is not in it. */
+type Undoable = Pick<DailySchedule, 'placements' | 'tasks'>;
+
+/** Begins editing a Daily Schedule, with nothing to undo. */
+export const startEditing = (schedule: DailySchedule): Editing => ({ schedule, earlier: [] });
+
+/**
+ * Applies one schedule rule to the Daily Schedule being edited. A change to
+ * Placements (Notes included) or Tasks becomes one step for Undo. A rule that
+ * changes nothing returns the same Editing. A rule that touches neither, such
+ * as marking a Send, takes effect but is not a step: Undo never reverses it.
+ */
+export function change(
+  editing: Editing,
+  rule: (schedule: DailySchedule) => DailySchedule,
+): Editing {
+  const before = editing.schedule;
+  const schedule = rule(before);
+  if (schedule === before) return editing;
+
+  const { placements, tasks } = before;
+  if (schedule.placements === placements && schedule.tasks === tasks) {
+    return { ...editing, schedule };
+  }
+  return { schedule, earlier: [...editing.earlier, { placements, tasks }] };
+}
+
+/** Whether there is a change for Undo to reverse. */
+export const canUndo = (editing: Editing): boolean => editing.earlier.length > 0;
+
+/**
+ * Reverses the most recent change, putting back the Placements, Notes and
+ * Tasks it replaced. Everything else, the send record above all, stays as it
+ * is now. With nothing to undo, the same Editing is returned unchanged.
+ */
+export function undo(editing: Editing): Editing {
+  const last = editing.earlier[editing.earlier.length - 1];
+  if (!last) return editing;
+  return { schedule: { ...editing.schedule, ...last }, earlier: editing.earlier.slice(0, -1) };
+}

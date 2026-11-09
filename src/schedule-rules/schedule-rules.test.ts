@@ -10,6 +10,10 @@ import {
   setNote,
   setTasks,
   tasksText,
+  canUndo,
+  change,
+  startEditing,
+  undo,
   type CrewMember,
   type DailySchedule,
   type Placement,
@@ -409,5 +413,99 @@ describe('the full date', () => {
   it('spells out the weekday, month, day and year', () => {
     expect(fullDate('2026-11-10')).toBe('Tuesday, November 10, 2026');
     expect(fullDate('2027-01-01')).toBe('Friday, January 1, 2027');
+  });
+});
+
+describe('Undo', () => {
+  it('reverses the most recent Placement', () => {
+    const opened = schedule({ placements: [placement('cal', onJob('bridge'), 1)] });
+
+    const moved = change(startEditing(opened), (s) => placeCrewMember(s, 'cal', onJob('tower')));
+    expect(whoIsOn('J100 Tower', moved.schedule)).toEqual(['cal']);
+
+    const undone = undo(moved);
+
+    expect(whoIsOn('Bridge', undone.schedule)).toEqual(['cal']);
+    expect(whoIsOn('J100 Tower', undone.schedule)).toEqual([]);
+  });
+
+  it('steps back through a Placement, a Task edit and a Note edit in order, most recent first', () => {
+    const opened = schedule({
+      placements: [placement('cal', onJob('bridge'), 1)],
+      tasks: { bridge: ['Pour deck'] },
+    });
+
+    const moved = change(startEditing(opened), (s) => placeCrewMember(s, 'ann', onJob('bridge')));
+    const retasked = change(moved, (s) => setTasks(s, 'bridge', 'Strip forms'));
+    const noted = change(retasked, (s) => setNote(s, 'cal', '1/2 Day'));
+
+    const noteUndone = undo(noted);
+    expect(noteOf('cal', noteUndone.schedule)).toBeUndefined();
+    expect(tasksOf('Bridge', noteUndone.schedule)).toEqual(['Strip forms']);
+    expect(canUndo(noteUndone)).toBe(true);
+
+    const tasksUndone = undo(noteUndone);
+    expect(tasksOf('Bridge', tasksUndone.schedule)).toEqual(['Pour deck']);
+    expect(whoIsOn('Bridge', tasksUndone.schedule)).toEqual(['cal', 'ann']);
+    expect(canUndo(tasksUndone)).toBe(true);
+
+    const moveUndone = undo(tasksUndone);
+    expect(moveUndone.schedule).toEqual(opened);
+    expect(canUndo(moveUndone)).toBe(false);
+  });
+
+  it('has nothing to undo when a Daily Schedule is first opened, and Undo then changes nothing', () => {
+    const editing = startEditing(schedule({ placements: [placement('cal', onJob('bridge'), 1)] }));
+
+    expect(canUndo(editing)).toBe(false);
+    expect(undo(editing)).toBe(editing);
+  });
+
+  it('does not count a change that changed nothing', () => {
+    const editing = startEditing(schedule({ placements: [placement('cal', onJob('bridge'), 1)] }));
+
+    const same = change(editing, (s) => placeCrewMember(s, 'cal', onJob('bridge')));
+
+    expect(same).toBe(editing);
+    expect(canUndo(same)).toBe(false);
+  });
+
+  it('does not undo a Send: the send record survives, and the change before the Send is reversed', () => {
+    const opened = schedule({ placements: [placement('cal', onJob('bridge'), 1)] });
+    const send = (s: DailySchedule): DailySchedule => ({
+      ...s,
+      sends: [...s.sends, '2026-11-09T22:15:00.000Z'],
+    });
+
+    const moved = change(startEditing(opened), (s) => placeCrewMember(s, 'cal', onJob('tower')));
+    const sent = change(moved, send);
+    expect(sent.schedule.sends).toEqual(['2026-11-09T22:15:00.000Z']);
+
+    const undone = undo(sent);
+
+    expect(undone.schedule.sends).toEqual(['2026-11-09T22:15:00.000Z']);
+    expect(whoIsOn('Bridge', undone.schedule)).toEqual(['cal']);
+    expect(canUndo(undone)).toBe(false);
+  });
+
+  it('never loses a Send made after the change being undone', () => {
+    const send = (s: DailySchedule): DailySchedule => ({ ...s, sends: [...s.sends, 'first'] });
+    const moved = change(startEditing(schedule()), (s) => placeCrewMember(s, 'cal', onJob('tower')));
+    const noted = change(change(moved, send), (s) => setNote(s, 'cal', '1/2 Day'));
+
+    const undoneTwice = undo(undo(noted));
+
+    expect(undoneTwice.schedule.sends).toEqual(['first']);
+    expect(notPlaced(undoneTwice.schedule)).toContain('cal');
+  });
+
+  it('starts afresh for each Daily Schedule opened: nothing to undo carries over to another date', () => {
+    const edited = change(startEditing(schedule()), (s) => placeCrewMember(s, 'cal', onJob('tower')));
+    expect(canUndo(edited)).toBe(true);
+
+    const nextDay = startEditing(schedule({ date: '2026-11-11' }));
+
+    expect(canUndo(nextDay)).toBe(false);
+    expect(undo(nextDay).schedule.date).toBe('2026-11-11');
   });
 });
