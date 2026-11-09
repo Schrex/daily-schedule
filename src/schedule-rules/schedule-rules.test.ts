@@ -3,6 +3,8 @@ import {
   fullDate,
   onJob,
   onStandingRow,
+  placeCrewMember,
+  returnToNotPlaced,
   scheduleView,
   type CrewMember,
   type DailySchedule,
@@ -152,6 +154,107 @@ describe('the Daily Schedule view', () => {
     );
 
     expect(view.notPlaced.map((crewMember) => crewMember.name)).toContain('bob');
+  });
+});
+
+const whoIsOn = (label: string, daily: DailySchedule) =>
+  scheduleView(roster, daily)
+    .rows.find((row) => row.label === label)
+    ?.who.map((placed) => placed.crewMember.name);
+
+const notPlaced = (daily: DailySchedule) =>
+  scheduleView(roster, daily).notPlaced.map((crewMember) => crewMember.name);
+
+describe('placing a Crew Member', () => {
+  it('puts a Not Placed Crew Member on the Job', () => {
+    const moved = placeCrewMember(schedule(), 'ann', onJob('tower'));
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['ann']);
+    expect(notPlaced(moved)).toEqual(['bob', 'fay', 'cal']);
+  });
+
+  it('replaces the old Placement, so a Crew Member never appears in two places', () => {
+    const before = schedule({
+      placements: [placement('ann', onJob('tower'), 1), placement('bob', onJob('tower'), 2)],
+    });
+
+    const moved = placeCrewMember(before, 'ann', onStandingRow('trucking'));
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['bob']);
+    expect(whoIsOn('Trucking', moved)).toEqual(['ann']);
+    expect(moved.placements.filter((p) => p.crewMemberId === 'ann')).toHaveLength(1);
+  });
+
+  it('lists a newly placed Crew Member after those already there', () => {
+    const before = schedule({
+      placements: [
+        placement('cal', onStandingRow('shop'), 7),
+        placement('bob', onJob('tower'), 5),
+        placement('ann', onJob('bridge'), 9),
+      ],
+    });
+
+    const moved = placeCrewMember(placeCrewMember(before, 'ann', onJob('tower')), 'cal', onJob('tower'));
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['bob', 'ann', 'cal']);
+  });
+
+  it('lists a newly placed Foreman first on a Job', () => {
+    const before = schedule({
+      placements: [placement('bob', onJob('tower'), 1), placement('ann', onJob('tower'), 2)],
+    });
+
+    const moved = placeCrewMember(before, 'fay', onJob('tower'));
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['fay', 'bob', 'ann']);
+  });
+
+  it('leaves the Note behind when a Crew Member moves', () => {
+    const before = schedule({ placements: [placement('cal', onJob('bridge'), 1, '1/2 Day')] });
+
+    const moved = placeCrewMember(before, 'cal', onJob('tower'));
+
+    const cal = scheduleView(roster, moved).rows.find((row) => row.label === 'J100 Tower')?.who[0];
+    expect(cal?.crewMember.name).toBe('cal');
+    expect(cal?.note).toBeUndefined();
+  });
+
+  it('changes nothing when the Crew Member is already on that Job or Standing Row', () => {
+    const before = schedule({
+      placements: [
+        placement('cal', onJob('bridge'), 1, '1/2 Day'),
+        placement('ann', onJob('bridge'), 2),
+      ],
+    });
+
+    expect(placeCrewMember(before, 'cal', onJob('bridge'))).toBe(before);
+  });
+
+  it('leaves the Daily Schedule it was given untouched', () => {
+    const before = schedule({ placements: [placement('ann', onJob('tower'), 1)] });
+
+    placeCrewMember(before, 'ann', onJob('bridge'));
+
+    expect(before.placements).toEqual([placement('ann', onJob('tower'), 1)]);
+  });
+});
+
+describe('returning a Crew Member to Not Placed', () => {
+  it('removes their Placement', () => {
+    const before = schedule({
+      placements: [placement('ann', onJob('tower'), 1), placement('bob', onJob('tower'), 2)],
+    });
+
+    const moved = returnToNotPlaced(before, 'bob');
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['ann']);
+    expect(notPlaced(moved)).toEqual(['bob', 'fay', 'cal']);
+  });
+
+  it('changes nothing when the Crew Member is already Not Placed', () => {
+    const before = schedule({ placements: [placement('ann', onJob('tower'), 1)] });
+
+    expect(returnToNotPlaced(before, 'bob')).toBe(before);
   });
 });
 

@@ -159,6 +159,46 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
 }
 
 // ---------------------------------------------------------------------------
+// Moving a Crew Member
+// ---------------------------------------------------------------------------
+
+/**
+ * Places a Crew Member on a Job or Standing Row. The new Placement replaces any
+ * Placement they had, comes last in placement order, and carries no Note.
+ * If they are already there, the same Daily Schedule is returned unchanged.
+ */
+export function placeCrewMember(
+  schedule: DailySchedule,
+  crewMemberId: string,
+  destination: Destination,
+): DailySchedule {
+  const current = schedule.placements.find((placement) => placement.crewMemberId === crewMemberId);
+  if (current && destinationKey(current.destination) === destinationKey(destination)) {
+    return schedule;
+  }
+
+  // After everyone already on the schedule, so last in placement order wherever they land.
+  const order = Math.max(0, ...schedule.placements.map((placement) => placement.order)) + 1;
+
+  return {
+    ...schedule,
+    placements: [...withoutCrewMember(schedule, crewMemberId), { crewMemberId, destination, order }],
+  };
+}
+
+/**
+ * Removes a Crew Member's Placement, making them Not Placed. If they are
+ * already Not Placed, the same Daily Schedule is returned unchanged.
+ */
+export function returnToNotPlaced(schedule: DailySchedule, crewMemberId: string): DailySchedule {
+  const placements = withoutCrewMember(schedule, crewMemberId);
+  return placements.length === schedule.placements.length ? schedule : { ...schedule, placements };
+}
+
+const withoutCrewMember = (schedule: DailySchedule, crewMemberId: string): Placement[] =>
+  schedule.placements.filter((placement) => placement.crewMemberId !== crewMemberId);
+
+// ---------------------------------------------------------------------------
 // Dates
 // ---------------------------------------------------------------------------
 
