@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  dailyScheduleFor,
   fullDate,
+  nextWorkingDay,
+  scheduleDateOf,
   onJob,
   onStandingRow,
   placeCrewMember,
@@ -262,5 +265,132 @@ describe('the full date', () => {
   it('spells out the weekday, month, day and year', () => {
     expect(fullDate('2026-11-10')).toBe('Tuesday, November 10, 2026');
     expect(fullDate('2027-01-01')).toBe('Friday, January 1, 2027');
+  });
+});
+
+describe('the default date', () => {
+  it('is the next weekday after today', () => {
+    // Monday evening opens Tuesday.
+    expect(nextWorkingDay('2026-11-09')).toBe('2026-11-10');
+  });
+
+  it('skips the weekend, so Friday opens Monday', () => {
+    expect(nextWorkingDay('2026-11-13')).toBe('2026-11-16');
+    expect(nextWorkingDay('2026-11-14')).toBe('2026-11-16');
+    expect(nextWorkingDay('2026-11-15')).toBe('2026-11-16');
+  });
+
+  it('carries over the end of a month and of a year', () => {
+    expect(nextWorkingDay('2026-11-30')).toBe('2026-12-01');
+    expect(nextWorkingDay('2026-12-31')).toBe('2027-01-01');
+  });
+
+  it("reads today from the clock on the Scheduler's computer", () => {
+    expect(scheduleDateOf(new Date(2026, 10, 9, 19, 30))).toBe('2026-11-09');
+    expect(scheduleDateOf(new Date(2027, 0, 4, 0, 5))).toBe('2027-01-04');
+  });
+});
+
+describe('the Daily Schedule for a date', () => {
+  const tuesday = schedule({
+    date: '2026-11-10',
+    placements: [
+      placement('fay', onJob('tower'), 1),
+      placement('ann', onJob('tower'), 2, '1/2 Day'),
+      placement('bob', onStandingRow('off-work'), 3),
+      placement('cal', onStandingRow('shop'), 4),
+    ],
+    tasks: { tower: ['Strip topsoil', 'Set forms'] },
+    sends: ['2026-11-09T22:00:00.000Z'],
+  });
+
+  it('is created from the most recent earlier one, copying Placements and Tasks', () => {
+    const wednesday = dailyScheduleFor(roster, [tuesday], '2026-11-11');
+
+    expect(wednesday.date).toBe('2026-11-11');
+    expect(whoIsOn('J100 Tower', wednesday)).toEqual(['fay', 'ann']);
+    expect(whoIsOn('Shop', wednesday)).toEqual(['cal']);
+    expect(scheduleView(roster, wednesday).rows[0]?.tasks).toEqual(['Strip topsoil', 'Set forms']);
+  });
+
+  it('makes Crew Members who were in Off Work Not Placed', () => {
+    const wednesday = dailyScheduleFor(roster, [tuesday], '2026-11-11');
+
+    expect(whoIsOn('Off Work', wednesday)).toEqual([]);
+    expect(notPlaced(wednesday)).toEqual(['bob']);
+  });
+
+  it('drops every Note', () => {
+    const wednesday = dailyScheduleFor(roster, [tuesday], '2026-11-11');
+
+    const notes = scheduleView(roster, wednesday).rows.flatMap((row) =>
+      row.who.map((placed) => placed.note),
+    );
+    expect(notes).toEqual([undefined, undefined, undefined]);
+  });
+
+  it('starts with no send record', () => {
+    expect(dailyScheduleFor(roster, [tuesday], '2026-11-11').sends).toEqual([]);
+  });
+
+  it('drops Placements and Tasks for Crew Members and Jobs no longer in the roster', () => {
+    const smaller: Roster = {
+      crewMembers: roster.crewMembers.filter((member) => member.id !== 'cal'),
+      jobs: roster.jobs.filter((job) => job.id !== 'tower'),
+    };
+
+    const wednesday = dailyScheduleFor(smaller, [tuesday], '2026-11-11');
+
+    expect(wednesday.placements).toEqual([]);
+    expect(wednesday.tasks).toEqual({});
+  });
+
+  it('keeps Foreman first and then the placement order of the day before', () => {
+    const before = schedule({
+      placements: [
+        placement('bob', onJob('tower'), 1),
+        placement('ann', onJob('tower'), 2),
+        placement('fay', onJob('tower'), 3),
+      ],
+    });
+
+    const next = dailyScheduleFor(roster, [before], '2026-11-11');
+
+    expect(whoIsOn('J100 Tower', next)).toEqual(['fay', 'bob', 'ann']);
+  });
+
+  it('copies from the most recent earlier Daily Schedule, whatever order they are given in', () => {
+    const monday = schedule({ date: '2026-11-09', placements: [placement('ann', onJob('bridge'), 1)] });
+    const friday = schedule({ date: '2026-11-13', placements: [placement('ann', onStandingRow('shop'), 1)] });
+
+    const thursday = dailyScheduleFor(roster, [friday, tuesday, monday], '2026-11-12');
+
+    expect(whoIsOn('J100 Tower', thursday)).toEqual(['fay', 'ann']);
+  });
+
+  it('opens the Daily Schedule already saved for that date instead of creating one', () => {
+    const wednesday = schedule({
+      date: '2026-11-11',
+      placements: [placement('ann', onStandingRow('trucking'), 1, 'Late')],
+      sends: ['2026-11-10T22:00:00.000Z'],
+    });
+
+    expect(dailyScheduleFor(roster, [tuesday, wednesday], '2026-11-11')).toEqual(wednesday);
+    expect(dailyScheduleFor(roster, [tuesday, wednesday], '2026-11-10')).toEqual(tuesday);
+  });
+
+  it('leaves the earlier Daily Schedule as it was', () => {
+    const before = structuredClone(tuesday);
+
+    dailyScheduleFor(roster, [tuesday], '2026-11-11');
+
+    expect(tuesday).toEqual(before);
+  });
+
+  it('starts with everyone Not Placed and no Tasks when there is no earlier Daily Schedule', () => {
+    const monday = dailyScheduleFor(roster, [tuesday], '2026-11-09');
+
+    expect(monday).toEqual({ date: '2026-11-09', placements: [], tasks: {}, sends: [] });
+    expect(dailyScheduleFor(roster, [], '2026-11-09')).toEqual(monday);
   });
 });

@@ -218,3 +218,78 @@ const destinationKey = (destination: Destination): string =>
   destination.kind === 'job'
     ? `job:${destination.jobId}`
     : `standing-row:${destination.standingRow}`;
+
+// ---------------------------------------------------------------------------
+// The default date
+// ---------------------------------------------------------------------------
+
+/** Today's date as the clock on the Scheduler's computer has it. */
+export function scheduleDateOf(now: Date): ScheduleDate {
+  return toScheduleDate(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+}
+
+/** The next weekday after today: Friday, Saturday and Sunday all give Monday. */
+export function nextWorkingDay(today: ScheduleDate): ScheduleDate {
+  const [year = 0, month = 1, day = 1] = today.split('-').map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + 1));
+  while (next.getUTCDay() === 0 || next.getUTCDay() === 6) next.setUTCDate(next.getUTCDate() + 1);
+  return toScheduleDate(next.getTime());
+}
+
+const toScheduleDate = (utcMidnight: number): ScheduleDate =>
+  new Date(utcMidnight).toISOString().slice(0, 10);
+
+// ---------------------------------------------------------------------------
+// The Daily Schedule for a date
+// ---------------------------------------------------------------------------
+
+/**
+ * The Daily Schedule to edit for a date, given the saved Daily Schedules.
+ *
+ * If one is saved for that date, it is that one, untouched. Otherwise a new one
+ * is created from the most recent earlier Daily Schedule: Placements and Tasks
+ * are copied, except that Crew Members who were in Off Work become Not Placed,
+ * every Note is dropped, and anything for a Crew Member or Job no longer in the
+ * roster is dropped. A new Daily Schedule has no send record. With no earlier
+ * Daily Schedule to copy, everyone is Not Placed and there are no Tasks.
+ *
+ * Nothing in `saved` is changed; saving the result is the caller's business.
+ */
+export function dailyScheduleFor(
+  roster: Roster,
+  saved: readonly DailySchedule[],
+  date: ScheduleDate,
+): DailySchedule {
+  const existing = saved.find((schedule) => schedule.date === date);
+  if (existing) return existing;
+
+  const previous = saved
+    .filter((schedule) => schedule.date < date)
+    .reduce<DailySchedule | undefined>(
+      (latest, schedule) => (latest && latest.date > schedule.date ? latest : schedule),
+      undefined,
+    );
+  if (!previous) return { date, placements: [], tasks: {}, sends: [] };
+
+  const crewMemberIds = new Set(roster.crewMembers.map((crewMember) => crewMember.id));
+  const jobIds = new Set(roster.jobs.map((job) => job.id));
+
+  const carriesOver = ({ crewMemberId, destination }: Placement): boolean =>
+    crewMemberIds.has(crewMemberId) &&
+    (destination.kind === 'job'
+      ? jobIds.has(destination.jobId)
+      : destination.standingRow !== 'off-work');
+
+  return {
+    date,
+    placements: previous.placements
+      .filter(carriesOver)
+      .map(({ crewMemberId, destination, order }) => ({ crewMemberId, destination, order })),
+    tasks: Object.fromEntries(
+      Object.entries(previous.tasks)
+        .filter(([jobId]) => jobIds.has(jobId))
+        .map(([jobId, tasks]) => [jobId, [...tasks]]),
+    ),
+    sends: [],
+  };
+}
