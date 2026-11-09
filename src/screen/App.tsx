@@ -4,8 +4,10 @@ import {
   returnToNotPlaced,
   type DailySchedule,
   type Destination,
+  type ScheduleDate,
 } from '../schedule-rules';
-import type { Opened, ScheduleStore } from '../storage';
+import { openDate, type Opened, type ScheduleStore } from '../storage';
+import { ChangeDate } from './ChangeDate';
 import { ScheduleScreen } from './ScheduleScreen';
 
 /**
@@ -44,7 +46,17 @@ export function App({ store, opened }: { store: ScheduleStore; opened: Opened })
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  /** Opens the Daily Schedule for another date, creating it if there is none. */
+  const changeDate = (date: ScheduleDate) => {
+    setSelectedCrewMemberId(null);
+    openDate(store, roster, date)
+      .then(setSchedule)
+      .catch((error) => console.error('Could not open the Daily Schedule', error));
+  };
+
   return (
+    <>
+    <ChangeDate date={schedule.date} onChangeDate={changeDate} />
     <ScheduleScreen
       roster={roster}
       schedule={schedule}
@@ -56,5 +68,6 @@ export function App({ store, opened }: { store: ScheduleStore; opened: Opened })
       }
       onReturnToNotPlaced={() => moveSelected(returnToNotPlaced)}
     />
+    </>
   );
 }

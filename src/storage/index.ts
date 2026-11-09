@@ -8,7 +8,13 @@
  * and returns what it is given.
  */
 
-import type { DailySchedule, Roster, ScheduleDate } from '../schedule-rules';
+import {
+  dailyScheduleFor,
+  nextWorkingDay,
+  type DailySchedule,
+  type Roster,
+  type ScheduleDate,
+} from '../schedule-rules';
 
 export interface ScheduleStore {
   /** The saved roster, or null if nothing has ever been saved. */
@@ -29,23 +35,44 @@ export interface Opened {
 }
 
 /**
- * Opens the store. On first ever open (no roster saved yet) the seed roster
- * and seed Daily Schedule are saved and returned. After that, the saved roster
- * and the saved Daily Schedule with the latest date are returned.
+ * Opens the store on the Daily Schedule for the next working day after
+ * `today`. On first ever open (no roster saved yet) the seed roster and seed
+ * Daily Schedule are saved first. The Daily Schedule returned is the one saved
+ * for that day, or a new one created from the most recent earlier one.
  */
-export async function openStore(store: ScheduleStore, seed: Opened): Promise<Opened> {
-  const roster = await store.loadRoster();
+export async function openStore(
+  store: ScheduleStore,
+  seed: Opened,
+  today: ScheduleDate,
+): Promise<Opened> {
+  let roster = await store.loadRoster();
   if (roster === null) {
     await store.saveRoster(seed.roster);
-    await store.saveSchedule(seed.schedule);
-    return seed;
+    roster = seed.roster;
   }
+  // No Daily Schedule at all: start from the seed Daily Schedule.
+  if ((await store.listScheduleDates()).length === 0) await store.saveSchedule(seed.schedule);
 
-  const latestDate = (await store.listScheduleDates()).at(-1);
-  const schedule = latestDate === undefined ? null : await store.loadSchedule(latestDate);
-  if (schedule !== null) return { roster, schedule };
+  return { roster, schedule: await openDate(store, roster, nextWorkingDay(today)) };
+}
 
-  // A roster but no Daily Schedule: start again from the seed Daily Schedule.
-  await store.saveSchedule(seed.schedule);
-  return { roster, schedule: seed.schedule };
+/**
+ * The Daily Schedule to edit for a date: the one saved for it, or a new one
+ * created by the schedule rules from the most recent earlier one and saved
+ * under its own date. Daily Schedules for other dates are never touched.
+ */
+export async function openDate(
+  store: ScheduleStore,
+  roster: Roster,
+  date: ScheduleDate,
+): Promise<DailySchedule> {
+  // The rules choose among whatever they are given; only these two can matter.
+  const existing = await store.loadSchedule(date);
+  const earlierDate = (await store.listScheduleDates()).filter((saved) => saved < date).at(-1);
+  const earlier = earlierDate === undefined ? null : await store.loadSchedule(earlierDate);
+
+  const saved = [existing, earlier].filter((schedule) => schedule !== null);
+  const schedule = dailyScheduleFor(roster, saved, date);
+  if (existing === null) await store.saveSchedule(schedule);
+  return schedule;
 }

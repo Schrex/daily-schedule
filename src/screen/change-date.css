@@ -1,0 +1,105 @@
+/* "Change date": one large plain button beside the date, and a simple panel
+   with one large date box. Sizes are in rem, off the root size in screen.css. */
+
+.change-date-button {
+  position: absolute;
+  top: 0.8rem;
+  right: 1.5rem;
+  min-height: 2.9rem;
+  padding: 0.3rem 1.2rem;
+  border: 2px solid #1f1f1f;
+  border-radius: 0.3rem;
+  background: #ffffff;
+  color: #111111;
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.change-date-button:hover,
+.change-date-button:focus-visible {
+  background: #eef1f5;
+}
+
+.change-date-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4rem;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.change-date-panel {
+  width: min(32rem, 92vw);
+  padding: 1.4rem 1.6rem 1.6rem;
+  border: 3px solid #1f1f1f;
+  border-radius: 0.4rem;
+  background: #ffffff;
+}
+
+.change-date-panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1.6rem;
+}
+
+.change-date-input {
+  display: block;
+  width: 100%;
+  min-height: 4rem;
+  padding: 0.4rem 0.8rem;
+  border: 2px solid #1f1f1f;
+  border-radius: 0.3rem;
+  font: inherit;
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+/* The calendar icon is the thing to click: make it as large as the text. */
+.change-date-input::-webkit-calendar-picker-indicator {
+  width: 2.2rem;
+  height: 2.2rem;
+  cursor: pointer;
+}
+
+.change-date-picked {
+  margin: 0.9rem 0 1.2rem;
+  min-height: 2rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.change-date-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.change-date-actions button {
+  flex: 1;
+  min-height: 3.4rem;
+  border: 2px solid #1f1f1f;
+  border-radius: 0.3rem;
+  font: inherit;
+  font-size: 1.4rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.change-date-open {
+  background: #1f3864;
+  color: #ffffff;
+}
+
+.change-date-open:disabled {
+  background: #9aa3b2;
+  border-color: #9aa3b2;
+  cursor: default;
+}
+
+.change-date-cancel {
+  background: #ffffff;
+  color: #111111;
+}
