@@ -7,18 +7,30 @@ import {
   type Destination,
   type Roster,
 } from '../schedule-rules';
+import { NoteEditor } from './NoteEditor';
+import { TasksCell } from './TasksCell';
 
 interface ScheduleScreenProps {
   roster: Roster;
   schedule: DailySchedule;
-  /** The Crew Member picked up to move, if any. */
+  /** The Crew Member picked up to move, or to have a Note typed, if any. */
   selectedCrewMemberId: string | null;
+  /** True while a Note is being typed for the selected Crew Member (no move then). */
+  editingNote: boolean;
   onSelectCrewMember: (crewMemberId: string) => void;
   onCancelMove: () => void;
   /** A Job or Standing Row block was clicked while a Crew Member is selected. */
   onPlace: (destination: Destination) => void;
   /** The Not Placed list was clicked while a Crew Member is selected. */
   onReturnToNotPlaced: () => void;
+  /** "Add note" / "Change note" was clicked for the selected Crew Member. */
+  onEditNote: () => void;
+  /** The Note typed for the selected Crew Member was saved. */
+  onSaveNote: (text: string) => void;
+  /** "Remove note" was clicked for the selected Crew Member. */
+  onClearNote: () => void;
+  /** The Scheduler finished typing a Job's Tasks: the whole text, one Task per line. */
+  onSetTasks: (jobId: string, text: string) => void;
 }
 
 /**
@@ -28,6 +40,9 @@ interface ScheduleScreenProps {
  * Moving is click-click: click a name to select it, then click a Job, a
  * Standing Row or the Not Placed list. While a name is selected, a click
  * anywhere in one of those blocks (even on another name) is the destination.
+ *
+ * With no name selected, clicking a Job's Tasks lets him type them. A selected
+ * Crew Member who has a Placement also offers "Add note".
  */
 export function ScheduleScreen({
   roster,
@@ -37,16 +52,26 @@ export function ScheduleScreen({
   onCancelMove,
   onPlace,
   onReturnToNotPlaced,
+  editingNote,
+  onEditNote,
+  onSaveNote,
+  onClearNote,
+  onSetTasks,
 }: ScheduleScreenProps) {
   const view = scheduleView(roster, schedule);
   const selected = roster.crewMembers.find((member) => member.id === selectedCrewMemberId);
-  const moving = selected !== undefined;
+  /** Where the selected Crew Member is now; undefined when Not Placed (no Placement, so no Note). */
+  const selectedPlaced = view.rows
+    .flatMap((row) => row.who)
+    .find((placed) => placed.crewMember.id === selected?.id);
+  const typingNote = selected !== undefined && selectedPlaced !== undefined && editingNote;
+  const moving = selected !== undefined && !typingNote;
 
   const onNameClick = (crewMember: CrewMember, event: MouseEvent) => {
     if (!moving) {
       event.stopPropagation();
       onSelectCrewMember(crewMember.id);
-    } else if (crewMember.id === selected.id) {
+    } else if (crewMember.id === selected?.id) {
       event.stopPropagation();
       onCancelMove();
     }
@@ -70,16 +95,35 @@ export function ScheduleScreen({
     <main className={`screen${moving ? ' moving' : ''}`}>
       <h1 className="date-heading">{fullDate(view.date)}</h1>
 
-      <p className={`move-hint${moving ? ' move-hint-active' : ''}`} role="status">
-        {moving ? (
+      <div
+        className={`move-hint${moving ? ' move-hint-active' : ''}${typingNote ? ' move-hint-note' : ''}`}
+        role="status"
+      >
+        {typingNote ? (
+          <NoteEditor
+            key={selected.id}
+            crewMemberName={selected.name}
+            note={selectedPlaced.note}
+            onSave={onSaveNote}
+            onClear={onClearNote}
+            onCancel={onCancelMove}
+          />
+        ) : moving ? (
           <>
-            Moving <strong>{selected.name}</strong>. Now click where they go.
-            <span className="move-hint-cancel"> (Click the name again to cancel.)</span>
+            <span>
+              Moving <strong>{selected.name}</strong>. Now click where they go.
+              <span className="move-hint-cancel"> (Click the name again to cancel.)</span>
+            </span>
+            {selectedPlaced && (
+              <button type="button" className="action" onClick={onEditNote}>
+                {selectedPlaced.note ? 'Change note' : 'Add note'}
+              </button>
+            )}
           </>
         ) : (
-          'To move someone, click their name.'
+          'To move someone, click their name. To change tasks, click the tasks.'
         )}
-      </p>
+      </div>
 
       <div className="layout">
         <table className="schedule">
@@ -91,22 +135,25 @@ export function ScheduleScreen({
             </tr>
           </thead>
           <tbody>
-            {view.rows.map((row) => (
+            {view.rows.map(({ destination, ...row }) => (
               <tr
                 key={row.key}
-                className={`row row-${row.destination.kind} destination`}
+                className={`row row-${destination.kind} destination`}
                 data-row={row.key}
-                onClick={moving ? () => onPlace(row.destination) : undefined}
+                onClick={moving ? () => onPlace(destination) : undefined}
               >
                 <th scope="row" className="job">
                   {row.label}
                 </th>
                 <td className="tasks">
-                  {row.tasks.map((task, index) => (
-                    <div key={index} className="task">
-                      {task}
-                    </div>
-                  ))}
+                  {destination.kind === 'job' && (
+                    <TasksCell
+                      jobLabel={row.label}
+                      tasks={row.tasks}
+                      canEdit={!moving}
+                      onCommit={(text) => onSetTasks(destination.jobId, text)}
+                    />
+                  )}
                 </td>
                 <td className="who">
                   <ul className="names">
