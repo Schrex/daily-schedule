@@ -199,6 +199,63 @@ const withoutCrewMember = (schedule: DailySchedule, crewMemberId: string): Place
   schedule.placements.filter((placement) => placement.crewMemberId !== crewMemberId);
 
 // ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+/**
+ * Sets a Job's Tasks from free text, one Task per line. Blank lines and the
+ * space around each Task are ignored. If the text gives the Tasks the Job
+ * already has, the same Daily Schedule is returned unchanged.
+ */
+export function setTasks(schedule: DailySchedule, jobId: string, text: string): DailySchedule {
+  const tasks = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+  const current = schedule.tasks[jobId] ?? [];
+  if (tasks.length === current.length && tasks.every((task, index) => task === current[index])) {
+    return schedule;
+  }
+  return { ...schedule, tasks: { ...schedule.tasks, [jobId]: tasks } };
+}
+
+/** A Job's Tasks as the free text `setTasks` reads: one Task per line. */
+export const tasksText = (tasks: string[]): string => tasks.join('\n');
+
+// ---------------------------------------------------------------------------
+// Notes
+// ---------------------------------------------------------------------------
+
+/**
+ * Sets the Note on a Crew Member's Placement from free text; the space around
+ * it is ignored, and empty text clears the Note. The Placement itself (where,
+ * and its placement order) is kept. If the Placement already has that Note, or
+ * the Crew Member is Not Placed, the same Daily Schedule is returned unchanged.
+ */
+export function setNote(schedule: DailySchedule, crewMemberId: string, text: string): DailySchedule {
+  const note = text.trim();
+  const current = schedule.placements.find((placement) => placement.crewMemberId === crewMemberId);
+  if (!current || (current.note ?? '') === note) return schedule;
+
+  const { note: _oldNote, ...withoutNote } = current;
+  const updated: Placement = note ? { ...withoutNote, note } : withoutNote;
+
+  return {
+    ...schedule,
+    placements: schedule.placements.map((placement) =>
+      placement === current ? updated : placement,
+    ),
+  };
+}
+
+/**
+ * Clears the Note on a Crew Member's Placement. If there is no Note, the same
+ * Daily Schedule is returned unchanged.
+ */
+export const clearNote = (schedule: DailySchedule, crewMemberId: string): DailySchedule =>
+  setNote(schedule, crewMemberId, '');
+
+// ---------------------------------------------------------------------------
 // Dates
 // ---------------------------------------------------------------------------
 
