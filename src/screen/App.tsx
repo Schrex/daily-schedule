@@ -8,24 +8,30 @@ import {
   type DailySchedule,
   type Destination,
 } from '../schedule-rules';
-import { seedRoster } from '../seed/seedRoster';
-import { seedSchedule } from '../seed/seedSchedule';
+import type { Opened, ScheduleStore } from '../storage';
 import { ScheduleScreen } from './ScheduleScreen';
 
 /**
  * Holds the Daily Schedule being edited and which Crew Member is selected to
- * move or to have a Note typed. Every change to the schedule goes through `change`, which applies one
- * schedule rule; the screen below only draws and reports clicks.
+ * move or to have a Note typed. Every change to the schedule goes through
+ * `change`, which applies one schedule rule and saves the result; the screen
+ * below only draws and reports clicks. `opened` is what the store held when
+ * the page loaded.
  */
-export function App() {
-  const roster = seedRoster;
-  const [schedule, setSchedule] = useState<DailySchedule>(seedSchedule);
+export function App({ store, opened }: { store: ScheduleStore; opened: Opened }) {
+  const roster = opened.roster;
+  const [schedule, setSchedule] = useState<DailySchedule>(opened.schedule);
   const [selectedCrewMemberId, setSelectedCrewMemberId] = useState<string | null>(null);
   /** True while a Note is being typed for the selected Crew Member. */
   const [editingNote, setEditingNote] = useState(false);
 
-  /** The one place the Daily Schedule changes. */
-  const change = (rule: (schedule: DailySchedule) => DailySchedule) => setSchedule(rule);
+  /** The one place the Daily Schedule changes. Every change is saved by itself. */
+  const change = (rule: (schedule: DailySchedule) => DailySchedule) => {
+    const next = rule(schedule);
+    if (next === schedule) return;
+    setSchedule(next);
+    store.saveSchedule(next).catch((error) => console.error('Could not save the Daily Schedule', error));
+  };
 
   const select = (crewMemberId: string | null) => {
     setSelectedCrewMemberId(crewMemberId);
