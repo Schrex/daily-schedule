@@ -237,3 +237,135 @@ body {
   margin: 0;
   font-size: 1.1rem;
 }
+
+/* --- Buttons that do something other than move a name -------------------- */
+
+.action {
+  min-height: 2.4rem;
+  padding: 0.3rem 1rem;
+  border: 2px solid #111111;
+  border-radius: 0.3rem;
+  background: #ffffff;
+  color: #111111;
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.action:hover,
+.action:focus-visible {
+  background: #fff3bf;
+}
+
+.action-main {
+  background: #1f3864;
+  border-color: #1f3864;
+  color: #ffffff;
+}
+
+.action-main:hover,
+.action-main:focus-visible {
+  background: #2f5597;
+}
+
+/* --- Typing Tasks -------------------------------------------------------- */
+
+/* The whole Tasks cell of a Job is the thing to click. */
+.tasks-open {
+  display: block;
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.2rem 0.3rem;
+  border: 2px dashed transparent;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: text;
+}
+
+.tasks-open:hover,
+.tasks-open:focus-visible {
+  border-color: #1f3864;
+  background: #eef4ff;
+}
+
+.tasks-empty {
+  color: #555555;
+  font-size: 1.05rem;
+  font-style: italic;
+}
+
+.tasks-input {
+  display: block;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 3px solid #1f3864;
+  background: #fffbe6;
+  color: #111111;
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1.35;
+  resize: vertical;
+}
+
+.tasks-editing-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+  font-size: 1rem;
+}
+
+/* --- Typing a Note ------------------------------------------------------- */
+
+/* The bar keeps one height whether it holds the hint, "Add note" or the Note field,
+   so the schedule below never jumps. */
+.move-hint {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 3.4rem;
+  padding-block: 0.3rem;
+}
+
+.move-hint-note {
+  background: #fff5f5;
+  outline: 3px solid #d00000;
+  outline-offset: -3px;
+}
+
+.note-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.note-editor-label {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 1.2rem;
+}
+
+.note-input {
+  width: 16rem;
+  min-height: 2.4rem;
+  padding: 0.2rem 0.5rem;
+  border: 3px solid #d00000;
+  background: #ffffff;
+  color: #d00000;
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.note-input::placeholder {
+  color: #777777;
+  font-weight: 400;
+}

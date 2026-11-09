@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   dailyScheduleFor,
+  clearNote,
   fullDate,
   nextWorkingDay,
   scheduleDateOf,
@@ -9,6 +10,9 @@ import {
   placeCrewMember,
   returnToNotPlaced,
   scheduleView,
+  setNote,
+  setTasks,
+  tasksText,
   type CrewMember,
   type DailySchedule,
   type Placement,
@@ -258,6 +262,149 @@ describe('returning a Crew Member to Not Placed', () => {
     const before = schedule({ placements: [placement('ann', onJob('tower'), 1)] });
 
     expect(returnToNotPlaced(before, 'bob')).toBe(before);
+  });
+});
+
+const tasksOf = (label: string, daily: DailySchedule): string[] =>
+  scheduleView(roster, daily).rows.find((row) => row.label === label)?.tasks ?? [];
+
+describe("setting a Job's Tasks", () => {
+  it('makes one Task of each line of the text', () => {
+    const edited = setTasks(schedule(), 'tower', 'Strip topsoil\nRough grade building pad');
+
+    expect(tasksOf('J100 Tower', edited)).toEqual(['Strip topsoil', 'Rough grade building pad']);
+  });
+
+  it('ignores blank lines and the space around each Task', () => {
+    const edited = setTasks(schedule(), 'tower', '\n  Strip topsoil  \r\n\n   \nSet curb\n');
+
+    expect(tasksOf('J100 Tower', edited)).toEqual(['Strip topsoil', 'Set curb']);
+  });
+
+  it('replaces the Tasks the Job had, and leaves other Jobs alone', () => {
+    const before = schedule({ tasks: { tower: ['Strip topsoil'], bridge: ['Set curb'] } });
+
+    const edited = setTasks(before, 'tower', 'Pour footings');
+
+    expect(tasksOf('J100 Tower', edited)).toEqual(['Pour footings']);
+    expect(tasksOf('Bridge', edited)).toEqual(['Set curb']);
+  });
+
+  it('leaves the Job with no Tasks when the text is empty', () => {
+    const before = schedule({ tasks: { tower: ['Strip topsoil'] } });
+
+    expect(tasksOf('J100 Tower', setTasks(before, 'tower', '  \n'))).toEqual([]);
+  });
+
+  it('changes nothing when the text gives the Tasks the Job already has', () => {
+    const before = schedule({ tasks: { tower: ['Strip topsoil', 'Set curb'] } });
+
+    expect(setTasks(before, 'tower', 'Strip topsoil\nSet curb\n')).toBe(before);
+    expect(setTasks(before, 'bridge', '')).toBe(before);
+  });
+
+  it('leaves the Daily Schedule it was given untouched', () => {
+    const before = schedule({ tasks: { tower: ['Strip topsoil'] } });
+
+    setTasks(before, 'tower', 'Pour footings');
+
+    expect(before.tasks).toEqual({ tower: ['Strip topsoil'] });
+  });
+});
+
+describe('the text of a Job\'s Tasks', () => {
+  it('is one Task per line, and gives the same Tasks back when set again', () => {
+    const before = schedule({ tasks: { tower: ['Strip topsoil', 'Set curb'] } });
+
+    expect(tasksText(tasksOf('J100 Tower', before))).toBe('Strip topsoil\nSet curb');
+    expect(setTasks(before, 'tower', tasksText(tasksOf('J100 Tower', before)))).toBe(before);
+  });
+});
+
+const noteOf = (crewMemberId: string, daily: DailySchedule): string | undefined =>
+  scheduleView(roster, daily)
+    .rows.flatMap((row) => row.who)
+    .find((placed) => placed.crewMember.id === crewMemberId)?.note;
+
+describe('setting a Note', () => {
+  it("adds the Note to that Crew Member's Placement only", () => {
+    const before = schedule({
+      placements: [placement('cal', onJob('bridge'), 1), placement('ann', onJob('bridge'), 2)],
+    });
+
+    const noted = setNote(before, 'cal', '1/2 Day');
+
+    expect(noteOf('cal', noted)).toBe('1/2 Day');
+    expect(noteOf('ann', noted)).toBeUndefined();
+  });
+
+  it('replaces the Note the Placement had', () => {
+    const before = schedule({ placements: [placement('cal', onJob('bridge'), 1, '1/2 Day')] });
+
+    expect(noteOf('cal', setNote(before, 'cal', 'Leaves at noon'))).toBe('Leaves at noon');
+  });
+
+  it('ignores the space around the Note', () => {
+    const before = schedule({ placements: [placement('cal', onJob('bridge'), 1)] });
+
+    expect(noteOf('cal', setNote(before, 'cal', '  1/2 Day \n'))).toBe('1/2 Day');
+  });
+
+  it('clears the Note when the text is empty', () => {
+    const before = schedule({ placements: [placement('cal', onJob('bridge'), 1, '1/2 Day')] });
+
+    const cleared = setNote(before, 'cal', '   ');
+
+    expect(noteOf('cal', cleared)).toBeUndefined();
+    expect(whoIsOn('Bridge', cleared)).toEqual(['cal']);
+  });
+
+  it('keeps the Crew Member where they are, in the same placement order', () => {
+    const before = schedule({
+      placements: [placement('cal', onJob('bridge'), 1), placement('ann', onJob('bridge'), 2)],
+    });
+
+    expect(whoIsOn('Bridge', setNote(before, 'cal', '1/2 Day'))).toEqual(['cal', 'ann']);
+  });
+
+  it('changes nothing when the Placement already has that Note, or has none to clear', () => {
+    const before = schedule({
+      placements: [placement('cal', onJob('bridge'), 1, '1/2 Day'), placement('ann', onJob('bridge'), 2)],
+    });
+
+    expect(setNote(before, 'cal', ' 1/2 Day ')).toBe(before);
+    expect(setNote(before, 'ann', '')).toBe(before);
+  });
+
+  it('changes nothing for a Crew Member who is Not Placed: a Note belongs to a Placement', () => {
+    const before = schedule({ placements: [placement('cal', onJob('bridge'), 1)] });
+
+    expect(setNote(before, 'bob', '1/2 Day')).toBe(before);
+  });
+
+  it('leaves the Daily Schedule it was given untouched', () => {
+    const before = schedule({ placements: [placement('cal', onJob('bridge'), 1, '1/2 Day')] });
+
+    setNote(before, 'cal', 'Leaves at noon');
+
+    expect(before.placements).toEqual([placement('cal', onJob('bridge'), 1, '1/2 Day')]);
+  });
+});
+
+describe('clearing a Note', () => {
+  it('removes the Note and keeps the Placement', () => {
+    const before = schedule({ placements: [placement('cal', onJob('bridge'), 1, '1/2 Day')] });
+
+    const cleared = clearNote(before, 'cal');
+
+    expect(noteOf('cal', cleared)).toBeUndefined();
+    expect(whoIsOn('Bridge', cleared)).toEqual(['cal']);
+  });
+
+  it('changes nothing when there is no Note', () => {
+    const before = schedule({ placements: [placement('cal', onJob('bridge'), 1)] });
+
+    expect(clearNote(before, 'cal')).toBe(before);
   });
 });
 
