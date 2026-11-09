@@ -275,3 +275,55 @@ const destinationKey = (destination: Destination): string =>
   destination.kind === 'job'
     ? `job:${destination.jobId}`
     : `standing-row:${destination.standingRow}`;
+
+// ---------------------------------------------------------------------------
+// Send
+// ---------------------------------------------------------------------------
+
+/** Whether the Daily Schedule may be sent, and who stands in the way. */
+export interface SendCheck {
+  /** True only when nobody is Not Placed. */
+  allowed: boolean;
+  /** The Crew Members who are Not Placed, in roster order. */
+  notPlaced: CrewMember[];
+}
+
+/** Send is refused while anyone is Not Placed. */
+export function sendCheck(roster: Roster, schedule: DailySchedule): SendCheck {
+  const { notPlaced } = scheduleView(roster, schedule);
+  return { allowed: notPlaced.length === 0, notPlaced };
+}
+
+/**
+ * Marks the Daily Schedule as Sent at the given time (an ISO timestamp) by
+ * adding it to the send record. The only way a Send is recorded: it is not an
+ * edit of the schedule, and Undo never takes it back.
+ */
+export const markSent = (schedule: DailySchedule, sentAt: string): DailySchedule => ({
+  ...schedule,
+  sends: [...schedule.sends, sentAt],
+});
+
+/** The time of the most recent Send (an ISO timestamp), or undefined if never sent. */
+export const lastSentAt = (schedule: DailySchedule): string | undefined => schedule.sends.at(-1);
+
+/** What the crew is sent: the rows of the picture. No Not Placed list, no controls. */
+export interface CrewView {
+  date: ScheduleDate;
+  /** True when this Daily Schedule has been sent before: the picture replaces an earlier one. */
+  updated: boolean;
+  /** Only the Jobs and Standing Rows with someone on them, in the Scheduler's order. */
+  rows: ScheduleRow[];
+}
+
+/**
+ * The crew view of the Daily Schedule as it would be sent now. Ask for it
+ * before `markSent`: a schedule already in the send record gives an UPDATED view.
+ */
+export function crewView(roster: Roster, schedule: DailySchedule): CrewView {
+  return {
+    date: schedule.date,
+    updated: schedule.sends.length > 0,
+    rows: scheduleView(roster, schedule).rows.filter((row) => row.who.length > 0),
+  };
+}

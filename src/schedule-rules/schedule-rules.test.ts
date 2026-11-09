@@ -411,3 +411,111 @@ describe('the full date', () => {
     expect(fullDate('2027-01-01')).toBe('Friday, January 1, 2027');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Send (ticket #8). Kept together at the end of the file, with its own import.
+// ---------------------------------------------------------------------------
+
+import { crewView, lastSentAt, markSent, sendCheck } from './index';
+
+/** Everyone in the roster placed: ann and fay on Tower, bob in the Shop, cal Off Work. */
+const everyonePlaced = (overrides: Partial<DailySchedule> = {}): DailySchedule =>
+  schedule({
+    placements: [
+      placement('ann', onJob('tower'), 1),
+      placement('fay', onJob('tower'), 2),
+      placement('bob', onStandingRow('shop'), 3),
+      placement('cal', onStandingRow('off-work'), 4),
+    ],
+    ...overrides,
+  });
+
+describe('whether Send is allowed', () => {
+  it('is refused while anyone is Not Placed, naming them in roster order', () => {
+    const check = sendCheck(roster, schedule({ placements: [placement('bob', onJob('tower'), 1)] }));
+
+    expect(check.allowed).toBe(false);
+    expect(check.notPlaced.map((crewMember) => crewMember.name)).toEqual(['ann', 'fay', 'cal']);
+  });
+
+  it('is allowed once every Crew Member has a Placement, Off Work included', () => {
+    expect(sendCheck(roster, everyonePlaced())).toEqual({ allowed: true, notPlaced: [] });
+  });
+});
+
+describe('marking a Daily Schedule as Sent', () => {
+  it('has never been sent to begin with', () => {
+    expect(lastSentAt(everyonePlaced())).toBeUndefined();
+  });
+
+  it('adds the time of the Send to the send record, keeping earlier Sends', () => {
+    const once = markSent(everyonePlaced(), '2026-11-09T23:05:00.000Z');
+    const twice = markSent(once, '2026-11-09T23:40:00.000Z');
+
+    expect(once.sends).toEqual(['2026-11-09T23:05:00.000Z']);
+    expect(twice.sends).toEqual(['2026-11-09T23:05:00.000Z', '2026-11-09T23:40:00.000Z']);
+    expect(lastSentAt(twice)).toBe('2026-11-09T23:40:00.000Z');
+  });
+
+  it('changes nothing else, and leaves the Daily Schedule it was given untouched', () => {
+    const before = everyonePlaced({ tasks: { tower: ['Pour footings'] } });
+
+    const sent = markSent(before, '2026-11-09T23:05:00.000Z');
+
+    expect(before.sends).toEqual([]);
+    expect(scheduleView(roster, sent)).toEqual(scheduleView(roster, before));
+  });
+});
+
+describe('the crew view', () => {
+  it('lists the Jobs and Standing Rows that have someone on them, in schedule order', () => {
+    const view = crewView(roster, everyonePlaced());
+
+    expect(view.date).toBe('2026-11-10');
+    expect(view.rows.map((row) => row.label)).toEqual(['J100 Tower', 'Shop', 'Off Work']);
+  });
+
+  it('leaves out a Job with nobody on it, even when it has Tasks', () => {
+    const view = crewView(roster, everyonePlaced({ tasks: { bridge: ['Set bearings'] } }));
+
+    expect(view.rows.map((row) => row.label)).not.toContain('Bridge');
+  });
+
+  it('leaves out a Standing Row with nobody on it', () => {
+    const view = crewView(roster, everyonePlaced());
+
+    expect(view.rows.map((row) => row.label)).not.toContain('Trucking');
+  });
+
+  it('shows each row as the Scheduler sees it: Tasks, Foreman first, colors and Notes', () => {
+    const view = crewView(
+      roster,
+      schedule({
+        placements: [
+          placement('cal', onJob('tower'), 1, '1/2 Day'),
+          placement('fay', onJob('tower'), 2),
+        ],
+        tasks: { tower: ['Pour footings', 'Strip forms'] },
+      }),
+    );
+
+    const [tower] = view.rows;
+    expect(tower?.tasks).toEqual(['Pour footings', 'Strip forms']);
+    expect(tower?.who.map(({ crewMember, note }) => [crewMember.name, crewMember.color, note])).toEqual([
+      ['fay', 'grey', undefined],
+      ['cal', 'orange', '1/2 Day'],
+    ]);
+  });
+
+  it('is not marked UPDATED for a Daily Schedule that has never been sent', () => {
+    expect(crewView(roster, everyonePlaced()).updated).toBe(false);
+  });
+
+  it('is marked UPDATED once the Daily Schedule has been sent before, so on a second or later Send', () => {
+    const sentOnce = markSent(everyonePlaced(), '2026-11-09T23:05:00.000Z');
+    const sentTwice = markSent(sentOnce, '2026-11-09T23:40:00.000Z');
+
+    expect(crewView(roster, sentOnce).updated).toBe(true);
+    expect(crewView(roster, sentTwice).updated).toBe(true);
+  });
+});
