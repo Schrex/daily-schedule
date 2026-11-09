@@ -7,6 +7,8 @@
   --header-bg: #1f3864;
   --header-fg: #ffffff;
   --standing-bg: #f1f1f1;
+  --selected: #7a00cc; /* the name being moved: a color no Crew Member has */
+  --target: #e9d5ff; /* the block the pointer would place them in */
 
   /* Crew Member colors (the fixed palette) */
   --grey: #bfbfbf;
@@ -33,9 +35,35 @@ body {
 }
 
 .date-heading {
-  margin: 0 0 0.8rem;
+  margin: 0 0 0.5rem;
   font-size: 2.4rem;
   font-weight: 700;
+}
+
+/* --- The move hint: always there, so nothing jumps when a name is selected - */
+
+.move-hint {
+  margin: 0 0 0.8rem;
+  padding: 0.5rem 0.9rem;
+  min-height: 3.2rem;
+  line-height: 2.2rem;
+  background: #eef1f5;
+  font-size: 1.2rem;
+}
+
+.move-hint-active {
+  background: var(--selected);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.move-hint-active strong {
+  font-size: 1.45rem;
+  text-decoration: underline;
+}
+
+.move-hint-cancel {
+  font-weight: 400;
 }
 
 .layout {
@@ -100,7 +128,7 @@ body {
 .names {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem 0.6rem;
+  gap: 0.6rem 0.8rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -109,7 +137,7 @@ body {
 .names li {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.7rem; /* room for the selected ring between a name and its Note */
 }
 
 .names-stacked {
@@ -119,12 +147,46 @@ body {
 
 .name {
   display: inline-block;
-  padding: 0.3rem 0.7rem;
+  min-height: 2.4rem;
+  padding: 0.3rem 0.8rem;
   border: 1px solid rgba(0, 0, 0, 0.45);
+  border-radius: 0;
+  font: inherit;
   font-size: 1.15rem;
   font-weight: 600;
   white-space: nowrap;
   color: #111111;
+  cursor: pointer;
+}
+
+.name:hover {
+  box-shadow: 0 0 0 3px #000000;
+}
+
+/* The Crew Member being moved: must be impossible to miss. */
+.name.name-selected {
+  position: relative;
+  z-index: 1;
+  border-color: #ffffff;
+  box-shadow:
+    0 0 0 3px #ffffff,
+    0 0 0 11px var(--selected);
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+/* While moving, every Job, Standing Row and the Not Placed list is one big target. */
+.moving .destination {
+  cursor: pointer;
+}
+
+.moving .schedule .destination:hover > *,
+.moving .not-placed.destination:hover {
+  background: var(--target);
+}
+
+.moving .name:not(.name-selected):hover {
+  box-shadow: none;
 }
 
 .color-grey {
