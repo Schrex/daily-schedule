@@ -28,6 +28,8 @@ interface ScheduleScreenProps {
   onReturnToNotPlaced: () => void;
   /** A dragged name was dropped on a Job or Standing Row, or on the Not Placed list. */
   onDrop: (crewMemberId: string, to: Destination | 'not-placed') => void;
+  /** A name was double-clicked: that Crew Member is to go to the Not Placed list. */
+  onSetAside: (crewMemberId: string) => void;
   /** "Add note" / "Change note" was clicked for the selected Crew Member. */
   onEditNote: () => void;
   /** The Note typed for the selected Crew Member was saved. */
@@ -52,6 +54,10 @@ interface ScheduleScreenProps {
  * Standing Row or the Not Placed list. While a name is selected, a click
  * anywhere in one of those blocks (even on another name) is the destination.
  *
+ * Double-clicking a name sets that Crew Member aside, in the Not Placed list.
+ * The browser reports a double-click as two clicks and then the double-click,
+ * so the name is selected and let go of first.
+ *
  * With no name selected, clicking a Job's Tasks lets him type them. A selected
  * Crew Member who has a Placement also offers "Add note".
  *
@@ -70,6 +76,7 @@ export function ScheduleScreen({
   onPlace,
   onReturnToNotPlaced,
   onDrop,
+  onSetAside,
   editingNote,
   onEditNote,
   onSaveNote,
@@ -121,6 +128,7 @@ export function ScheduleScreen({
       aria-pressed={crewMember.id === selected?.id}
       onClick={(event) => onNameClick(crewMember, event)}
       {...drag.nameProps(crewMember.id)}
+      onDoubleClick={() => onSetAside(crewMember.id)}
     >
       {crewMember.name}
     </button>

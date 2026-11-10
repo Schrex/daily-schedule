@@ -121,6 +121,15 @@ export function App({
     deselect();
   };
 
+  /**
+   * Sets one Crew Member aside, selected or not, and lets go of anyone
+   * selected. The rules change nothing if they are already Not Placed.
+   */
+  const setAside = (crewMemberId: string) => {
+    change((current) => returnToNotPlaced(current, crewMemberId));
+    deselect();
+  };
+
   /** Takes back the last change and lets go of anyone selected. What is put back is saved. */
   const undoLastChange = () => {
     apply(undo);
@@ -158,6 +167,7 @@ export function App({
       }
       onReturnToNotPlaced={() => changeSelected(returnToNotPlaced)}
       onDrop={drop}
+      onSetAside={setAside}
       onEditNote={() => setEditingNote(true)}
       onSaveNote={(text) =>
         changeSelected((current, crewMemberId) => setNote(current, crewMemberId, text))
