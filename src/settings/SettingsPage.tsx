@@ -80,6 +80,7 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
                 <td className="actions">
                   <button
                     type="button"
+                    className="button"
                     disabled={index === 0}
                     aria-label={`Move ${jobLabel(job)} up`}
                     onClick={() => change((current) => moveJob(current, job.id, 'up'))}
@@ -88,6 +89,7 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
                   </button>
                   <button
                     type="button"
+                    className="button"
                     disabled={index === roster.jobs.length - 1}
                     aria-label={`Move ${jobLabel(job)} down`}
                     onClick={() => change((current) => moveJob(current, job.id, 'down'))}
@@ -96,7 +98,7 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
                   </button>
                   <button
                     type="button"
-                    className="remove"
+                    className="button remove"
                     aria-label={`Remove ${jobLabel(job)}`}
                     onClick={() => {
                       const sure = window.confirm(
@@ -174,7 +176,7 @@ function CrewMemberRow({
       <td className="actions">
         <button
           type="button"
-          className="remove"
+          className="button remove"
           aria-label={`Remove ${crewMember.name}`}
           onClick={onRemove}
         >
@@ -246,7 +248,7 @@ function AddCrewMember({
         />
         Foreman
       </label>
-      <button type="submit" disabled={name.trim() === ''}>
+      <button type="submit" className="button button-primary" disabled={name.trim() === ''}>
         Add Crew Member
       </button>
     </form>
@@ -281,7 +283,7 @@ function AddJob({ onAdd }: { onAdd: (details: { name: string; jobNumber: string 
         Name
         <input type="text" value={name} onChange={(event) => setName(event.target.value)} />
       </label>
-      <button type="submit" disabled={name.trim() === ''}>
+      <button type="submit" className="button button-primary" disabled={name.trim() === ''}>
         Add Job
       </button>
     </form>
