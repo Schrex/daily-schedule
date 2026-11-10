@@ -133,7 +133,7 @@ export function ScheduleScreen({
                 <span className="move-hint-cancel"> (Click the name again to cancel.)</span>
               </span>
               {selectedPlaced && (
-                <button type="button" className="action" onClick={onEditNote}>
+                <button type="button" className="button action" onClick={onEditNote}>
                   {selectedPlaced.note ? 'Change note' : 'Add note'}
                 </button>
               )}

@@ -62,7 +62,7 @@ export function TasksCell({ jobLabel, tasks, canEdit, onCommit }: TasksCellProps
       <div className="tasks-editing-foot">
         <span>One task on each line.</span>
         {/* Leaving the field is what keeps the text; this button is somewhere obvious to click. */}
-        <button type="button" className="action">
+        <button type="button" className="button action">
           Done
         </button>
       </div>

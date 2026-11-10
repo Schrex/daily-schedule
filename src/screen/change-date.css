@@ -1,6 +1,7 @@
 /* The panel "Change date" opens: one large date box and two large buttons.
-   The button itself is a toolbar button (screen.css). Sizes are in rem, off
-   the root size in screen.css; colors come from the palette (src/palette.ts). */
+   The buttons are the shared ones (src/look.css); here only their size. Sizes
+   are in rem, off the root size in screen.css; colors come from the palette
+   (src/palette.ts). */
 
 .change-date-backdrop {
   position: fixed;
@@ -15,27 +16,39 @@
 
 .change-date-panel {
   width: min(32rem, 92vw);
-  padding: 1.4rem 1.6rem 1.6rem;
-  border: 3px solid var(--grid);
-  border-radius: 0.4rem;
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  border-radius: calc(var(--radius-card) * 1.3);
   background: var(--paper);
+  box-shadow: var(--elevation-3);
 }
 
 .change-date-panel h2 {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--space-4);
   font-size: 1.6rem;
+  font-weight: var(--weight-heading);
+  letter-spacing: var(--tracking-heading);
+  line-height: 1.2;
 }
 
 .change-date-input {
   display: block;
   width: 100%;
   min-height: 4rem;
-  padding: 0.4rem 0.8rem;
-  border: 2px solid var(--grid);
-  border-radius: 0.3rem;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  outline: none;
+  background: var(--paper);
+  color: var(--ink);
   font: inherit;
   font-size: 2rem;
+  font-weight: var(--weight-strong);
   cursor: pointer;
+}
+
+.change-date-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-wash);
 }
 
 /* The calendar icon is the thing to click: make it as large as the text. */
@@ -46,40 +59,20 @@
 }
 
 .change-date-picked {
-  margin: 0.9rem 0 1.2rem;
+  margin: var(--space-4) 0 var(--space-5);
   min-height: 2rem;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: var(--weight-heading);
+  letter-spacing: -0.01em;
 }
 
 .change-date-actions {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .change-date-actions button {
   flex: 1;
   min-height: 3.4rem;
-  border: 2px solid var(--grid);
-  border-radius: 0.3rem;
-  font: inherit;
   font-size: 1.4rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.change-date-open {
-  background: var(--header);
-  color: var(--paper);
-}
-
-.change-date-open:disabled {
-  background: var(--disabled);
-  border-color: var(--disabled);
-  cursor: default;
-}
-
-.change-date-cancel {
-  background: var(--paper);
-  color: var(--ink);
 }

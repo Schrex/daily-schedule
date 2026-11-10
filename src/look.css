@@ -1,0 +1,94 @@
+/* The look, apart from color: one type family, one spacing scale, one set of
+   corners and shadows, and the three buttons. Every page that shares the look
+   starts from this file. Colors are the palette in src/palette.ts, handed over
+   as custom properties; nothing here (or in any other style sheet) writes one
+   out. Lengths are in rem, so each page scales off its own root size. */
+
+:root {
+  /* Type: the system's own interface face, so it is sharp at any density and
+     needs nothing from the network. */
+  --font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial,
+    sans-serif;
+  --weight-body: 400;
+  --weight-strong: 600;
+  --weight-heading: 700;
+  --tracking-heading: -0.022em;
+  --tracking-label: 0.08em;
+
+  /* Spacing: every gap and padding is one of these. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  /* Corners. */
+  --radius-chip: 999px;
+  --radius-control: 0.6rem;
+  --radius-card: 0.9rem;
+
+  /* Edges and elevation. */
+  --hairline: 1px solid var(--line);
+  --elevation-1: 0 1px 2px var(--shadow);
+  --elevation-2: 0 1px 2px var(--shadow), 0 6px 16px var(--shadow);
+  --elevation-3: 0 2px 6px var(--shadow), 0 24px 60px var(--shadow-strong);
+
+  /* What the keyboard is on. */
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 5px var(--accent);
+
+  --ease: 120ms ease-out;
+}
+
+/* --- Buttons: secondary by default, primary for the one main action -------
+   A page's own classes set only the size; `:where` keeps these rules weak, so
+   those classes win whatever order the style sheets load in. */
+
+:where(.button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  box-shadow: var(--elevation-1);
+  color: var(--ink);
+  font: inherit;
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--ease),
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+
+:where(.button:hover:not(:disabled)) {
+  border-color: var(--muted);
+  background: var(--wash);
+}
+
+:where(.button:focus-visible) {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+:where(.button-primary) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--paper);
+}
+
+:where(.button-primary:hover:not(:disabled)) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+:where(.button:disabled) {
+  border-color: var(--line);
+  background: var(--canvas);
+  box-shadow: none;
+  color: var(--disabled);
+  cursor: default;
+}
