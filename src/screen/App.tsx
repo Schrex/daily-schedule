@@ -108,6 +108,19 @@ export function App({
     deselect();
   };
 
+  /**
+   * A dragged Crew Member was dropped: the same rules as a click-click move,
+   * for the one who was dragged. Anyone selected is let go of.
+   */
+  const drop = (crewMemberId: string, to: Destination | 'not-placed') => {
+    change((current) =>
+      to === 'not-placed'
+        ? returnToNotPlaced(current, crewMemberId)
+        : placeCrewMember(current, crewMemberId, to),
+    );
+    deselect();
+  };
+
   /** Takes back the last change and lets go of anyone selected. What is put back is saved. */
   const undoLastChange = () => {
     apply(undo);
@@ -144,6 +157,7 @@ export function App({
         )
       }
       onReturnToNotPlaced={() => changeSelected(returnToNotPlaced)}
+      onDrop={drop}
       onEditNote={() => setEditingNote(true)}
       onSaveNote={(text) =>
         changeSelected((current, crewMemberId) => setNote(current, crewMemberId, text))
