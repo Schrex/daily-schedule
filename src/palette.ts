@@ -48,14 +48,6 @@ export const PALETTE = {
   nameBorder: 'rgba(20, 25, 34, 0.14)',
   /** Behind the Change date panel. */
   backdrop: 'rgba(20, 25, 34, 0.5)',
-
-  // Only the crew picture and the settings page still use these three; they
-  // go when those take the new look (issue #14).
-  /** The ruled lines of the picture. */
-  grid: '#1f1f1f',
-  /** The JOB / TASKS / WHO header of the picture; the settings page's main buttons. */
-  header: '#1f3864',
-  rule: '#d0d0d0',
 } as const;
 
 /** The fill of a Crew Member's name, by their color. */
