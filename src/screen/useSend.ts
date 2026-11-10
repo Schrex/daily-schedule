@@ -65,9 +65,10 @@ export function useSend({
       return;
     }
 
+    const view = crewView(roster, schedule);
     setSending(true);
     try {
-      await delivery.deliver(await renderCrewPicture(crewView(roster, schedule)));
+      await delivery.deliver(await renderCrewPicture(view));
     } catch (error) {
       console.error('Could not send the Daily Schedule', error);
       setOutcome({ kind: 'failed', schedule });
@@ -76,7 +77,7 @@ export function useSend({
       setSending(false);
     }
 
-    const sent = markSent(schedule, new Date().toISOString());
+    const sent = markSent(schedule, view, new Date().toISOString());
     setOutcome({ kind: 'sent', schedule: sent });
     onSent(sent);
   };

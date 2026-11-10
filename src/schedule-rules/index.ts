@@ -59,8 +59,19 @@ export interface DailySchedule {
   placements: Placement[];
   /** Tasks per Job id, one Task per entry. */
   tasks: Record<string, string[]>;
-  /** The send record: ISO timestamps of each Send, oldest first. */
-  sends: string[];
+  /** The send record: each Send, oldest first. */
+  sends: SendRecord[];
+}
+
+/** One Send: when it happened and exactly what the crew was sent. */
+export interface SendRecord {
+  /** The time of the Send, an ISO timestamp. */
+  sentAt: string;
+  /**
+   * The crew view that was sent, complete with names, colors and Job labels,
+   * so the record still says who was where after the roster changes.
+   */
+  sent: CrewView;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,8 +127,20 @@ export interface ScheduleView {
   notPlaced: CrewMember[];
 }
 
+/**
+ * The Daily Schedule as it is drawn. On one that has been sent, a Crew Member
+ * or Job since removed from the roster is still shown as it was last sent (for
+ * as long as the Placements are there), so sent Daily Schedules keep saying
+ * who was where. On one never sent, they are simply gone.
+ */
 export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleView {
-  const crewMembersById = new Map(roster.crewMembers.map((member) => [member.id, member]));
+  const sentRows = lastSend(schedule)?.sent?.rows ?? [];
+
+  const crewMembersById = new Map(
+    [...sentRows.flatMap((row) => row.who.map((placed) => placed.crewMember)), ...roster.crewMembers].map(
+      (crewMember) => [crewMember.id, crewMember],
+    ),
+  );
 
   // Foreman first applies within a Job only; a Standing Row is plain placement order.
   const whoIsOn = (destination: Destination): PlacedCrewMember[] =>
@@ -145,8 +168,23 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
     who: whoIsOn(destination),
   });
 
+  const jobRows = roster.jobs.map((job) =>
+    row(onJob(job.id), jobLabel(job), schedule.tasks[job.id] ?? []),
+  );
+
+  // A Job that was sent but has left the roster goes back where it was sent:
+  // above the first Job that came after it in that picture, else after the Jobs.
+  sentRows.forEach(({ key, destination, label }, index) => {
+    if (destination.kind !== 'job' || jobRows.some((jobRow) => jobRow.key === key)) return;
+    const sentRow = row(destination, label, schedule.tasks[destination.jobId] ?? []);
+    if (sentRow.who.length === 0) return;
+    const sentAfter = new Set(sentRows.slice(index + 1).map((later) => later.key));
+    const next = jobRows.findIndex((jobRow) => sentAfter.has(jobRow.key));
+    jobRows.splice(next === -1 ? jobRows.length : next, 0, sentRow);
+  });
+
   const rows: ScheduleRow[] = [
-    ...roster.jobs.map((job) => row(onJob(job.id), jobLabel(job), schedule.tasks[job.id] ?? [])),
+    ...jobRows,
     ...STANDING_ROWS.map((standingRow) =>
       row(onStandingRow(standingRow), standingRowLabel(standingRow), []),
     ),
@@ -294,38 +332,71 @@ export function sendCheck(roster: Roster, schedule: DailySchedule): SendCheck {
   return { allowed: notPlaced.length === 0, notPlaced };
 }
 
-/**
- * Marks the Daily Schedule as Sent at the given time (an ISO timestamp) by
- * adding it to the send record. The only way a Send is recorded: it is not an
- * edit of the schedule, and Undo never takes it back.
- */
-export const markSent = (schedule: DailySchedule, sentAt: string): DailySchedule => ({
-  ...schedule,
-  sends: [...schedule.sends, sentAt],
-});
-
-/** The time of the most recent Send (an ISO timestamp), or undefined if never sent. */
-export const lastSentAt = (schedule: DailySchedule): string | undefined => schedule.sends.at(-1);
-
 /** What the crew is sent: the rows of the picture. No Not Placed list, no controls. */
 export interface CrewView {
   date: ScheduleDate;
-  /** True when this Daily Schedule has been sent before: the picture replaces an earlier one. */
+  /** True when the picture replaces a different one sent earlier for this date. */
   updated: boolean;
   /** Only the Jobs and Standing Rows with someone on them, in the Scheduler's order. */
   rows: ScheduleRow[];
 }
 
 /**
- * The crew view of the Daily Schedule as it would be sent now. Ask for it
- * before `markSent`: a schedule already in the send record gives an UPDATED view.
+ * The crew view of the Daily Schedule as it would be sent now.
+ *
+ * It is marked UPDATED when the Daily Schedule has been sent before and has
+ * changed since. With nothing changed since the last Send it is that Send's
+ * picture again, marked (or not) exactly as it was then.
  */
 export function crewView(roster: Roster, schedule: DailySchedule): CrewView {
-  return {
-    date: schedule.date,
-    updated: schedule.sends.length > 0,
-    rows: scheduleView(roster, schedule).rows.filter((row) => row.who.length > 0),
-  };
+  const rows = scheduleView(roster, schedule).rows.filter((row) => row.who.length > 0);
+  const last = lastSend(schedule);
+  if (last?.sent && sameData(last.sent.rows, rows)) return last.sent;
+  return { date: schedule.date, updated: last !== undefined, rows };
+}
+
+/**
+ * Marks the Daily Schedule as Sent: adds the crew view that was delivered, and
+ * the time (an ISO timestamp), to the send record. The only way a Send is
+ * recorded: it is not an edit of the schedule, and Undo never takes it back.
+ *
+ * `sent` is what the crew actually got, which is recorded as it is even if the
+ * Daily Schedule has been changed since it was drawn. Sending the same picture
+ * as the last Send again is not a new Send, and a picture of another date is
+ * not this Daily Schedule's: both return the same Daily Schedule unchanged.
+ */
+export function markSent(schedule: DailySchedule, sent: CrewView, sentAt: string): DailySchedule {
+  if (sent.date !== schedule.date) return schedule;
+  const last = lastSend(schedule);
+  if (last?.sent && sameData(last.sent, sent)) return schedule;
+  return { ...schedule, sends: [...schedule.sends, { sentAt, sent }] };
+}
+
+/** The time of the most recent Send (an ISO timestamp), or undefined if never sent. */
+export const lastSentAt = (schedule: DailySchedule): string | undefined =>
+  lastSend(schedule)?.sentAt;
+
+/**
+ * The most recent Send. A Daily Schedule saved before send records held what
+ * was sent has only the time of each Send; it is read as sent, picture unknown.
+ */
+function lastSend(schedule: DailySchedule): (Pick<SendRecord, 'sentAt'> & Partial<SendRecord>) | undefined {
+  const last: SendRecord | string | undefined = schedule.sends.at(-1);
+  return typeof last === 'string' ? { sentAt: last } : last;
+}
+
+/** Whether two pieces of plain data say the same thing, however they were built. */
+function sameData(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const present = (value: object) =>
+    Object.entries(value).filter(([, entry]) => entry !== undefined);
+  const entriesOfA = present(a);
+  return (
+    entriesOfA.length === present(b).length &&
+    entriesOfA.every(([key, entry]) => sameData(entry, (b as Record<string, unknown>)[key]))
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -402,7 +473,6 @@ export function dailyScheduleFor(
     sends: [],
   };
 }
-
 
 // ---------------------------------------------------------------------------
 // The roster (managed on the settings page)
@@ -533,15 +603,18 @@ function newId(label: string, existing: { id: string }[]): string {
 export interface Editing {
   /** The Daily Schedule as it stands now. */
   readonly schedule: DailySchedule;
-  /** What earlier changes replaced, oldest first. Ask `canUndo`; do not read this. */
-  readonly earlier: readonly Undoable[];
+  /** What earlier changes replaced, oldest first. Only this module can read it. */
+  readonly [earlier]: readonly Undoable[];
 }
+
+/** The key of what Undo steps back through; not exported, so it stays this module's business. */
+const earlier: unique symbol = Symbol('earlier');
 
 /** The part of a Daily Schedule that Undo puts back. The send record is not in it. */
 type Undoable = Pick<DailySchedule, 'placements' | 'tasks'>;
 
 /** Begins editing a Daily Schedule, with nothing to undo. */
-export const startEditing = (schedule: DailySchedule): Editing => ({ schedule, earlier: [] });
+export const startEditing = (schedule: DailySchedule): Editing => ({ schedule, [earlier]: [] });
 
 /**
  * Applies one schedule rule to the Daily Schedule being edited. A change to
@@ -561,11 +634,11 @@ export function change(
   if (schedule.placements === placements && schedule.tasks === tasks) {
     return { ...editing, schedule };
   }
-  return { schedule, earlier: [...editing.earlier, { placements, tasks }] };
+  return { schedule, [earlier]: [...editing[earlier], { placements, tasks }] };
 }
 
 /** Whether there is a change for Undo to reverse. */
-export const canUndo = (editing: Editing): boolean => editing.earlier.length > 0;
+export const canUndo = (editing: Editing): boolean => editing[earlier].length > 0;
 
 /**
  * Reverses the most recent change, putting back the Placements, Notes and
@@ -573,7 +646,7 @@ export const canUndo = (editing: Editing): boolean => editing.earlier.length > 0
  * is now. With nothing to undo, the same Editing is returned unchanged.
  */
 export function undo(editing: Editing): Editing {
-  const last = editing.earlier[editing.earlier.length - 1];
+  const last = editing[earlier].at(-1);
   if (!last) return editing;
-  return { schedule: { ...editing.schedule, ...last }, earlier: editing.earlier.slice(0, -1) };
+  return { schedule: { ...editing.schedule, ...last }, [earlier]: editing[earlier].slice(0, -1) };
 }

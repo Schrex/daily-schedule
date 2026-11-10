@@ -71,11 +71,14 @@ export function ScheduleScreen({
   onUndo,
 }: ScheduleScreenProps) {
   const view = scheduleView(roster, schedule);
-  const selected = roster.crewMembers.find((member) => member.id === selectedCrewMemberId);
   /** Where the selected Crew Member is now; undefined when Not Placed (no Placement, so no Note). */
   const selectedPlaced = view.rows
     .flatMap((row) => row.who)
-    .find((placed) => placed.crewMember.id === selected?.id);
+    .find((placed) => placed.crewMember.id === selectedCrewMemberId);
+  // Anyone the view shows can be selected, so look there and not in the roster.
+  const selected =
+    selectedPlaced?.crewMember ??
+    view.notPlaced.find((crewMember) => crewMember.id === selectedCrewMemberId);
   const typingNote = selected !== undefined && selectedPlaced !== undefined && editingNote;
   const moving = selected !== undefined && !typingNote;
 
