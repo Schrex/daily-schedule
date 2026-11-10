@@ -260,7 +260,6 @@ body {
   padding: var(--space-1) var(--space-3);
   border: 0;
   border-radius: var(--radius-chip);
-  box-shadow: inset 0 0 0 1px var(--name-border);
   font: inherit;
   font-size: 1.1rem;
   font-weight: var(--weight-strong);
@@ -271,7 +270,13 @@ body {
   transition: box-shadow var(--ease);
 }
 
-.name:hover {
+/* The fine edge of a name, and the ring under the pointer. Kept weak
+   (`:where`) so the marks a drag puts on a name always win over them. */
+:where(.name) {
+  box-shadow: inset 0 0 0 1px var(--name-border);
+}
+
+:where(.name):hover {
   box-shadow:
     inset 0 0 0 1px var(--name-border),
     0 0 0 3px var(--ink);
