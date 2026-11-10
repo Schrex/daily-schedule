@@ -2,9 +2,9 @@
  * Delivery: how the picture of the Daily Schedule reaches the crew.
  *
  * `CrewDelivery` is the whole interface. Today the picture is copied to the
- * clipboard for the Scheduler to paste into Slack (clipboardDelivery.ts);
- * posting to Slack automatically can replace that by implementing the same
- * interface. No rules live here: whether Send is allowed, the send record and
+ * clipboard for the Scheduler to paste into Slack (clipboardDelivery.ts); a
+ * delivery that Sends it to Slack by itself can replace that by implementing
+ * the same interface. No rules live here: whether Send is allowed, the send record and
  * what the picture contains all belong to the schedule rules.
  */
 

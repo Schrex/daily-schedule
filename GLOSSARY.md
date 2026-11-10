@@ -14,11 +14,19 @@ _Avoid_: Manager, project coordinator, admin
 A person who can be placed on the Daily Schedule.
 _Avoid_: Employee, worker, resource
 
+**Foreman**:
+A Crew Member flagged to be listed first on a Job.
+_Avoid_: Lead, supervisor, boss
+
 ### The schedule
 
 **Daily Schedule**:
 The complete placement of every Crew Member for one working day, with the Tasks for each Job.
-_Avoid_: Sheet, roster, plan
+_Avoid_: Sheet, plan
+
+**Roster**:
+The list of Crew Members and Jobs that Daily Schedules are built from.
+_Avoid_: Crew list, directory, master list
 
 **Job**:
 A construction project that Crew Members are placed on, with or without a job number (J2601 TIUNY, Cobblestone). Jobs come and go.
