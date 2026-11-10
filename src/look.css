@@ -108,6 +108,7 @@ body {
   font: inherit;
   font-weight: var(--weight-strong);
   white-space: nowrap;
+  text-decoration: none; /* a link can be a button too */
   cursor: pointer;
   transition:
     background-color var(--ease),

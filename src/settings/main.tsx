@@ -9,8 +9,8 @@ import { SettingsPage } from './SettingsPage';
 
 applyPalette();
 
-// The settings page: its own address (settings.html), used by the office and
-// not linked from the Scheduler's screen. It reads and saves the roster in the
+// The settings page: its own address (settings.html), reached from the Settings
+// button on the Scheduler's screen. It reads and saves the roster in the
 // same store, so the Scheduler's screen has the changes the next time it loads.
 const store = browserStore();
 
