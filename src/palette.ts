@@ -16,8 +16,10 @@ export const PALETTE = {
   line: '#e3e6ec',
   /** The edge of something to click or type in. */
   lineStrong: '#c9ced8',
+  /** The edge of a block of the schedule: a Job or a Standing Row. */
+  frameLine: '#8f98a8',
   /** The Standing Rows. */
-  standing: '#f6f7f9',
+  standing: '#eceff3',
   /** Quiet backgrounds: a hovered plain button, the Tasks under the pointer. */
   wash: '#eceff4',
   /** The one alert red: Notes, Not Placed, a refused Send, UPDATED. */
@@ -50,11 +52,11 @@ export const PALETTE = {
 
 /** The fill of a Crew Member's name, by their color. */
 export const CREW_COLORS: Record<Color, string> = {
-  grey: '#d3d7de',
-  blue: '#aed0f8',
-  orange: '#fcbf8b',
-  yellow: '#fbe170',
-  red: '#d63a3a',
+  grey: '#c9ced6',
+  blue: '#8cc4fb',
+  orange: '#ffab66',
+  yellow: '#ffd84a',
+  red: '#d42f2f',
 };
 
 /** The text on a name: white on red, ink on the lighter colors. */

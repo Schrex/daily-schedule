@@ -2,7 +2,7 @@
  * How one name gets from where it was last seen to where the page now draws
  * it. Pure: boxes in, a decision out; no DOM.
  *
- * A name that stayed in its area (the table, the Not Placed list) slides
+ * A name that stayed in its area (the schedule, the Not Placed list) slides
  * there. One that changed area, or was up in the air under the pointer,
  * cannot be seen crossing inside either area (each cuts off what leaves it),
  * so a copy of it flies over the page instead.

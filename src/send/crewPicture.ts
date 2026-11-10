@@ -2,12 +2,15 @@ import { CREW_COLORS, PALETTE, crewInk } from '../palette';
 import { fullDate, type Color, type CrewView, type ScheduleRow } from '../schedule-rules';
 
 /**
- * Draws the crew view as a picture (a PNG) of the Daily Schedule: the date at
- * the top, then the JOB / TASKS / WHO schedule the crew knows, in the look of
- * the Scheduler's screen: the same type, names as pills in their colors,
- * Notes in red, hairlines between the rows. It draws exactly the rows it is
- * given and nothing else: no buttons and no Not Placed list. No rule is
- * applied here.
+ * Draws the crew view as a picture (a PNG) of the Daily Schedule, made to be
+ * read on a phone: the date at the top, then one block for each Job and
+ * Standing Row. A block is the sheet the crew knows: where on the left (the
+ * Job, large, with its Tasks under it), who on the right, one name to a line,
+ * every name the same width and in its color. So a Crew Member runs an eye
+ * down the one column of names to find their own, and the Job is right beside
+ * it, inside the same frame. A Foreman's name carries a star; a Note hangs
+ * under its name in red. It draws exactly the rows it is given and nothing
+ * else: no buttons and no Not Placed list. No rule is applied here.
  *
  * Drawn by hand on a canvas rather than photographed from the screen, so it
  * is the same picture whatever the Scheduler's window looks like. It is
@@ -36,20 +39,21 @@ export function renderCrewPicture(view: CrewView): Promise<Blob> {
 }
 
 // --- The look: the Scheduler's screen, drawn by hand ------------------------
-// Colors are the palette. The type family, the weights, the letter-spacings
-// and the corners are the shared look's (the tokens in src/look.css), read off
-// the page, so the picture and the screen cannot drift apart. Sizes are the
-// picture's own: it is looked at small, so they are large.
+// Colors are the palette. The type family, the weights, the letter-spacings,
+// the corners and the Foreman's star are the shared look's (the tokens in
+// src/look.css), read off the page, so the picture and the screen cannot
+// drift apart. Sizes are the picture's own: it is looked at on a phone, at
+// under half its width, so they are large.
 
-const WIDTH = 1000;
+const WIDTH = 780;
 const SHARPNESS = 2;
-const MARGIN = 32;
+const MARGIN = 24;
 
 /**
  * One rem of the look, in the picture's pixels: what turns the look's corners
  * into the picture's, which are drawn at whole pixels.
  */
-const REM = 22.6;
+const REM = 26;
 
 /** One kind of text: how it is set to be drawn or measured. */
 interface Type {
@@ -57,14 +61,13 @@ interface Type {
   letterSpacing: string;
 }
 
-/** The shared look as the picture uses it: its kinds of text and its corners. */
+/** The shared look as the picture uses it: its kinds of text, its corners and its star. */
 interface Look {
-  type: Record<
-    'date' | 'updated' | 'updatedNote' | 'header' | 'job' | 'task' | 'name' | 'note',
-    Type
-  >;
+  type: Record<'date' | 'updated' | 'updatedNote' | 'job' | 'task' | 'name' | 'note', Type>;
   /** Corner radii, in the picture's pixels. */
-  radius: { card: number; control: number };
+  radius: { card: number; control: number; chip: number };
+  /** The Foreman's star: its corners, each from 0 to 1 across and down a square. */
+  star: [x: number, y: number][];
 }
 
 /** Reads the look's tokens off the page. Only the sizes of the text are the picture's own. */
@@ -85,18 +88,22 @@ function readLook(): Look {
   });
   const corner = (name: string): number => Math.round(number(`--radius-${name}`) * REM);
 
+  // The same two weights as the screen: strong for what is looked for (the
+  // date, the Job, the names, a Note), body for what is then read (the Tasks).
   return {
     type: {
-      date: type('heading', 48, 'heading'),
-      updated: type('heading', 34, 'label'),
+      date: type('strong', 46, 'heading'),
+      updated: type('strong', 34, 'label'),
       updatedNote: type('strong', 25),
-      header: type('strong', 22, 'label'),
-      job: type('heading', 29, 'name'),
-      task: type('body', 26),
-      name: type('strong', 27, 'name'),
-      note: type('heading', 26),
+      job: type('strong', 38, 'heading'),
+      task: type('body', 28),
+      name: type('strong', 30, 'name'),
+      note: type('strong', 27),
     },
-    radius: { card: corner('card'), control: corner('control') },
+    radius: { card: corner('card'), control: corner('control'), chip: corner('chip') },
+    star: [...token('--shape-star').matchAll(/([\d.]+)%\s+([\d.]+)%/g)].map(
+      ([, x, y]): [number, number] => [Number(x) / 100, Number(y) / 100],
+    ),
   };
 }
 
@@ -106,104 +113,118 @@ function setType(ctx: CanvasRenderingContext2D, { font, letterSpacing }: Type) {
   ctx.letterSpacing = letterSpacing;
 }
 
-const UPDATED_HEIGHT = 68;
-const UPDATED_GAP = 20;
-const DATE_HEIGHT = 88;
-const HEADER_HEIGHT = 54;
-const HAIRLINE = 2; // a hairline that survives being shown at a third of its size
-const CELL_PAD_X = 16;
-const CELL_PAD_Y = 16;
-const JOB_LINE = 36;
-const TASK_LINE = 34;
-const NAME_HEIGHT = 48;
-const NAME_PAD_X = 16;
-const NAME_GAP_X = 12;
-const NAME_GAP_Y = 10;
-const NOTE_GAP = 12;
+const UPDATED_HEIGHT = 72;
+const UPDATED_GAP = 16;
+const UPDATED_PAD_X = 20;
+const DATE_HEIGHT = 84;
 
-const TABLE_WIDTH = WIDTH - 2 * MARGIN;
-const JOB_WIDTH = Math.round(TABLE_WIDTH * 0.27);
-const TASKS_WIDTH = Math.round(TABLE_WIDTH * 0.282);
-const WHO_WIDTH = TABLE_WIDTH - JOB_WIDTH - TASKS_WIDTH;
-const JOB_X = MARGIN;
-const TASKS_X = JOB_X + JOB_WIDTH;
-const WHO_X = TASKS_X + TASKS_WIDTH;
+/** A block: one Job or Standing Row, in a frame that survives being shown small. */
+const BLOCK_WIDTH = WIDTH - 2 * MARGIN;
+const BLOCK_GAP = 14;
+const FRAME = 3;
+const BLOCK_PAD_Y = 16;
+const BLOCK_PAD_LEFT = 22;
+const BLOCK_PAD_RIGHT = 16;
+
+/** Who: one column of names, every one this wide. */
+const NAME_WIDTH = 344;
+const NAME_HEIGHT = 56;
+const NAME_GAP = 6;
+const NAME_PAD_X = 18;
+const STAR = 25;
+const NOTE_LINE = 34;
+const NOTE_PAD_TOP = 6;
+const NOTE_PAD_BOTTOM = 8;
+const NAMES_X = MARGIN + BLOCK_WIDTH - BLOCK_PAD_RIGHT - NAME_WIDTH;
+
+/** Where: the Job and its Tasks, to the left of the names. */
+const WHERE_X = MARGIN + BLOCK_PAD_LEFT;
+const WHERE_WIDTH = NAMES_X - 20 - WHERE_X;
+const JOB_LINE = 44;
+const TASKS_GAP = 6;
+const TASK_LINE = 36;
+/** How far the rest of a Task too long for one line is set in, so two Tasks never read as three. */
+const TASK_INDENT = 20;
 
 // --- Working out where everything goes --------------------------------------
 
-/** One name, with its Note beside it, placed inside the WHO cell. */
+/** One name in the column of names, with its Note under it. `y` is from the top of the column. */
 interface NameBox {
   name: string;
   color: Color;
-  note?: string;
-  x: number;
+  foreman: boolean;
+  noteLines: string[];
   y: number;
-  nameWidth: number;
+  height: number;
 }
 
-interface RowLayout {
+/** One line of a Task: the first line of it, or the rest of one too long for a line. */
+interface TaskLine {
+  text: string;
+  rest: boolean;
+}
+
+interface BlockLayout {
   row: ScheduleRow;
   top: number;
   height: number;
   jobLines: string[];
-  taskLines: string[];
+  taskLines: TaskLine[];
   names: NameBox[];
-  namesHeight: number;
 }
 
 interface Layout {
   dateTop: number;
-  headerTop: number;
-  rows: RowLayout[];
-  tableBottom: number;
+  blocks: BlockLayout[];
   height: number;
 }
 
 function layOut(view: CrewView, ctx: CanvasRenderingContext2D, look: Look): Layout {
   const dateTop = MARGIN + (view.updated ? UPDATED_HEIGHT + UPDATED_GAP : 0);
-  const headerTop = dateTop + DATE_HEIGHT;
 
-  let top = headerTop + HEADER_HEIGHT;
-  const rows = view.rows.map((row): RowLayout => {
+  let top = dateTop + DATE_HEIGHT;
+  const blocks = view.rows.map((row): BlockLayout => {
     setType(ctx, look.type.job);
-    const jobLines = wrap(ctx, row.label, JOB_WIDTH - 2 * CELL_PAD_X);
+    const jobLines = wrap(ctx, row.label, WHERE_WIDTH);
     setType(ctx, look.type.task);
-    const taskLines = row.tasks.flatMap((task) => wrap(ctx, task, TASKS_WIDTH - 2 * CELL_PAD_X));
-    const { names, height: namesHeight } = flowNames(ctx, row, look);
+    const taskLines = row.tasks.flatMap((task) =>
+      wrap(ctx, task, WHERE_WIDTH - TASK_INDENT).map((text, index) => ({ text, rest: index > 0 })),
+    );
+    const { names, height: namesHeight } = stackNames(ctx, row, look);
 
-    const height =
-      Math.max(jobLines.length * JOB_LINE, taskLines.length * TASK_LINE, namesHeight) +
-      2 * CELL_PAD_Y;
-    const laidOut = { row, top, height, jobLines, taskLines, names, namesHeight };
-    top += height;
-    return laidOut;
+    const whereHeight =
+      jobTop(0) +
+      jobLines.length * JOB_LINE +
+      (taskLines.length > 0 ? TASKS_GAP + taskLines.length * TASK_LINE : 0);
+    const height = Math.max(whereHeight, namesHeight) + 2 * BLOCK_PAD_Y;
+    const block = { row, top, height, jobLines, taskLines, names };
+    top += height + BLOCK_GAP;
+    return block;
   });
 
-  return { dateTop, headerTop, rows, tableBottom: top, height: top + MARGIN };
+  return { dateTop, blocks, height: top - BLOCK_GAP + MARGIN };
 }
 
-/** Names flow left to right and wrap, each kept together with its Note. */
-function flowNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look) {
-  const available = WHO_WIDTH - 2 * CELL_PAD_X;
+/** The top of the Job's first line, which sits level with the first name beside it. */
+const jobTop = (blockTop: number): number => blockTop + (NAME_HEIGHT - JOB_LINE) / 2;
+
+/** Names one under the other, each with its Note (if any) hanging under it. */
+function stackNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look) {
+  setType(ctx, look.type.note);
   const names: NameBox[] = [];
-  let x = 0;
   let y = 0;
 
   for (const { crewMember, note } of row.who) {
-    setType(ctx, look.type.name);
-    const nameWidth = Math.ceil(ctx.measureText(crewMember.name).width) + 2 * NAME_PAD_X;
-    setType(ctx, look.type.note);
-    const width = nameWidth + (note ? NOTE_GAP + Math.ceil(ctx.measureText(note).width) : 0);
-
-    if (x > 0 && x + width > available) {
-      x = 0;
-      y += NAME_HEIGHT + NAME_GAP_Y;
-    }
-    names.push({ name: crewMember.name, color: crewMember.color, note, x, y, nameWidth });
-    x += width + NAME_GAP_X;
+    const noteLines = note ? wrap(ctx, note, NAME_WIDTH - 2 * NAME_PAD_X) : [];
+    const height =
+      NAME_HEIGHT +
+      (noteLines.length > 0 ? NOTE_PAD_TOP + noteLines.length * NOTE_LINE + NOTE_PAD_BOTTOM : 0);
+    const { name, color, foreman } = crewMember;
+    names.push({ name, color, foreman, noteLines, y, height });
+    y += height + NAME_GAP;
   }
 
-  return { names, height: y + NAME_HEIGHT };
+  return { names, height: y - NAME_GAP };
 }
 
 /** Breaks text into lines no wider than `width`, at spaces. */
@@ -235,43 +256,9 @@ function draw(ctx: CanvasRenderingContext2D, view: CrewView, layout: Layout, loo
 
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, look.type.date);
-  ctx.fillText(fullDate(view.date), MARGIN, layout.dateTop + DATE_HEIGHT / 2 - 8, TABLE_WIDTH);
+  ctx.fillText(fullDate(view.date), MARGIN + 2, layout.dateTop + DATE_HEIGHT / 2 - 6, BLOCK_WIDTH - 4);
 
-  // The schedule is one card, as on the screen: everything inside is clipped
-  // to its rounded corners.
-  const cardHeight = layout.tableBottom - layout.headerTop;
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(MARGIN, layout.headerTop, TABLE_WIDTH, cardHeight, look.radius.card);
-  ctx.clip();
-
-  // Header: JOB / TASKS / WHO, quiet labels.
-  ctx.fillStyle = PALETTE.muted;
-  setType(ctx, look.type.header);
-  const headerMiddle = layout.headerTop + HEADER_HEIGHT / 2 + 2;
-  ctx.fillText('JOB', JOB_X + CELL_PAD_X, headerMiddle);
-  ctx.fillText('TASKS', TASKS_X + CELL_PAD_X, headerMiddle);
-  ctx.fillText('WHO', WHO_X + CELL_PAD_X, headerMiddle);
-
-  for (const rowLayout of layout.rows) drawRow(ctx, rowLayout, look);
-
-  // Hairlines between the rows, drawn last so they sit on the row backgrounds:
-  // firmer under the header and where the Jobs end.
-  layout.rows.forEach(({ row, top }, index) => {
-    const before = layout.rows[index - 1]?.row;
-    const firm =
-      !before || (row.destination.kind === 'standing-row' && before.destination.kind === 'job');
-    ctx.fillStyle = firm ? PALETTE.lineStrong : PALETTE.line;
-    ctx.fillRect(MARGIN, top - HAIRLINE / 2, TABLE_WIDTH, HAIRLINE);
-  });
-  ctx.restore();
-
-  // The edge of the card.
-  ctx.strokeStyle = PALETTE.lineStrong;
-  ctx.lineWidth = HAIRLINE;
-  ctx.beginPath();
-  ctx.roundRect(MARGIN, layout.headerTop, TABLE_WIDTH, cardHeight, look.radius.card);
-  ctx.stroke();
+  for (const block of layout.blocks) drawBlock(ctx, block, look);
 }
 
 /** The UPDATED marker: a solid bar of the alert red across the top. */
@@ -279,70 +266,114 @@ function drawUpdated(ctx: CanvasRenderingContext2D, look: Look) {
   const middle = MARGIN + UPDATED_HEIGHT / 2 + 2;
   ctx.fillStyle = PALETTE.alert;
   ctx.beginPath();
-  ctx.roundRect(MARGIN, MARGIN, TABLE_WIDTH, UPDATED_HEIGHT, look.radius.control);
+  ctx.roundRect(MARGIN, MARGIN, BLOCK_WIDTH, UPDATED_HEIGHT, look.radius.control);
   ctx.fill();
 
   ctx.fillStyle = PALETTE.paper;
   setType(ctx, look.type.updated);
-  ctx.fillText('UPDATED', MARGIN + CELL_PAD_X, middle);
-  const afterWord = MARGIN + CELL_PAD_X + ctx.measureText('UPDATED').width + 20;
+  ctx.fillText('UPDATED', MARGIN + UPDATED_PAD_X, middle);
+  const afterWord = MARGIN + UPDATED_PAD_X + ctx.measureText('UPDATED').width + 18;
   setType(ctx, look.type.updatedNote);
-  ctx.fillText('This replaces the earlier schedule', afterWord, middle);
+  ctx.fillText(
+    'This replaces the earlier schedule',
+    afterWord,
+    middle,
+    MARGIN + BLOCK_WIDTH - UPDATED_PAD_X - afterWord,
+  );
 }
 
-function drawRow(ctx: CanvasRenderingContext2D, layout: RowLayout, look: Look) {
-  const { row, top, height } = layout;
-  const middle = top + height / 2;
+function drawBlock(ctx: CanvasRenderingContext2D, block: BlockLayout, look: Look) {
+  const { row, top, height } = block;
+  const inside = top + BLOCK_PAD_Y;
 
+  // The frame, drawn wholly inside the block's edge: white for a Job, tinted for a Standing Row.
+  ctx.beginPath();
+  ctx.roundRect(
+    MARGIN + FRAME / 2,
+    top + FRAME / 2,
+    BLOCK_WIDTH - FRAME,
+    height - FRAME,
+    look.radius.card,
+  );
   if (row.destination.kind === 'standing-row') {
     ctx.fillStyle = PALETTE.standing;
-    ctx.fillRect(MARGIN, top, TABLE_WIDTH, height);
+    ctx.fill();
   }
+  ctx.strokeStyle = PALETTE.frameLine;
+  ctx.lineWidth = FRAME;
+  ctx.stroke();
 
+  // Where: the Job, then its Tasks.
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, look.type.job);
-  drawLines(ctx, layout.jobLines, JOB_X + CELL_PAD_X, middle, JOB_LINE);
+  block.jobLines.forEach((line, index) =>
+    ctx.fillText(line, WHERE_X, jobTop(inside) + (index + 0.5) * JOB_LINE + 1, WHERE_WIDTH),
+  );
   setType(ctx, look.type.task);
-  drawLines(ctx, layout.taskLines, TASKS_X + CELL_PAD_X, middle, TASK_LINE);
+  const tasksTop = jobTop(inside) + block.jobLines.length * JOB_LINE + TASKS_GAP;
+  block.taskLines.forEach(({ text, rest }, index) => {
+    const indent = rest ? TASK_INDENT : 0;
+    ctx.fillText(
+      text,
+      WHERE_X + indent,
+      tasksTop + (index + 0.5) * TASK_LINE + 1,
+      WHERE_WIDTH - indent,
+    );
+  });
 
-  const namesLeft = WHO_X + CELL_PAD_X;
-  const namesTop = middle - layout.namesHeight / 2;
-  for (const box of layout.names) {
-    const x = namesLeft + box.x;
-    const y = namesTop + box.y;
-
-    // The name: a pill in the Crew Member's color, with the fine edge it has
-    // on the screen.
-    ctx.fillStyle = CREW_COLORS[box.color];
-    ctx.beginPath();
-    ctx.roundRect(x, y, box.nameWidth, NAME_HEIGHT, NAME_HEIGHT / 2);
-    ctx.fill();
-    ctx.strokeStyle = PALETTE.nameBorder;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(x + 0.5, y + 0.5, box.nameWidth - 1, NAME_HEIGHT - 1, NAME_HEIGHT / 2);
-    ctx.stroke();
-
-    ctx.fillStyle = crewInk(box.color);
-    setType(ctx, look.type.name);
-    ctx.fillText(box.name, x + NAME_PAD_X, y + NAME_HEIGHT / 2 + 1);
-
-    if (box.note) {
-      ctx.fillStyle = PALETTE.alert;
-      setType(ctx, look.type.note);
-      ctx.fillText(box.note, x + box.nameWidth + NOTE_GAP, y + NAME_HEIGHT / 2 + 1);
-    }
-  }
+  // Who: the column of names.
+  for (const box of block.names) drawName(ctx, box, NAMES_X, inside + box.y, look);
 }
 
-/** Draws lines of text as one block centered on `middle`. */
-function drawLines(
-  ctx: CanvasRenderingContext2D,
-  lines: string[],
-  x: number,
-  middle: number,
-  lineHeight: number,
-) {
-  const first = middle - ((lines.length - 1) * lineHeight) / 2;
-  lines.forEach((line, index) => ctx.fillText(line, x, first + index * lineHeight + 1));
+function drawName(ctx: CanvasRenderingContext2D, box: NameBox, x: number, y: number, look: Look) {
+  const middle = y + NAME_HEIGHT / 2 + 1;
+
+  // A Note hangs under its name, in one red-tinted piece with it.
+  if (box.noteLines.length > 0) {
+    ctx.fillStyle = PALETTE.alertWashStrong;
+    ctx.beginPath();
+    ctx.roundRect(x, y, NAME_WIDTH, box.height, look.radius.chip);
+    ctx.fill();
+    ctx.fillStyle = PALETTE.alert;
+    setType(ctx, look.type.note);
+    const notesTop = y + NAME_HEIGHT + NOTE_PAD_TOP;
+    box.noteLines.forEach((line, index) =>
+      ctx.fillText(
+        line,
+        x + NAME_PAD_X,
+        notesTop + (index + 0.5) * NOTE_LINE + 1,
+        NAME_WIDTH - 2 * NAME_PAD_X,
+      ),
+    );
+  }
+
+  // The name: a cell of the Crew Member's color, with the fine edge it has on the screen.
+  ctx.fillStyle = CREW_COLORS[box.color];
+  ctx.beginPath();
+  ctx.roundRect(x, y, NAME_WIDTH, NAME_HEIGHT, look.radius.chip);
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.nameBorder;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x + 1, y + 1, NAME_WIDTH - 2, NAME_HEIGHT - 2, look.radius.chip - 1);
+  ctx.stroke();
+
+  ctx.fillStyle = crewInk(box.color);
+  setType(ctx, look.type.name);
+  const starRoom = box.foreman ? STAR + 12 : 0;
+  ctx.fillText(box.name, x + NAME_PAD_X, middle, NAME_WIDTH - 2 * NAME_PAD_X - starRoom);
+
+  // A Foreman: the look's star at the end of the name, in the name's own ink.
+  if (box.foreman) {
+    const left = x + NAME_WIDTH - NAME_PAD_X - STAR;
+    const starTop = y + (NAME_HEIGHT - STAR) / 2;
+    ctx.beginPath();
+    look.star.forEach(([across, down], index) => {
+      const point: [number, number] = [left + across * STAR, starTop + down * STAR];
+      if (index === 0) ctx.moveTo(...point);
+      else ctx.lineTo(...point);
+    });
+    ctx.closePath();
+    ctx.fill();
+  }
 }

@@ -97,14 +97,12 @@ const pointerHolder = () => document.body;
  */
 function holdDestinationHeights(): () => void {
   const held = [...document.querySelectorAll<HTMLElement>('[data-drop]')].map((destination) => {
-    // A table row's height is already "at least this"; anything else needs min-height.
-    const property = destination instanceof HTMLTableRowElement ? 'height' : 'minHeight';
-    const before = destination.style[property];
-    return { destination, property, before, height: destination.getBoundingClientRect().height } as const;
+    const before = destination.style.minHeight;
+    return { destination, before, height: destination.getBoundingClientRect().height };
   });
-  for (const { destination, property, height } of held) destination.style[property] = `${height}px`;
+  for (const { destination, height } of held) destination.style.minHeight = `${height}px`;
   return () => {
-    for (const { destination, property, before } of held) destination.style[property] = before;
+    for (const { destination, before } of held) destination.style.minHeight = before;
   };
 }
 

@@ -11,11 +11,14 @@
      needs nothing from the network. */
   --font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial,
     sans-serif;
+  /* Two weights, on purpose. Strong is what is looked for and pressed: the
+     date, a Job, a name, a Note, a button. Body is what is read once found:
+     Tasks, hints, counts. Among strong things, size and place say which comes
+     first (the date, then the Jobs, then the names), never a third weight. */
   --weight-body: 400;
-  --weight-strong: 600;
-  --weight-heading: 700;
-  --tracking-heading: -0.022em;
-  --tracking-name: -0.01em; /* names, Jobs and other strong text */
+  --weight-strong: 650;
+  --tracking-heading: -0.022em; /* the date, Jobs and other large strong text */
+  --tracking-name: -0.01em; /* names and other strong text */
   --tracking-label: 0.08em;
 
   /* Spacing: every gap and padding is one of these. */
@@ -26,13 +29,21 @@
   --space-5: 1.5rem;
   --space-6: 2rem;
 
+  /* The star on a Foreman's name. */
+  --shape-star: polygon(
+    50% 2%, 61.8% 35.7%, 97.6% 36.5%, 69% 58.1%, 79.4% 92.3%,
+    50% 71.9%, 20.6% 92.3%, 31% 58.1%, 2.4% 36.5%, 38.2% 35.7%
+  );
+
   /* Corners. */
-  --radius-chip: 999px;
+  --radius-chip: 0.5rem; /* a name: a cell of its color, the same width as its neighbours */
   --radius-control: 0.6rem;
   --radius-card: 0.9rem;
 
   /* Edges and elevation. */
   --hairline: 1px solid var(--line);
+  /* Round a block of the schedule: firm enough that each Job stands apart. */
+  --frame: 2px solid var(--frame-line);
   --elevation-1: 0 1px 2px var(--shadow);
   --elevation-2: 0 1px 2px var(--shadow), 0 6px 16px var(--shadow);
   --elevation-3: 0 2px 6px var(--shadow), 0 24px 60px var(--shadow-strong);
