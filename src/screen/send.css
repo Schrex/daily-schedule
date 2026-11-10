@@ -24,7 +24,7 @@
   box-shadow: var(--elevation-2);
   font-size: 1.7rem;
   font-weight: var(--weight-heading);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-name);
 }
 
 .send-message {
@@ -40,7 +40,7 @@
 .send-headline {
   font-size: 1.4rem;
   font-weight: var(--weight-heading);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-name);
 }
 
 /* What happened, in a soft box of its own color: green for sent, red for not. */
@@ -82,9 +82,7 @@
 }
 
 .not-placed-alert .name:not(.name-selected) {
-  box-shadow:
-    0 0 0 3px var(--paper),
-    0 0 0 6px var(--alert);
+  box-shadow: var(--ring-alert);
 }
 
 .not-placed-alert .names-stacked {

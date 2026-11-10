@@ -13,7 +13,9 @@ import './motion.css';
  * `transform` and `opacity` are animated, with the Web Animations API, and
  * nothing waits for an animation: the page under it is already as it will be,
  * a new move starts from wherever the last one had got to, and the names stay
- * clickable throughout. With "reduce motion" set, nothing moves.
+ * clickable throughout. How long a move takes is the look's (`--move-duration`
+ * in src/look.css); where the look gives it no time (the computer is set to
+ * reduce motion), nothing moves.
  */
 
 /** Where every name was seen at one instant, by Crew Member id. */
@@ -47,15 +49,17 @@ interface Travelling {
 const NAME = '[data-crew-member]';
 const AREA = '[data-motion-area]';
 
-const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-/** How long and how a move goes: the look's `--move-duration` and `--move-ease`. */
+/**
+ * How long (milliseconds) and how a move goes: the look's `--move-duration`
+ * and `--move-ease`. No duration means no motion: the look gives none when the
+ * computer is set to reduce motion (and a page without the look has none).
+ */
 function timing(): { duration: number; easing: string } {
   const look = getComputedStyle(document.documentElement);
   const duration = parseFloat(look.getPropertyValue('--move-duration'));
   return {
-    duration: Number.isFinite(duration) ? duration : 200,
-    easing: look.getPropertyValue('--move-ease').trim() || 'ease-out',
+    duration: Number.isFinite(duration) ? duration : 0,
+    easing: look.getPropertyValue('--move-ease').trim(),
   };
 }
 
@@ -115,8 +119,8 @@ export function createNameMotion(): NameMotion {
     },
 
     play(before) {
-      const still = reduceMotion();
       const { duration, easing } = timing();
+      const still = duration <= 0;
       const present = new Set<string>();
 
       for (const element of names()) {
@@ -192,7 +196,7 @@ export function createNameMotion(): NameMotion {
     },
 
     letGoAt(crewMemberId, box) {
-      if (reduceMotion()) return;
+      if (timing().duration <= 0) return;
       letGo.set(crewMemberId, { x: box.x, y: box.y, width: box.width, height: box.height, area: null });
     },
 

@@ -1,13 +1,13 @@
 import { useState, type MouseEvent, type ReactNode } from 'react';
 import {
   fullDate,
+  NOT_PLACED,
   scheduleView,
   type CrewMember,
   type DailySchedule,
-  type Destination,
+  type MoveTo,
   type Roster,
 } from '../schedule-rules';
-import { NOT_PLACED_DROP } from './drag/nameDrag';
 import { useNameDrag } from './drag/useNameDrag';
 import { dropTarget, viewWhileDragging } from './dropPreview';
 import { MoveNames } from './motion/MoveNames';
@@ -25,14 +25,12 @@ interface ScheduleScreenProps {
   onSelectCrewMember: (crewMemberId: string) => void;
   /** The selected name was clicked again, or "Cancel" on a Note: let go of them. */
   onDeselect: () => void;
-  /** A Job or Standing Row block was clicked while a Crew Member is selected. */
-  onPlace: (destination: Destination) => void;
-  /** The Not Placed list was clicked while a Crew Member is selected. */
-  onReturnToNotPlaced: () => void;
-  /** A dragged name was dropped on a Job or Standing Row, or on the Not Placed list. */
-  onDrop: (crewMemberId: string, to: Destination | 'not-placed') => void;
-  /** A name was double-clicked: that Crew Member is to go to the Not Placed list. */
-  onSetAside: (crewMemberId: string) => void;
+  /**
+   * The Scheduler moved a Crew Member to a Job, a Standing Row or Not Placed:
+   * by clicking there with them selected, by dropping their name there, or (to
+   * Not Placed) by double-clicking their name.
+   */
+  onMoveCrewMember: (crewMemberId: string, to: MoveTo) => void;
   /** "Add note" / "Change note" was clicked for the selected Crew Member. */
   onEditNote: () => void;
   /** The Note typed for the selected Crew Member was saved. */
@@ -57,9 +55,10 @@ interface ScheduleScreenProps {
  * Standing Row or the Not Placed list. While a name is selected, a click
  * anywhere in one of those blocks (even on another name) is the destination.
  *
- * Double-clicking a name sets that Crew Member aside, in the Not Placed list.
- * The browser reports a double-click as two clicks and then the double-click,
- * so the name is selected and let go of first.
+ * Double-clicking a name moves that Crew Member to Not Placed. The browser
+ * reports a double-click as two clicks and then the double-click, so the name
+ * is selected and let go of first. A double-click made with a shaky hand, which
+ * the browser takes for a small drag, is reported by `useNameDrag` instead.
  *
  * With no name selected, clicking a Job's Tasks lets him type them. A selected
  * Crew Member who has a Placement also offers "Add note".
@@ -82,10 +81,7 @@ export function ScheduleScreen({
   selectedCrewMemberId,
   onSelectCrewMember,
   onDeselect,
-  onPlace,
-  onReturnToNotPlaced,
-  onDrop,
-  onSetAside,
+  onMoveCrewMember,
   editingNote,
   onEditNote,
   onSaveNote,
@@ -113,9 +109,10 @@ export function ScheduleScreen({
     enabled: !typingNote,
     onDrop: (crewMemberId, over) => {
       const to = dropTarget(view, over);
-      if (to !== null) onDrop(crewMemberId, to);
+      if (to !== null) onMoveCrewMember(crewMemberId, to);
     },
     onLetGo: motion.letGoAt,
+    onShakyDoubleClick: (crewMemberId) => onMoveCrewMember(crewMemberId, NOT_PLACED),
   });
   /** What is drawn: while a name is held over a destination, the schedule as the drop would leave it. */
   const shown = viewWhileDragging(roster, schedule, drag.dragging);
@@ -131,6 +128,9 @@ export function ScheduleScreen({
     // Otherwise the click carries on to the block the name sits in: the destination.
   };
 
+  /** A destination was clicked while a Crew Member is selected: they go there. */
+  const moveSelectedTo = (to: MoveTo) => (moving ? () => onMoveCrewMember(selected.id, to) : undefined);
+
   const name = (crewMember: CrewMember) => (
     <button
       type="button"
@@ -140,7 +140,7 @@ export function ScheduleScreen({
       aria-pressed={crewMember.id === selected?.id}
       onClick={(event) => onNameClick(crewMember, event)}
       {...drag.nameProps(crewMember.id)}
-      onDoubleClick={() => onSetAside(crewMember.id)}
+      onDoubleClick={() => onMoveCrewMember(crewMember.id, NOT_PLACED)}
     >
       {crewMember.name}
     </button>
@@ -199,7 +199,7 @@ export function ScheduleScreen({
                   key={row.key}
                   className={`row row-${destination.kind} destination`}
                   data-row={row.key}
-                  onClick={moving ? () => onPlace(destination) : undefined}
+                  onClick={moveSelectedTo(destination)}
                   {...drag.dropProps(row.key)}
                 >
                   <th scope="row" className="job">
@@ -234,9 +234,9 @@ export function ScheduleScreen({
         <aside
           className={`not-placed destination${alertNotPlaced ? ' not-placed-alert' : ''}`}
           aria-labelledby="not-placed-heading"
-          onClick={moving ? onReturnToNotPlaced : undefined}
+          onClick={moveSelectedTo(NOT_PLACED)}
           data-motion-area
-          {...drag.dropProps(NOT_PLACED_DROP)}
+          {...drag.dropProps(NOT_PLACED)}
         >
           <h2 id="not-placed-heading">NOT PLACED</h2>
           {shown.notPlaced.length === 0 ? (

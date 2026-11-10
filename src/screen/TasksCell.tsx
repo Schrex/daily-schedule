@@ -26,7 +26,7 @@ export function TasksCell({ jobLabel, tasks, canEdit, onCommit }: TasksCellProps
     </div>
   ));
 
-  if (!canEdit) return <>{lines}</>;
+  if (!canEdit) return <div className="tasks-shown">{lines}</div>;
 
   if (draft === null) {
     return (

@@ -7,7 +7,18 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { cancel, idle, moveTo, press, release, type DropKey, type NameDrag, type Point } from './nameDrag';
+import {
+  cancel,
+  idle,
+  moveTo,
+  press,
+  release,
+  shakyDoubleClick,
+  type DropKey,
+  type NameDrag,
+  type Point,
+  type Press,
+} from './nameDrag';
 import { startEdgeScroll } from './edgeScroll';
 import './drag.css';
 
@@ -20,6 +31,8 @@ import './drag.css';
  *
  * A press is only a drag once the pointer has moved a few pixels (see
  * `nameDrag`), so a click still selects and a double-click is still two clicks.
+ * A double-click during which the hand shook, so that one of its presses
+ * became a small drag onto the name's own row, is reported as a double-click.
  */
 
 /** The name being dragged right now, and the destination under the pointer. */
@@ -47,6 +60,12 @@ export interface NameDragOptions {
    * Called before `onDrop`.
    */
   onLetGo?: (crewMemberId: string, liftedAt: DOMRect) => void;
+  /**
+   * A name was double-clicked with a shaky hand: one of the two presses slipped
+   * into a drag that ended on the name's own row. Called instead of `onDrop`.
+   * (Two steady clicks are the browser's own double-click, and not reported here.)
+   */
+  onShakyDoubleClick?: (crewMemberId: string) => void;
 }
 
 export interface NameDragHandle {
@@ -118,7 +137,12 @@ function swallowNextClick(): void {
   window.addEventListener('pointerdown', stop, true);
 }
 
-export function useNameDrag({ enabled, onDrop, onLetGo }: NameDragOptions): NameDragHandle {
+export function useNameDrag({
+  enabled,
+  onDrop,
+  onLetGo,
+  onShakyDoubleClick,
+}: NameDragOptions): NameDragHandle {
   const [dragging, setDragging] = useState<Dragging | null>(null);
   const [lifted, setLifted] = useState<Lifted | null>(null);
 
@@ -134,6 +158,10 @@ export function useNameDrag({ enabled, onDrop, onLetGo }: NameDragOptions): Name
   onDropLatest.current = onDrop;
   const onLetGoLatest = useRef(onLetGo);
   onLetGoLatest.current = onLetGo;
+  const onShakyDoubleClickLatest = useRef(onShakyDoubleClick);
+  onShakyDoubleClickLatest.current = onShakyDoubleClick;
+  /** The last press on a name that ran its course: it may be the first half of a double-click. */
+  const lastPress = useRef<Press | null>(null);
 
   /** Puts the lifted copy under the pointer, held where it was taken hold of. No redraw. */
   const follow = () => {
@@ -182,6 +210,8 @@ export function useNameDrag({ enabled, onDrop, onLetGo }: NameDragOptions): Name
 
     const source = event.currentTarget;
     const pointerId = event.pointerId;
+    const downAt = event.timeStamp;
+    const home = source.closest<HTMLElement>('[data-drop]')?.dataset.drop ?? null;
     const at = { x: event.clientX, y: event.clientY };
     pointer.current = at;
     drag.current = press(crewMemberId, at);
@@ -234,13 +264,36 @@ export function useNameDrag({ enabled, onDrop, onLetGo }: NameDragOptions): Name
         pointer.current = { x: up.clientX, y: up.clientY };
         show(moveTo(drag.current, pointer.current, dropKeyAt(pointer.current)));
       }
-      const drop = release(drag.current);
+      const was = drag.current;
+      const drop = release(was);
       end();
+
+      const dragged = was.kind === 'dragging';
+      const thisPress: Press = {
+        crewMemberId,
+        home,
+        letGoOver: dragged ? was.over : home,
+        downAt,
+        upAt: up.timeStamp,
+        dragged,
+      };
+      if (shakyDoubleClick(lastPress.current, thisPress)) {
+        lastPress.current = null;
+        // The click that follows a steady second press belongs to the double-click.
+        if (!dragged) swallowNextClick();
+        onShakyDoubleClickLatest.current?.(crewMemberId);
+        return;
+      }
+      lastPress.current = thisPress;
       if (drop) onDropLatest.current(drop.crewMemberId, drop.over);
     };
 
     const onKeyDown = (key: KeyboardEvent) => {
-      if (key.key === 'Escape' && drag.current.kind === 'dragging') end();
+      if (key.key !== 'Escape' || drag.current.kind !== 'dragging') return;
+      // This Escape ends the drag and nothing else: nobody else hears it.
+      key.stopPropagation();
+      lastPress.current = null;
+      end();
     };
 
     window.addEventListener('pointermove', onMove);

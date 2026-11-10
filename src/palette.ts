@@ -7,9 +7,6 @@
 
 import type { Color } from './schedule-rules';
 
-/** The one accent: the name being moved and the main action. No Crew Member has it. */
-const ACCENT = '#4f46e5';
-
 export const PALETTE = {
   ink: '#141922',
   paper: '#ffffff',
@@ -28,15 +25,16 @@ export const PALETTE = {
   alertWash: '#fef4f3',
   alertWashStrong: '#fde3e0',
   alertLine: '#f0b4ae',
-  accent: ACCENT,
+  /**
+   * The one accent: the name being moved, where it would land, and the main
+   * action. No Crew Member has it.
+   */
+  accent: '#4f46e5',
   accentHover: '#4038c7',
   accentWash: '#eef0fe',
-  /** The name being moved. */
-  selected: ACCENT,
   /** The block the pointer would place them in. */
   target: '#e4e7fd',
   /** A Send that worked. */
-  go: '#18794e',
   goDark: '#12603d',
   goWash: '#e8f5ee',
   muted: '#566070',

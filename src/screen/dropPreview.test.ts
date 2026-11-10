@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  NOT_PLACED,
   onJob,
   onStandingRow,
   scheduleView,
@@ -64,7 +65,7 @@ describe('the schedule drawn while a name is dragged', () => {
   });
 
   it('shows a name held over the Not Placed list where the roster lists them', () => {
-    const shown = viewWhileDragging(roster, schedule, { crewMemberId: 'ann', over: 'not-placed' });
+    const shown = viewWhileDragging(roster, schedule, { crewMemberId: 'ann', over: NOT_PLACED });
 
     expect(notPlaced(shown)).toEqual(['ann', 'fay']);
     expect(whoIsOn(shown, 'job:tower')).toEqual(['bob']);

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { applyPalette } from '../palette';
 import { seedRoster } from '../seed/seedRoster';
 import { browserStore } from '../storage/browserStore';
-import '../screen/screen.css'; // the Crew Member name cells, so they match the Daily Schedule
+import '../look.css'; // the look of the Scheduler's screen, Crew Member colors and all
 import './settings.css';
 import { SettingsPage } from './SettingsPage';
 

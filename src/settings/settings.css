@@ -1,7 +1,8 @@
 /* The settings page, used by the office: an ordinary form page at ordinary
-   size, in the look of the Scheduler's screen. Loaded after screen.css, which
-   supplies the page itself (canvas, type), the shared look (src/look.css) and
-   the Crew Member colors (.color-*). Colors are the palette in src/palette.ts. */
+   size, in the look of the Scheduler's screen. Loaded after the shared look
+   (src/look.css), which supplies the page itself (canvas, type), the buttons
+   and the Crew Member colors (.color-*). Colors are the palette in
+   src/palette.ts. */
 
 :root {
   font-size: 17px;
@@ -120,7 +121,7 @@
 
 .job-label {
   font-weight: var(--weight-heading);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-name);
 }
 
 /* --- Color swatches: the name chips of the Daily Schedule ----------------- */
@@ -136,7 +137,7 @@
   box-shadow: inset 0 0 0 1px var(--name-border);
   font-size: 0.9rem;
   font-weight: var(--weight-strong);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-name);
   cursor: pointer;
   opacity: 0.5;
   transition:

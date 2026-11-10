@@ -1,13 +1,13 @@
 import {
-  placeCrewMember,
-  returnToNotPlaced,
+  moveCrewMember,
+  NOT_PLACED,
   scheduleView,
   type DailySchedule,
-  type Destination,
+  type MoveTo,
   type Roster,
   type ScheduleView,
 } from '../schedule-rules';
-import { NOT_PLACED_DROP, type DropKey } from './drag/nameDrag';
+import type { DropKey } from './drag/nameDrag';
 
 /**
  * What the screen draws while a name is dragged: the Daily Schedule as it
@@ -18,9 +18,13 @@ import { NOT_PLACED_DROP, type DropKey } from './drag/nameDrag';
  * and their view of the result is drawn.
  */
 
-/** The destination a drop key stands for, or null when it stands for none. */
-export function dropTarget(view: ScheduleView, over: DropKey): Destination | 'not-placed' | null {
-  if (over === NOT_PLACED_DROP) return 'not-placed';
+/**
+ * Where a drop key says to move to, or null when it stands for nowhere. The
+ * screen marks each row with the row's key and the Not Placed list with
+ * `NOT_PLACED` (no row has that key: row keys all have a colon).
+ */
+export function dropTarget(view: ScheduleView, over: DropKey): MoveTo | null {
+  if (over === NOT_PLACED) return NOT_PLACED;
   return view.rows.find((row) => row.key === over)?.destination ?? null;
 }
 
@@ -40,9 +44,6 @@ export function viewWhileDragging(
   const to = dropTarget(view, dragging.over);
   if (to === null) return view;
 
-  const dropped =
-    to === 'not-placed'
-      ? returnToNotPlaced(schedule, dragging.crewMemberId)
-      : placeCrewMember(schedule, dragging.crewMemberId, to);
+  const dropped = moveCrewMember(schedule, dragging.crewMemberId, to);
   return dropped === schedule ? view : scheduleView(roster, dropped);
 }

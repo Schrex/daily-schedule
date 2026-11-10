@@ -4,16 +4,15 @@ import {
   change as changeEditing,
   clearNote,
   markSent,
-  placeCrewMember,
-  returnToNotPlaced,
+  moveCrewMember,
   setNote,
   setTasks,
   startEditing,
   undo,
   type CrewView,
   type DailySchedule,
-  type Destination,
   type Editing,
+  type MoveTo,
   type ScheduleDate,
 } from '../schedule-rules';
 import type { CrewDelivery } from '../send';
@@ -98,7 +97,7 @@ export function App({
   /** Lets go of the selected Crew Member: no move, and any Note being typed is dropped. */
   const deselect = () => select(null);
 
-  /** Applies one rule to the selected Crew Member (a move or a Note), then lets go of them. */
+  /** Applies one rule to the selected Crew Member (a Note), then lets go of them. */
   const changeSelected = (
     rule: (schedule: DailySchedule, crewMemberId: string) => DailySchedule,
   ) => {
@@ -109,24 +108,12 @@ export function App({
   };
 
   /**
-   * A dragged Crew Member was dropped: the same rules as a click-click move,
-   * for the one who was dragged. Anyone selected is let go of.
+   * Moves one Crew Member, selected or not, however the Scheduler did it (a
+   * click-click move, a drop, a double-click), and lets go of anyone selected.
+   * The rules change nothing if they are already there.
    */
-  const drop = (crewMemberId: string, to: Destination | 'not-placed') => {
-    change((current) =>
-      to === 'not-placed'
-        ? returnToNotPlaced(current, crewMemberId)
-        : placeCrewMember(current, crewMemberId, to),
-    );
-    deselect();
-  };
-
-  /**
-   * Sets one Crew Member aside, selected or not, and lets go of anyone
-   * selected. The rules change nothing if they are already Not Placed.
-   */
-  const setAside = (crewMemberId: string) => {
-    change((current) => returnToNotPlaced(current, crewMemberId));
+  const move = (crewMemberId: string, to: MoveTo) => {
+    change((current) => moveCrewMember(current, crewMemberId, to));
     deselect();
   };
 
@@ -160,14 +147,7 @@ export function App({
       editingNote={editingNote}
       onSelectCrewMember={select}
       onDeselect={deselect}
-      onPlace={(destination: Destination) =>
-        changeSelected((current, crewMemberId) =>
-          placeCrewMember(current, crewMemberId, destination),
-        )
-      }
-      onReturnToNotPlaced={() => changeSelected(returnToNotPlaced)}
-      onDrop={drop}
-      onSetAside={setAside}
+      onMoveCrewMember={move}
       onEditNote={() => setEditingNote(true)}
       onSaveNote={(text) =>
         changeSelected((current, crewMemberId) => setNote(current, crewMemberId, text))

@@ -63,7 +63,7 @@
   min-height: 2rem;
   font-size: 1.5rem;
   font-weight: var(--weight-heading);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-name);
 }
 
 .change-date-actions {

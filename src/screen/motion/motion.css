@@ -1,14 +1,20 @@
 /* A name travelling from where it was to where it is now. Its place and the
    motion itself are set in script (nameMotion.ts), which animates only
    `transform` and `opacity`; this is how the copy that flies over the page is
-   drawn. Colors are the palette's. */
+   drawn. Colors are the palette's.
+
+   It is a copy of the name on the page, classes and all (selected, say, if
+   the name was clicked while its copy was still in the air), so what makes it
+   float over the page is `!important`: whatever else it carries, it is fixed
+   to the window, over the page and under a name being dragged, and can never
+   be part of the page or make it longer. */
 
 .name-flying {
-  position: fixed;
-  z-index: 900; /* over the page, under a name being dragged */
+  position: fixed !important;
+  z-index: var(--z-flying) !important;
   box-sizing: border-box;
-  margin: 0;
-  pointer-events: none;
+  margin: 0 !important;
+  pointer-events: none !important;
   transform-origin: 0 0;
   will-change: transform;
 }
@@ -20,6 +26,6 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: 0 10px 22px 6px var(--shadow-strong);
+  box-shadow: var(--elevation-lifted);
   pointer-events: none;
 }

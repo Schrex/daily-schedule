@@ -1,8 +1,10 @@
 /* The look, apart from color: one type family, one spacing scale, one set of
-   corners and shadows, and the three buttons. Every page that shares the look
-   starts from this file. Colors are the palette in src/palette.ts, handed over
-   as custom properties; nothing here (or in any other style sheet) writes one
-   out. Lengths are in rem, so each page scales off its own root size. */
+   corners, shadows, rings and layers, the page itself, the three buttons and
+   the Crew Member colors. Every page that shares the look starts from this
+   file, and the picture sent to the crew reads its type and corners from it.
+   Colors are the palette in src/palette.ts, handed over as custom properties;
+   nothing here (or in any other style sheet) writes one out. Lengths are in
+   rem, so each page scales off its own root size. */
 
 :root {
   /* Type: the system's own interface face, so it is sharp at any density and
@@ -13,6 +15,7 @@
   --weight-strong: 600;
   --weight-heading: 700;
   --tracking-heading: -0.022em;
+  --tracking-name: -0.01em; /* names, Jobs and other strong text */
   --tracking-label: 0.08em;
 
   /* Spacing: every gap and padding is one of these. */
@@ -33,15 +36,59 @@
   --elevation-1: 0 1px 2px var(--shadow);
   --elevation-2: 0 1px 2px var(--shadow), 0 6px 16px var(--shadow);
   --elevation-3: 0 2px 6px var(--shadow), 0 24px 60px var(--shadow-strong);
+  /* Under a name that is off the page: selected, dragged, or travelling. */
+  --elevation-lifted: 0 10px 22px 6px var(--shadow-strong);
 
-  /* What the keyboard is on. */
+  /* Rings: what the keyboard is on, the name being moved, a name Send was refused for. */
   --focus-ring: 0 0 0 2px var(--paper), 0 0 0 5px var(--accent);
+  --ring-selected: 0 0 0 3px var(--paper), 0 0 0 8px var(--accent);
+  --ring-alert: 0 0 0 3px var(--paper), 0 0 0 6px var(--alert);
+
+  /* Layers over the page: a name travelling to its place, and above it the one being dragged. */
+  --z-flying: 900;
+  --z-dragged: 1000;
 
   --ease: 120ms ease-out;
 
-  /* A name moving from one place to another: quick, easing away and slowing as it arrives. */
+  /* A name moving from one place to another: quick, easing away and slowing as
+     it arrives. The duration is in milliseconds; script reads it too. */
   --move-duration: 200ms;
   --move-ease: cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+/* --- Reduce motion ---------------------------------------------------------
+   The one place motion is switched off when the computer is set to reduce it:
+   no transition and no animation anywhere, and a move takes no time (which is
+   how the script that moves names knows to move nothing). */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --move-duration: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* --- The page ------------------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font);
+  font-weight: var(--weight-body);
+  line-height: 1.3;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* --- Buttons: secondary by default, primary for the one main action -------
@@ -95,4 +142,31 @@
   box-shadow: none;
   color: var(--disabled);
   cursor: default;
+}
+
+/* --- Crew Member colors: the fill and text of a name ---------------------- */
+
+.color-grey {
+  background: var(--crew-grey);
+  color: var(--crew-grey-ink);
+}
+
+.color-blue {
+  background: var(--crew-blue);
+  color: var(--crew-blue-ink);
+}
+
+.color-orange {
+  background: var(--crew-orange);
+  color: var(--crew-orange-ink);
+}
+
+.color-yellow {
+  background: var(--crew-yellow);
+  color: var(--crew-yellow-ink);
+}
+
+.color-red {
+  background: var(--crew-red);
+  color: var(--crew-red-ink);
 }

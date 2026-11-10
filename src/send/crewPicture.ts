@@ -15,16 +15,17 @@ import { fullDate, type Color, type CrewView, type ScheduleRow } from '../schedu
  * twice its size so it stays sharp.
  */
 export function renderCrewPicture(view: CrewView): Promise<Blob> {
+  const look = readLook();
   const canvas = document.createElement('canvas');
   const measure = canvas.getContext('2d')!;
-  const layout = layOut(view, measure);
+  const layout = layOut(view, measure, look);
 
   // Sizing the canvas resets its context, so size first, then draw.
   canvas.width = WIDTH * SHARPNESS;
   canvas.height = layout.height * SHARPNESS;
   const ctx = canvas.getContext('2d')!;
   ctx.scale(SHARPNESS, SHARPNESS);
-  draw(ctx, view, layout);
+  draw(ctx, view, layout, look);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -35,50 +36,80 @@ export function renderCrewPicture(view: CrewView): Promise<Blob> {
 }
 
 // --- The look: the Scheduler's screen, drawn by hand ------------------------
-// Colors are the palette. The type family is the shared look's (`--font` in
-// src/look.css), read off the page so the picture and the screen cannot drift
-// apart. Sizes are the picture's own: it is looked at small, so they are large.
+// Colors are the palette. The type family, the weights, the letter-spacings
+// and the corners are the shared look's (the tokens in src/look.css), read off
+// the page, so the picture and the screen cannot drift apart. Sizes are the
+// picture's own: it is looked at small, so they are large.
 
 const WIDTH = 1000;
 const SHARPNESS = 2;
 const MARGIN = 32;
 
-/** The screen's type family. The fallback is for a page without the look. */
-const fontFamily = (): string =>
-  getComputedStyle(document.documentElement).getPropertyValue('--font').trim() ||
-  'system-ui, sans-serif';
+/**
+ * One rem of the look, in the picture's pixels: what turns the look's corners
+ * into the picture's, which are drawn at whole pixels.
+ */
+const REM = 22.6;
 
-/** The look's weights and letter-spacings (in em), as the screen uses them. */
-const WEIGHT = { body: 400, strong: 600, heading: 700 };
-const TRACKING = { heading: -0.022, name: -0.01, label: 0.08 };
-
+/** One kind of text: how it is set to be drawn or measured. */
 interface Type {
-  weight: number;
-  size: number;
-  tracking?: number;
+  font: string;
+  letterSpacing: string;
 }
 
-const DATE_TYPE: Type = { weight: WEIGHT.heading, size: 48, tracking: TRACKING.heading };
-const UPDATED_TYPE: Type = { weight: WEIGHT.heading, size: 34, tracking: TRACKING.label };
-const UPDATED_NOTE_TYPE: Type = { weight: WEIGHT.strong, size: 25 };
-const HEADER_TYPE: Type = { weight: WEIGHT.strong, size: 22, tracking: TRACKING.label };
-const JOB_TYPE: Type = { weight: WEIGHT.heading, size: 29, tracking: TRACKING.name };
-const TASK_TYPE: Type = { weight: WEIGHT.body, size: 26 };
-const NAME_TYPE: Type = { weight: WEIGHT.strong, size: 27, tracking: TRACKING.name };
-const NOTE_TYPE: Type = { weight: WEIGHT.heading, size: 26 };
+/** The shared look as the picture uses it: its kinds of text and its corners. */
+interface Look {
+  type: Record<
+    'date' | 'updated' | 'updatedNote' | 'header' | 'job' | 'task' | 'name' | 'note',
+    Type
+  >;
+  /** Corner radii, in the picture's pixels. */
+  radius: { card: number; control: number };
+}
+
+/** Reads the look's tokens off the page. Only the sizes of the text are the picture's own. */
+function readLook(): Look {
+  const tokens = getComputedStyle(document.documentElement);
+  const token = (name: string): string => {
+    const value = tokens.getPropertyValue(name).trim();
+    if (!value) throw new Error(`The look has no ${name}: src/look.css is not on this page`);
+    return value;
+  };
+  /** A token that is a number, or a number of em or rem. */
+  const number = (name: string): number => parseFloat(token(name));
+
+  const family = token('--font');
+  const type = (weight: string, size: number, tracking?: string): Type => ({
+    font: `${number(`--weight-${weight}`)} ${size}px ${family}`,
+    letterSpacing: `${(tracking ? number(`--tracking-${tracking}`) : 0) * size}px`,
+  });
+  const corner = (name: string): number => Math.round(number(`--radius-${name}`) * REM);
+
+  return {
+    type: {
+      date: type('heading', 48, 'heading'),
+      updated: type('heading', 34, 'label'),
+      updatedNote: type('strong', 25),
+      header: type('strong', 22, 'label'),
+      job: type('heading', 29, 'name'),
+      task: type('body', 26),
+      name: type('strong', 27, 'name'),
+      note: type('heading', 26),
+    },
+    radius: { card: corner('card'), control: corner('control') },
+  };
+}
 
 /** Sets the type to draw or measure with. */
-function setType(ctx: CanvasRenderingContext2D, { weight, size, tracking = 0 }: Type) {
-  ctx.font = `${weight} ${size}px ${fontFamily()}`;
-  ctx.letterSpacing = `${tracking * size}px`;
+function setType(ctx: CanvasRenderingContext2D, { font, letterSpacing }: Type) {
+  ctx.font = font;
+  ctx.letterSpacing = letterSpacing;
 }
 
 const UPDATED_HEIGHT = 68;
 const UPDATED_GAP = 20;
 const DATE_HEIGHT = 88;
 const HEADER_HEIGHT = 54;
-const CARD_RADIUS = 20;
-const CONTROL_RADIUS = 14;
 const HAIRLINE = 2; // a hairline that survives being shown at a third of its size
 const CELL_PAD_X = 16;
 const CELL_PAD_Y = 16;
@@ -128,17 +159,17 @@ interface Layout {
   height: number;
 }
 
-function layOut(view: CrewView, ctx: CanvasRenderingContext2D): Layout {
+function layOut(view: CrewView, ctx: CanvasRenderingContext2D, look: Look): Layout {
   const dateTop = MARGIN + (view.updated ? UPDATED_HEIGHT + UPDATED_GAP : 0);
   const headerTop = dateTop + DATE_HEIGHT;
 
   let top = headerTop + HEADER_HEIGHT;
   const rows = view.rows.map((row): RowLayout => {
-    setType(ctx, JOB_TYPE);
+    setType(ctx, look.type.job);
     const jobLines = wrap(ctx, row.label, JOB_WIDTH - 2 * CELL_PAD_X);
-    setType(ctx, TASK_TYPE);
+    setType(ctx, look.type.task);
     const taskLines = row.tasks.flatMap((task) => wrap(ctx, task, TASKS_WIDTH - 2 * CELL_PAD_X));
-    const { names, height: namesHeight } = flowNames(ctx, row);
+    const { names, height: namesHeight } = flowNames(ctx, row, look);
 
     const height =
       Math.max(jobLines.length * JOB_LINE, taskLines.length * TASK_LINE, namesHeight) +
@@ -152,16 +183,16 @@ function layOut(view: CrewView, ctx: CanvasRenderingContext2D): Layout {
 }
 
 /** Names flow left to right and wrap, each kept together with its Note. */
-function flowNames(ctx: CanvasRenderingContext2D, row: ScheduleRow) {
+function flowNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look) {
   const available = WHO_WIDTH - 2 * CELL_PAD_X;
   const names: NameBox[] = [];
   let x = 0;
   let y = 0;
 
   for (const { crewMember, note } of row.who) {
-    setType(ctx, NAME_TYPE);
+    setType(ctx, look.type.name);
     const nameWidth = Math.ceil(ctx.measureText(crewMember.name).width) + 2 * NAME_PAD_X;
-    setType(ctx, NOTE_TYPE);
+    setType(ctx, look.type.note);
     const width = nameWidth + (note ? NOTE_GAP + Math.ceil(ctx.measureText(note).width) : 0);
 
     if (x > 0 && x + width > available) {
@@ -194,16 +225,16 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, width: number): strin
 
 // --- Drawing ----------------------------------------------------------------
 
-function draw(ctx: CanvasRenderingContext2D, view: CrewView, layout: Layout) {
+function draw(ctx: CanvasRenderingContext2D, view: CrewView, layout: Layout, look: Look) {
   // White all over: it reads the same in Slack's light and dark themes.
   ctx.fillStyle = PALETTE.paper;
   ctx.fillRect(0, 0, WIDTH, layout.height);
   ctx.textBaseline = 'middle';
 
-  if (view.updated) drawUpdated(ctx);
+  if (view.updated) drawUpdated(ctx, look);
 
   ctx.fillStyle = PALETTE.ink;
-  setType(ctx, DATE_TYPE);
+  setType(ctx, look.type.date);
   ctx.fillText(fullDate(view.date), MARGIN, layout.dateTop + DATE_HEIGHT / 2 - 8, TABLE_WIDTH);
 
   // The schedule is one card, as on the screen: everything inside is clipped
@@ -211,18 +242,18 @@ function draw(ctx: CanvasRenderingContext2D, view: CrewView, layout: Layout) {
   const cardHeight = layout.tableBottom - layout.headerTop;
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(MARGIN, layout.headerTop, TABLE_WIDTH, cardHeight, CARD_RADIUS);
+  ctx.roundRect(MARGIN, layout.headerTop, TABLE_WIDTH, cardHeight, look.radius.card);
   ctx.clip();
 
   // Header: JOB / TASKS / WHO, quiet labels.
   ctx.fillStyle = PALETTE.muted;
-  setType(ctx, HEADER_TYPE);
+  setType(ctx, look.type.header);
   const headerMiddle = layout.headerTop + HEADER_HEIGHT / 2 + 2;
   ctx.fillText('JOB', JOB_X + CELL_PAD_X, headerMiddle);
   ctx.fillText('TASKS', TASKS_X + CELL_PAD_X, headerMiddle);
   ctx.fillText('WHO', WHO_X + CELL_PAD_X, headerMiddle);
 
-  for (const rowLayout of layout.rows) drawRow(ctx, rowLayout);
+  for (const rowLayout of layout.rows) drawRow(ctx, rowLayout, look);
 
   // Hairlines between the rows, drawn last so they sit on the row backgrounds:
   // firmer under the header and where the Jobs end.
@@ -239,27 +270,27 @@ function draw(ctx: CanvasRenderingContext2D, view: CrewView, layout: Layout) {
   ctx.strokeStyle = PALETTE.lineStrong;
   ctx.lineWidth = HAIRLINE;
   ctx.beginPath();
-  ctx.roundRect(MARGIN, layout.headerTop, TABLE_WIDTH, cardHeight, CARD_RADIUS);
+  ctx.roundRect(MARGIN, layout.headerTop, TABLE_WIDTH, cardHeight, look.radius.card);
   ctx.stroke();
 }
 
 /** The UPDATED marker: a solid bar of the alert red across the top. */
-function drawUpdated(ctx: CanvasRenderingContext2D) {
+function drawUpdated(ctx: CanvasRenderingContext2D, look: Look) {
   const middle = MARGIN + UPDATED_HEIGHT / 2 + 2;
   ctx.fillStyle = PALETTE.alert;
   ctx.beginPath();
-  ctx.roundRect(MARGIN, MARGIN, TABLE_WIDTH, UPDATED_HEIGHT, CONTROL_RADIUS);
+  ctx.roundRect(MARGIN, MARGIN, TABLE_WIDTH, UPDATED_HEIGHT, look.radius.control);
   ctx.fill();
 
   ctx.fillStyle = PALETTE.paper;
-  setType(ctx, UPDATED_TYPE);
+  setType(ctx, look.type.updated);
   ctx.fillText('UPDATED', MARGIN + CELL_PAD_X, middle);
   const afterWord = MARGIN + CELL_PAD_X + ctx.measureText('UPDATED').width + 20;
-  setType(ctx, UPDATED_NOTE_TYPE);
+  setType(ctx, look.type.updatedNote);
   ctx.fillText('This replaces the earlier schedule', afterWord, middle);
 }
 
-function drawRow(ctx: CanvasRenderingContext2D, layout: RowLayout) {
+function drawRow(ctx: CanvasRenderingContext2D, layout: RowLayout, look: Look) {
   const { row, top, height } = layout;
   const middle = top + height / 2;
 
@@ -269,9 +300,9 @@ function drawRow(ctx: CanvasRenderingContext2D, layout: RowLayout) {
   }
 
   ctx.fillStyle = PALETTE.ink;
-  setType(ctx, JOB_TYPE);
+  setType(ctx, look.type.job);
   drawLines(ctx, layout.jobLines, JOB_X + CELL_PAD_X, middle, JOB_LINE);
-  setType(ctx, TASK_TYPE);
+  setType(ctx, look.type.task);
   drawLines(ctx, layout.taskLines, TASKS_X + CELL_PAD_X, middle, TASK_LINE);
 
   const namesLeft = WHO_X + CELL_PAD_X;
@@ -293,12 +324,12 @@ function drawRow(ctx: CanvasRenderingContext2D, layout: RowLayout) {
     ctx.stroke();
 
     ctx.fillStyle = crewInk(box.color);
-    setType(ctx, NAME_TYPE);
+    setType(ctx, look.type.name);
     ctx.fillText(box.name, x + NAME_PAD_X, y + NAME_HEIGHT / 2 + 1);
 
     if (box.note) {
       ctx.fillStyle = PALETTE.alert;
-      setType(ctx, NOTE_TYPE);
+      setType(ctx, look.type.note);
       ctx.fillText(box.note, x + box.nameWidth + NOTE_GAP, y + NAME_HEIGHT / 2 + 1);
     }
   }

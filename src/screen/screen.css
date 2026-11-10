@@ -1,8 +1,9 @@
 /* The Scheduler's screen: the JOB / TASKS / WHO schedule he knows, on calm
-   white cards with large text. Type, spacing, corners, shadows and the buttons
-   come from the shared look (src/look.css); colors are the palette in
-   src/palette.ts, handed over as custom properties. Sizes are in rem off one
-   root size so the whole screen can be scaled in one place. */
+   white cards with large text. Type, spacing, corners, shadows, the page, the
+   buttons and the Crew Member colors come from the shared look (src/look.css);
+   colors are the palette in src/palette.ts, handed over as custom properties.
+   Sizes are in rem off one root size so the whole screen can be scaled in one
+   place. */
 
 @import '../look.css';
 
@@ -11,21 +12,6 @@
      than 1920 x 1080 the whole screen grows with it instead of leaving the
      same small schedule in a corner of a big monitor. */
   font-size: clamp(22px, min(1.146vw, 2.037vh), 48px);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--canvas);
-  color: var(--ink);
-  font-family: var(--font);
-  font-weight: var(--weight-body);
-  line-height: 1.3;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
 
 /* --- One screen ----------------------------------------------------------
@@ -94,8 +80,8 @@ body {
 }
 
 .move-hint-active {
-  border-color: var(--selected);
-  background: var(--selected);
+  border-color: var(--accent);
+  background: var(--accent);
   color: var(--paper);
   font-weight: var(--weight-strong);
 }
@@ -127,7 +113,7 @@ body {
 
 .move-hint-active .action:focus-visible {
   box-shadow:
-    0 0 0 2px var(--selected),
+    0 0 0 2px var(--accent),
     0 0 0 5px var(--paper);
 }
 
@@ -199,7 +185,7 @@ body {
 }
 
 .col-tasks {
-  width: 23%;
+  width: 27%;
 }
 
 .row {
@@ -213,7 +199,7 @@ body {
 .job {
   font-size: 1.2rem;
   font-weight: var(--weight-heading);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-name);
 }
 
 /* The Standing Rows: a quiet tint, and a firmer line where the Jobs end. */
@@ -263,7 +249,7 @@ body {
   font: inherit;
   font-size: 1.1rem;
   font-weight: var(--weight-strong);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-name);
   white-space: nowrap;
   color: var(--ink);
   cursor: pointer;
@@ -291,10 +277,7 @@ body {
 .name.name-selected {
   position: relative;
   z-index: 1;
-  box-shadow:
-    0 0 0 3px var(--paper),
-    0 0 0 8px var(--selected),
-    0 8px 18px 6px var(--shadow-strong);
+  box-shadow: var(--ring-selected), var(--elevation-lifted);
 }
 
 /* While moving, every Job, Standing Row and the Not Placed list is one big target. */
@@ -309,31 +292,6 @@ body {
 
 .moving .name:not(.name-selected):hover {
   box-shadow: inset 0 0 0 1px var(--name-border);
-}
-
-.color-grey {
-  background: var(--crew-grey);
-  color: var(--crew-grey-ink);
-}
-
-.color-blue {
-  background: var(--crew-blue);
-  color: var(--crew-blue-ink);
-}
-
-.color-orange {
-  background: var(--crew-orange);
-  color: var(--crew-orange-ink);
-}
-
-.color-yellow {
-  background: var(--crew-yellow);
-  color: var(--crew-yellow-ink);
-}
-
-.color-red {
-  background: var(--crew-red);
-  color: var(--crew-red-ink);
 }
 
 .note {
@@ -393,14 +351,30 @@ body {
 
 /* --- Typing Tasks -------------------------------------------------------- */
 
-/* The whole Tasks cell of a Job is the thing to click. */
+/* The whole Tasks cell of a Job is the thing to click: the button fills the
+   cell, side to side and top to bottom, but for a sliver all round. The cell
+   gives up most of its padding to it, and what is inside (the button, the
+   Tasks shown while a name is being moved, the field) makes that up, so the
+   text never shifts. */
+.schedule td.tasks {
+  --tasks-inset: var(--space-1);
+  height: 1px; /* a height to take a share of: lets the button be as tall as the row */
+  padding: var(--tasks-inset);
+}
+
+.tasks-open,
+.tasks-shown {
+  padding: calc(var(--space-2) - var(--tasks-inset)) calc(var(--space-4) - var(--tasks-inset));
+}
+
 .tasks-open {
-  display: block;
-  width: calc(100% + 2 * var(--space-2));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
   min-height: 2.2rem;
-  margin: 0 calc(-1 * var(--space-2));
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius-control);
   background: none;
   color: inherit;
@@ -409,12 +383,12 @@ body {
   cursor: text;
   transition:
     background-color var(--ease),
-    border-color var(--ease);
+    box-shadow var(--ease);
 }
 
 .tasks-open:hover {
-  border-color: var(--line-strong);
   background: var(--wash);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
 .tasks-open:focus-visible {
@@ -427,8 +401,11 @@ body {
   font-size: 1rem;
 }
 
+/* The field reaches a little past the text on each side, so what is typed
+   stays where the Tasks were. */
 .tasks-editing {
-  margin: 0 calc(-1 * var(--space-2));
+  margin: calc(var(--space-2) - var(--tasks-inset))
+    calc(var(--space-4) - var(--tasks-inset) - var(--space-2));
 }
 
 .tasks-input {
