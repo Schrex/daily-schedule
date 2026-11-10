@@ -47,6 +47,9 @@ interface ScheduleScreenProps {
   footer?: ReactNode;
 }
 
+/** How many are on a Job or Standing Row, in plain words. */
+const headcount = (count: number): string => (count === 1 ? '1 person' : `${count} people`);
+
 /**
  * The Scheduler's screen. Thin: it asks the schedule rules for the view, draws
  * it, and reports clicks. It applies no rule (ordering, Not Placed, ...) itself.
@@ -72,8 +75,13 @@ interface ScheduleScreenProps {
  * Every move is shown: a name that is somewhere else after a redraw travels
  * there from where it was (`MoveNames`), whatever moved it.
  *
+ * Each Job and Standing Row is a block of its own: its name as the heading,
+ * its Tasks under it, then its Crew Members one to a line, all the same
+ * width, so a name is found by running an eye down one column, as on the
+ * sheet the crew knows. A Foreman's name carries a star.
+ *
  * It is one screen: the toolbar (date, Undo, Change date and the hint) and the
- * Send bar stay put, and only the table scrolls, beside the Not Placed list.
+ * Send bar stay put, and only the blocks scroll, beside the Not Placed list.
  */
 export function ScheduleScreen({
   roster,
@@ -134,10 +142,11 @@ export function ScheduleScreen({
   const name = (crewMember: CrewMember) => (
     <button
       type="button"
-      className={`name color-${crewMember.color}${
+      className={`name color-${crewMember.color}${crewMember.foreman ? ' name-foreman' : ''}${
         crewMember.id === selected?.id ? ' name-selected' : ''
       }`}
       aria-pressed={crewMember.id === selected?.id}
+      aria-description={crewMember.foreman ? 'Foreman' : undefined}
       onClick={(event) => onNameClick(crewMember, event)}
       {...drag.nameProps(crewMember.id)}
       onDoubleClick={() => onMoveCrewMember(crewMember.id, NOT_PLACED)}
@@ -185,50 +194,43 @@ export function ScheduleScreen({
 
       <div className="layout">
         <div className="schedule-scroll" data-motion-area>
-          <table className="schedule">
-            <thead>
-              <tr>
-                <th className="col-job">JOB</th>
-                <th className="col-tasks">TASKS</th>
-                <th className="col-who">WHO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.rows.map(({ destination, ...row }) => (
-                <tr
-                  key={row.key}
-                  className={`row row-${destination.kind} destination`}
-                  data-row={row.key}
-                  onClick={moveSelectedTo(destination)}
-                  {...drag.dropProps(row.key)}
-                >
-                  <th scope="row" className="job">
-                    {row.label}
-                  </th>
-                  <td className="tasks">
-                    {destination.kind === 'job' && (
-                      <TasksCell
-                        jobLabel={row.label}
-                        tasks={row.tasks}
-                        canEdit={!moving}
-                        onCommit={(text) => onSetTasks(destination.jobId, text)}
-                      />
-                    )}
-                  </td>
-                  <td className="who">
-                    <ul className="names">
-                      {row.who.map(({ crewMember, note }) => (
-                        <li key={crewMember.id}>
-                          {name(crewMember)}
-                          {note && <span className="note">{note}</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="board">
+            {shown.rows.map(({ destination, ...row }) => (
+              <section
+                key={row.key}
+                className={`block block-${destination.kind} destination`}
+                aria-label={row.label}
+                data-row={row.key}
+                onClick={moveSelectedTo(destination)}
+                {...drag.dropProps(row.key)}
+              >
+                <header className="block-head">
+                  <h2 className="job">{row.label}</h2>
+                  {row.who.length > 0 && <span className="count">{headcount(row.who.length)}</span>}
+                </header>
+                {destination.kind === 'job' && (
+                  <TasksCell
+                    jobLabel={row.label}
+                    tasks={row.tasks}
+                    canEdit={!moving}
+                    onCommit={(text) => onSetTasks(destination.jobId, text)}
+                  />
+                )}
+                {row.who.length === 0 ? (
+                  <p className="block-empty">Nobody here yet</p>
+                ) : (
+                  <ul className="names">
+                    {row.who.map(({ crewMember, note }) => (
+                      <li key={crewMember.id} className={note ? 'noted' : undefined}>
+                        {name(crewMember)}
+                        {note && <span className="note">{note}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            ))}
+          </div>
         </div>
 
         <aside
@@ -242,7 +244,7 @@ export function ScheduleScreen({
           {shown.notPlaced.length === 0 ? (
             <p className="not-placed-empty">Everyone is placed.</p>
           ) : (
-            <ul className="names names-stacked">
+            <ul className="names">
               {shown.notPlaced.map((crewMember) => (
                 <li key={crewMember.id}>{name(crewMember)}</li>
               ))}

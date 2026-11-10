@@ -70,15 +70,8 @@ body[data-name-dragging] * {
 }
 
 /* The Job, Standing Row or Not Placed list the name would land on if let go
-   now: filled, and ruled off top and bottom, so it cannot be missed. */
-tr[data-drop][data-drop-over] > * {
-  background: var(--target);
-  box-shadow:
-    inset 0 4px 0 var(--accent),
-    inset 0 -4px 0 var(--accent);
-}
-
-[data-drop][data-drop-over]:not(tr) {
+   now: filled, with a heavy edge all round, so it cannot be missed. */
+[data-drop][data-drop-over] {
   background: var(--target);
   box-shadow: inset 0 0 0 4px var(--accent);
 }

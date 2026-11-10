@@ -26,7 +26,7 @@
 .settings h1 {
   margin: 0 0 var(--space-1);
   font-size: 2.1rem;
-  font-weight: var(--weight-heading);
+  font-weight: var(--weight-strong);
   letter-spacing: var(--tracking-heading);
   line-height: 1.15;
 }
@@ -51,7 +51,7 @@
 .settings h2 {
   margin: 0 0 var(--space-2);
   font-size: 1.5rem;
-  font-weight: var(--weight-heading);
+  font-weight: var(--weight-strong);
   letter-spacing: var(--tracking-heading);
   line-height: 1.2;
 }
@@ -199,7 +199,7 @@
   box-shadow: 0 0 0 4px var(--accent-wash);
 }
 
-/* The five colors, each a large pill wearing its own color. */
+/* The five colors, each a large swatch wearing its own color. */
 .colors {
   display: flex;
   flex-wrap: wrap;
