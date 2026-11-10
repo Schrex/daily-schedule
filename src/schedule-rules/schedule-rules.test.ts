@@ -26,6 +26,7 @@ import {
   addCrewMember,
   addJob,
   changeCrewMember,
+  changeJob,
   moveJob,
   removeCrewMember,
   removeJob,
@@ -981,6 +982,35 @@ describe('adding a Job to the roster', () => {
 
   it('changes nothing when the name is blank', () => {
     expect(addJob(roster, { name: ' ', jobNumber: 'J300' })).toBe(roster);
+  });
+});
+
+describe('changing a Job', () => {
+  it('changes its name and job number and keeps everyone placed on it', () => {
+    const changed = changeJob(roster, 'bridge', { name: ' Footbridge ', jobNumber: ' J200 ' });
+
+    expect(jobLabels(changed)).toEqual(['J100 Tower', 'J200 Footbridge']);
+    const daily = schedule({ placements: [placement('ann', onJob('bridge'), 1)] });
+    const row = scheduleView(changed, daily).rows.find((each) => each.label === 'J200 Footbridge');
+    expect(row?.who.map((placed) => placed.crewMember.id)).toEqual(['ann']);
+  });
+
+  it('takes the job number off when it is blank', () => {
+    const changed = changeJob(roster, 'tower', { jobNumber: '  ' });
+
+    expect(jobLabels(changed)).toEqual(['Tower', 'Bridge']);
+    expect(changed.jobs[0]).toEqual({ id: 'tower', name: 'Tower' });
+  });
+
+  it('changes only what is given', () => {
+    expect(jobLabels(changeJob(roster, 'tower', { name: 'Spire' }))).toEqual([
+      'J100 Spire',
+      'Bridge',
+    ]);
+  });
+
+  it('changes nothing when the name is blank', () => {
+    expect(changeJob(roster, 'tower', { name: ' ' })).toBe(roster);
   });
 });
 

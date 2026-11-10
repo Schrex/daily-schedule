@@ -1,27 +1,31 @@
-/* The settings page, used by the office: an ordinary form page at ordinary
-   size, in the look of the Scheduler's screen. Loaded after the shared look
-   (src/look.css), which supplies the page itself (canvas, type), the buttons
-   and the Crew Member colors (.color-*). Colors are the palette in
-   src/palette.ts. */
+/* The settings page: two plain lists (Crew Members, Jobs) in the same large
+   type as the Scheduler's screen, and a panel for the one thing being changed.
+   It shares the look (src/look.css): type, spacing, corners, the buttons and
+   the Crew Member colors. Here only what is its own. Lengths are in rem, off
+   the root size below; colors come from the palette (src/palette.ts). */
 
 :root {
-  font-size: 17px;
+  /* The Scheduler's own size: never below 22px, growing with the window. */
+  font-size: clamp(22px, min(1.146vw, 2.037vh), 48px);
 }
 
 .settings {
-  max-width: 58rem;
+  max-width: 52rem;
   margin: 0 auto;
-  padding: var(--space-6) var(--space-5) 4rem;
+  padding: var(--space-5) var(--space-5) 4rem;
 }
 
 /* The way back to the Scheduler's screen. */
 .settings-back {
-  margin-bottom: var(--space-4);
+  min-height: 2.7rem;
+  margin-bottom: var(--space-5);
+  padding: var(--space-1) var(--space-5);
+  font-size: 1.1rem;
 }
 
 .settings h1 {
   margin: 0 0 var(--space-1);
-  font-size: 1.9rem;
+  font-size: 2.1rem;
   font-weight: var(--weight-heading);
   letter-spacing: var(--tracking-heading);
   line-height: 1.15;
@@ -37,7 +41,7 @@
 
 .settings section {
   margin-top: var(--space-5);
-  padding: var(--space-4) var(--space-5) var(--space-5);
+  padding: var(--space-5);
   border: var(--hairline);
   border-radius: var(--radius-card);
   background: var(--paper);
@@ -45,109 +49,191 @@
 }
 
 .settings h2 {
-  margin: 0 0 var(--space-1);
-  font-size: 1.35rem;
+  margin: 0 0 var(--space-2);
+  font-size: 1.5rem;
   font-weight: var(--weight-heading);
   letter-spacing: var(--tracking-heading);
+  line-height: 1.2;
 }
 
-.settings h3 {
-  flex: 0 0 100%;
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: var(--weight-heading);
+.settings-names,
+.settings-jobs {
+  margin: var(--space-4) 0 var(--space-5);
+  padding: 0;
+  list-style: none;
 }
 
-.settings-table {
-  width: 100%;
-  margin-top: var(--space-3);
-  border-collapse: collapse;
+/* Crew Members: their names in their colors, as on the Daily Schedule. */
+.settings-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 
-.settings-table th {
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--line-strong);
-  text-align: left;
-  font-size: 0.8rem;
+.settings-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.5rem;
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  font: inherit;
+  font-weight: var(--weight-strong);
+  letter-spacing: var(--tracking-name);
+  cursor: pointer;
+  transition: box-shadow var(--ease);
+}
+
+.settings-name:hover {
+  box-shadow: var(--elevation-lifted);
+}
+
+.settings-foreman {
+  font-size: 0.7rem;
   font-weight: var(--weight-strong);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
+  opacity: 0.75;
+}
+
+/* Jobs: one full-width row each, in the order they are scheduled. */
+.settings-jobs {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settings-job {
+  display: block;
+  width: 100%;
+  min-height: 2.9rem;
+  padding: var(--space-2) var(--space-4);
+  border: var(--hairline);
+  border-radius: var(--radius-control);
+  background: var(--canvas);
+  color: var(--ink);
+  font: inherit;
+  font-weight: var(--weight-strong);
+  letter-spacing: var(--tracking-name);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--ease),
+    border-color var(--ease);
+}
+
+.settings-job:hover {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.settings-name:focus-visible,
+.settings-job:focus-visible,
+.settings-remove-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.settings-add {
+  min-height: 2.9rem;
+  padding: var(--space-1) var(--space-5);
+  font-size: 1.1rem;
+}
+
+/* --- The panel: the one Crew Member or Job being changed ------------------ */
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  overflow-y: auto;
+  background: var(--backdrop);
+}
+
+.settings-panel {
+  display: grid;
+  gap: var(--space-5);
+  width: min(32rem, 100%);
+  padding: var(--space-5) var(--space-6) var(--space-5);
+  border-radius: calc(var(--radius-card) * 1.3);
+  background: var(--paper);
+  box-shadow: var(--elevation-3);
+}
+
+.settings-panel h2 {
+  margin: 0;
+  font-size: 1.7rem;
+}
+
+.settings-field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settings-label {
   color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: var(--weight-strong);
 }
 
-.settings-table td {
-  padding: var(--space-2) var(--space-3);
-  border-bottom: var(--hairline);
-  vertical-align: middle;
-}
-
-/* The table keeps to the card's own edge on both sides. */
-.settings-table th:first-child,
-.settings-table td:first-child {
-  padding-left: 0;
-}
-
-.settings-table th:last-child,
-.settings-table td:last-child {
-  padding-right: 0;
-}
-
-.settings input[type='text'] {
-  min-height: 2.2rem;
-  padding: var(--space-1) var(--space-3);
+.settings-field input[type='text'] {
+  width: 100%;
+  min-height: 3rem;
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   outline: none;
   background: var(--paper);
   color: var(--ink);
   font: inherit;
-  transition:
-    border-color var(--ease),
-    box-shadow var(--ease);
-}
-
-.settings input[type='text']:hover {
-  border-color: var(--muted);
-}
-
-.settings input[type='text']:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-wash);
-}
-
-.name-field {
-  width: 14rem;
+  font-size: 1.2rem;
   font-weight: var(--weight-strong);
 }
 
-.job-number-field {
-  width: 8rem;
+.settings-field input[type='text']:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-wash);
 }
 
-.job-label {
-  font-weight: var(--weight-heading);
-  letter-spacing: var(--tracking-name);
-}
-
-/* --- Color swatches: the name chips of the Daily Schedule ----------------- */
-
+/* The five colors, each a large pill wearing its own color. */
 .colors {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
 .swatch {
-  padding: var(--space-1) var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-chip);
-  box-shadow: inset 0 0 0 1px var(--name-border);
-  font-size: 0.9rem;
   font-weight: var(--weight-strong);
-  letter-spacing: var(--tracking-name);
+  text-transform: capitalize;
   cursor: pointer;
   opacity: 0.5;
   transition:
     opacity var(--ease),
     box-shadow var(--ease);
+}
+
+.swatch:hover {
+  opacity: 0.85;
+}
+
+.swatch:has(input:checked) {
+  opacity: 1;
+  box-shadow: var(--ring-selected);
+}
+
+.swatch:has(input:focus-visible) {
+  opacity: 1;
+  box-shadow: var(--focus-ring);
 }
 
 .swatch input {
@@ -156,84 +242,80 @@
   pointer-events: none;
 }
 
-.swatch:hover {
-  opacity: 0.75;
-}
-
-.swatch:has(input:checked) {
-  opacity: 1;
-  box-shadow:
-    inset 0 0 0 1px var(--name-border),
-    0 0 0 2px var(--paper),
-    0 0 0 4px var(--ink);
-}
-
-.swatch:has(input:focus-visible) {
-  opacity: 1;
-  box-shadow: var(--focus-ring);
-}
-
-.foreman {
-  display: inline-flex;
+.settings-check {
+  display: flex;
   align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
+  gap: var(--space-3);
+  font-weight: var(--weight-strong);
+  cursor: pointer;
 }
 
-.foreman input {
-  width: 1.1rem;
-  height: 1.1rem;
+.settings-check input {
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 1.5rem;
   margin: 0;
   accent-color: var(--accent);
+  cursor: pointer;
 }
 
-/* --- Buttons: the shared buttons, at this page's size --------------------- */
-
-.settings .button {
-  min-height: 2.2rem;
-  padding: var(--space-1) var(--space-3);
-  font-size: 0.95rem;
+.settings-check-hint {
+  color: var(--muted);
+  font-weight: var(--weight-body);
 }
 
-.settings .button.remove:not(:disabled) {
-  border-color: var(--alert-line);
+.settings-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.settings-buttons .button {
+  min-height: 2.9rem;
+  padding: var(--space-1) var(--space-5);
+  font-size: 1.1rem;
+}
+
+.settings-buttons .button-primary {
+  min-width: 8rem;
+}
+
+/* Removing sits apart, at the foot of the panel, and asks before it acts. */
+.settings-remove {
+  padding-top: var(--space-4);
+  border-top: var(--hairline);
+}
+
+.settings-remove-link {
+  padding: var(--space-1) 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
   color: var(--alert);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: var(--weight-strong);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
 }
 
-.settings .button.remove:hover:not(:disabled) {
-  border-color: var(--alert);
+.settings-remove-asking {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--alert-line);
+  border-radius: var(--radius-control);
   background: var(--alert-wash);
 }
 
-.actions {
-  text-align: right;
-  white-space: nowrap;
+.settings-remove-asking p {
+  margin: 0;
+  font-weight: var(--weight-strong);
 }
 
-.actions .button + .button {
-  margin-left: var(--space-2);
-}
-
-/* --- Add forms ----------------------------------------------------------- */
-
-.add {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3) var(--space-5);
-  margin-top: var(--space-5);
-  padding: var(--space-4);
-  border: var(--hairline);
-  border-radius: var(--radius-control);
-  background: var(--canvas);
-}
-
-.add label:not(.foreman):not(.swatch) {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.add .button {
-  margin-left: auto;
+.settings-remove-yes {
+  border-color: var(--alert);
+  background: var(--alert);
+  color: var(--paper);
 }

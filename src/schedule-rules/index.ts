@@ -574,6 +574,25 @@ export function addJob(roster: Roster, details: JobDetails): Roster {
 }
 
 /**
+ * Changes a Job's name or job number; whatever is not given stays as it is. A
+ * blank job number takes the number off. Its id, and so everyone placed on it
+ * and its Tasks, are untouched. A blank name changes nothing.
+ */
+export function changeJob(roster: Roster, jobId: string, changes: Partial<JobDetails>): Roster {
+  const name = changes.name?.trim();
+  if (name === '') return roster;
+  return {
+    ...roster,
+    jobs: roster.jobs.map((job) => {
+      if (job.id !== jobId) return job;
+      const jobNumber = changes.jobNumber === undefined ? job.jobNumber : changes.jobNumber.trim();
+      const renamed = { id: job.id, name: name ?? job.name };
+      return jobNumber ? { ...renamed, jobNumber } : renamed;
+    }),
+  };
+}
+
+/**
  * Removes a Job from the roster. It no longer appears on the Daily Schedule
  * being edited or on later ones, and anyone placed on it is Not Placed; saved
  * Daily Schedules are not rewritten.
