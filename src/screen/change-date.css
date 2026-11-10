@@ -1,26 +1,6 @@
-/* "Change date": one large plain button beside the date, and a simple panel
-   with one large date box. Sizes are in rem, off the root size in screen.css. */
-
-.change-date-button {
-  position: absolute;
-  top: 0.8rem;
-  right: 1.5rem;
-  min-height: 2.9rem;
-  padding: 0.3rem 1.2rem;
-  border: 2px solid #1f1f1f;
-  border-radius: 0.3rem;
-  background: #ffffff;
-  color: #111111;
-  font: inherit;
-  font-size: 1.3rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.change-date-button:hover,
-.change-date-button:focus-visible {
-  background: #eef1f5;
-}
+/* The panel "Change date" opens: one large date box and two large buttons.
+   The button itself is a toolbar button (screen.css). Sizes are in rem, off
+   the root size in screen.css; colors come from the palette (src/palette.ts). */
 
 .change-date-backdrop {
   position: fixed;
@@ -30,15 +10,15 @@
   align-items: flex-start;
   justify-content: center;
   padding-top: 4rem;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--backdrop);
 }
 
 .change-date-panel {
   width: min(32rem, 92vw);
   padding: 1.4rem 1.6rem 1.6rem;
-  border: 3px solid #1f1f1f;
+  border: 3px solid var(--grid);
   border-radius: 0.4rem;
-  background: #ffffff;
+  background: var(--paper);
 }
 
 .change-date-panel h2 {
@@ -51,7 +31,7 @@
   width: 100%;
   min-height: 4rem;
   padding: 0.4rem 0.8rem;
-  border: 2px solid #1f1f1f;
+  border: 2px solid var(--grid);
   border-radius: 0.3rem;
   font: inherit;
   font-size: 2rem;
@@ -80,7 +60,7 @@
 .change-date-actions button {
   flex: 1;
   min-height: 3.4rem;
-  border: 2px solid #1f1f1f;
+  border: 2px solid var(--grid);
   border-radius: 0.3rem;
   font: inherit;
   font-size: 1.4rem;
@@ -89,17 +69,17 @@
 }
 
 .change-date-open {
-  background: #1f3864;
-  color: #ffffff;
+  background: var(--header);
+  color: var(--paper);
 }
 
 .change-date-open:disabled {
-  background: #9aa3b2;
-  border-color: #9aa3b2;
+  background: var(--disabled);
+  border-color: var(--disabled);
   cursor: default;
 }
 
 .change-date-cancel {
-  background: #ffffff;
-  color: #111111;
+  background: var(--paper);
+  color: var(--ink);
 }

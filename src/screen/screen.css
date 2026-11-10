@@ -1,21 +1,9 @@
 /* The look of the existing Excel sheet: a ruled grid, colored name cells, large text.
-   Sizes are in rem off one root size so the whole screen can be scaled in one place. */
+   Sizes are in rem off one root size so the whole screen can be scaled in one place.
+   Colors are the palette in src/palette.ts, handed over as custom properties. */
 
 :root {
   font-size: 22px; /* the one knob for "bigger / smaller" */
-  --grid: #1f1f1f;
-  --header-bg: #1f3864;
-  --header-fg: #ffffff;
-  --standing-bg: #f1f1f1;
-  --selected: #7a00cc; /* the name being moved: a color no Crew Member has */
-  --target: #e9d5ff; /* the block the pointer would place them in */
-
-  /* Crew Member colors (the fixed palette) */
-  --grey: #bfbfbf;
-  --blue: #9dc3e6;
-  --orange: #f4b183;
-  --yellow: #ffe066;
-  --red: #e03131;
 }
 
 * {
@@ -24,41 +12,99 @@
 
 body {
   margin: 0;
-  background: #ffffff;
-  color: #111111;
+  background: var(--paper);
+  color: var(--ink);
   font-family: Calibri, 'Segoe UI', Arial, Helvetica, sans-serif;
   line-height: 1.25;
 }
 
+/* --- One screen ----------------------------------------------------------
+   The screen is exactly the window: the toolbar on top, the Send bar at the
+   bottom, and between them the table (which scrolls by itself when it is too
+   long) beside the Not Placed list. Nothing he needs ever scrolls away. */
+
 .screen {
-  padding: 0.8rem 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100vh;
+  padding: 0.5rem 1.2rem 0;
+}
+
+/* --- The toolbar: the date, Undo, Change date, and under them the hint ---- */
+
+.toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
 }
 
 .date-heading {
-  margin: 0 0 0.5rem;
-  font-size: 2.4rem;
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 2.1rem;
   font-weight: 700;
 }
 
-/* --- The move hint: always there, so nothing jumps when a name is selected - */
+.toolbar-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.7rem;
+  padding: 0.2rem 1.2rem;
+  border: 3px solid var(--ink);
+  border-radius: 0.4rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.35rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
 
+.toolbar-button-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.toolbar-button:hover:not(:disabled),
+.toolbar-button:focus-visible {
+  background: var(--highlight);
+}
+
+.toolbar-button:disabled {
+  border-color: var(--disabled);
+  background: var(--standing);
+  color: var(--disabled);
+  cursor: default;
+}
+
+/* The hint is always there, a full line of the toolbar, and keeps one height
+   whether it holds the hint, "Add note" or the Note field, so the schedule
+   below never jumps. */
 .move-hint {
-  margin: 0 0 0.8rem;
-  padding: 0.5rem 0.9rem;
-  min-height: 3.2rem;
-  line-height: 2.2rem;
-  background: #eef1f5;
-  font-size: 1.2rem;
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 3rem;
+  padding: 0.2rem 0.9rem;
+  background: var(--wash);
+  font-size: 1.15rem;
 }
 
 .move-hint-active {
   background: var(--selected);
-  color: #ffffff;
+  color: var(--paper);
   font-weight: 700;
 }
 
 .move-hint-active strong {
-  font-size: 1.45rem;
+  font-size: 1.4rem;
   text-decoration: underline;
 }
 
@@ -66,33 +112,65 @@ body {
   font-weight: 400;
 }
 
+.move-hint-note {
+  background: var(--alert-wash);
+  outline: 3px solid var(--alert);
+  outline-offset: -3px;
+}
+
+/* --- The table and the Not Placed list, side by side ----------------------- */
+
 .layout {
+  flex: 1 1 auto;
+  min-height: 0; /* lets the table scroll inside instead of stretching the screen */
   display: flex;
   align-items: flex-start;
-  gap: 1.5rem;
+  gap: 1.2rem;
+}
+
+.schedule-scroll {
+  flex: 1 1 auto;
+  max-height: 100%;
+  overflow-y: auto;
+  border: 3px solid var(--grid);
 }
 
 /* --- The schedule grid --------------------------------------------------- */
 
+/* Separate borders (each cell rules its right and bottom edge) so the header
+   keeps its lines while it stays put above the scrolling rows. */
 .schedule {
-  flex: 1 1 auto;
-  border-collapse: collapse;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: fixed;
-  border: 3px solid var(--grid);
 }
 
 .schedule th,
 .schedule td {
-  border: 2px solid var(--grid);
-  padding: 0.5rem 0.7rem;
+  border: 0 solid var(--grid);
+  border-width: 0 2px 2px 0;
+  padding: 0.3rem 0.6rem;
   vertical-align: middle;
   text-align: left;
 }
 
+.schedule tr > :last-child {
+  border-right-width: 0;
+}
+
+.schedule tbody tr:last-child > * {
+  border-bottom-width: 0;
+}
+
 .schedule thead th {
-  background: var(--header-bg);
-  color: var(--header-fg);
-  font-size: 1.2rem;
+  position: sticky;
+  top: 0;
+  z-index: 2; /* above the ring of a selected name scrolling under it */
+  padding-block: 0.15rem;
+  background: var(--header);
+  color: var(--paper);
+  font-size: 1.1rem;
   letter-spacing: 0.08em;
 }
 
@@ -105,22 +183,22 @@ body {
 }
 
 .row {
-  height: 3.6rem;
+  height: 3rem;
 }
 
 .job {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 700;
 }
 
 .row-standing-row .job,
 .row-standing-row .tasks,
 .row-standing-row .who {
-  background: var(--standing-bg);
+  background: var(--standing);
 }
 
 .task {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
 }
 
 /* --- Names --------------------------------------------------------------- */
@@ -128,7 +206,7 @@ body {
 .names {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem 0.8rem;
+  gap: 0.35rem 0.7rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -147,30 +225,30 @@ body {
 
 .name {
   display: inline-block;
-  min-height: 2.4rem;
-  padding: 0.3rem 0.8rem;
-  border: 1px solid rgba(0, 0, 0, 0.45);
+  min-height: 2.1rem;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--name-border);
   border-radius: 0;
   font: inherit;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 600;
   white-space: nowrap;
-  color: #111111;
+  color: var(--ink);
   cursor: pointer;
 }
 
 .name:hover {
-  box-shadow: 0 0 0 3px #000000;
+  box-shadow: 0 0 0 3px var(--ink);
 }
 
 /* The Crew Member being moved: must be impossible to miss. */
 .name.name-selected {
   position: relative;
   z-index: 1;
-  border-color: #ffffff;
+  border-color: var(--paper);
   box-shadow:
-    0 0 0 3px #ffffff,
-    0 0 0 11px var(--selected);
+    0 0 0 3px var(--paper),
+    0 0 0 9px var(--selected);
   font-weight: 800;
   text-decoration: underline;
 }
@@ -190,65 +268,71 @@ body {
 }
 
 .color-grey {
-  background: var(--grey);
+  background: var(--crew-grey);
+  color: var(--crew-grey-ink);
 }
 
 .color-blue {
-  background: var(--blue);
+  background: var(--crew-blue);
+  color: var(--crew-blue-ink);
 }
 
 .color-orange {
-  background: var(--orange);
+  background: var(--crew-orange);
+  color: var(--crew-orange-ink);
 }
 
 .color-yellow {
-  background: var(--yellow);
+  background: var(--crew-yellow);
+  color: var(--crew-yellow-ink);
 }
 
 .color-red {
-  background: var(--red);
-  color: #ffffff;
+  background: var(--crew-red);
+  color: var(--crew-red-ink);
 }
 
 .note {
-  color: #d00000;
-  font-size: 1.1rem;
+  color: var(--alert);
+  font-size: 1.05rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
-/* --- Not Placed ---------------------------------------------------------- */
+/* --- Not Placed: always in sight; a long list scrolls inside its own box --- */
 
 .not-placed {
-  flex: 0 0 15rem;
-  border: 3px dashed #c00000;
-  background: #fff5f5;
-  padding: 0.7rem 0.9rem 1rem;
+  flex: 0 0 13.5rem;
+  max-height: 100%;
+  overflow-y: auto;
+  border: 3px dashed var(--alert);
+  background: var(--alert-wash);
+  padding: 0.5rem 0.8rem 0.8rem;
 }
 
 .not-placed h2 {
-  margin: 0 0 0.7rem;
-  font-size: 1.3rem;
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
   letter-spacing: 0.06em;
-  color: #c00000;
+  color: var(--alert);
 }
 
 .not-placed-empty {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
 }
 
 /* --- Buttons that do something other than move a name -------------------- */
 
 .action {
-  min-height: 2.4rem;
-  padding: 0.3rem 1rem;
-  border: 2px solid #111111;
+  min-height: 2.3rem;
+  padding: 0.2rem 1rem;
+  border: 2px solid var(--ink);
   border-radius: 0.3rem;
-  background: #ffffff;
-  color: #111111;
+  background: var(--paper);
+  color: var(--ink);
   font: inherit;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
@@ -256,18 +340,18 @@ body {
 
 .action:hover,
 .action:focus-visible {
-  background: #fff3bf;
+  background: var(--highlight);
 }
 
 .action-main {
-  background: #1f3864;
-  border-color: #1f3864;
-  color: #ffffff;
+  background: var(--header);
+  border-color: var(--header);
+  color: var(--paper);
 }
 
 .action-main:hover,
 .action-main:focus-visible {
-  background: #2f5597;
+  background: var(--header-hover);
 }
 
 /* --- Typing Tasks -------------------------------------------------------- */
@@ -276,8 +360,8 @@ body {
 .tasks-open {
   display: block;
   width: 100%;
-  min-height: 2.6rem;
-  padding: 0.2rem 0.3rem;
+  min-height: 2.2rem;
+  padding: 0.1rem 0.3rem;
   border: 2px dashed transparent;
   background: none;
   color: inherit;
@@ -288,13 +372,13 @@ body {
 
 .tasks-open:hover,
 .tasks-open:focus-visible {
-  border-color: #1f3864;
-  background: #eef4ff;
+  border-color: var(--header);
+  background: var(--wash);
 }
 
 .tasks-empty {
-  color: #555555;
-  font-size: 1.05rem;
+  color: var(--muted);
+  font-size: 1rem;
   font-style: italic;
 }
 
@@ -302,11 +386,11 @@ body {
   display: block;
   width: 100%;
   padding: 0.3rem 0.4rem;
-  border: 3px solid #1f3864;
-  background: #fffbe6;
-  color: #111111;
+  border: 3px solid var(--header);
+  background: var(--highlight);
+  color: var(--ink);
   font: inherit;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   line-height: 1.35;
   resize: vertical;
 }
@@ -322,22 +406,6 @@ body {
 
 /* --- Typing a Note ------------------------------------------------------- */
 
-/* The bar keeps one height whether it holds the hint, "Add note" or the Note field,
-   so the schedule below never jumps. */
-.move-hint {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  min-height: 3.4rem;
-  padding-block: 0.3rem;
-}
-
-.move-hint-note {
-  background: #fff5f5;
-  outline: 3px solid #d00000;
-  outline-offset: -3px;
-}
-
 .note-editor {
   display: flex;
   flex-wrap: wrap;
@@ -350,22 +418,22 @@ body {
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
 }
 
 .note-input {
   width: 16rem;
-  min-height: 2.4rem;
+  min-height: 2.3rem;
   padding: 0.2rem 0.5rem;
-  border: 3px solid #d00000;
-  background: #ffffff;
-  color: #d00000;
+  border: 3px solid var(--alert);
+  background: var(--paper);
+  color: var(--alert);
   font: inherit;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
 }
 
 .note-input::placeholder {
-  color: #777777;
+  color: var(--muted);
   font-weight: 400;
 }

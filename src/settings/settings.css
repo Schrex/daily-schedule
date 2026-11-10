@@ -1,5 +1,6 @@
 /* The settings page, used by the office: an ordinary form page at ordinary size.
-   Loaded after screen.css, which supplies the Crew Member colors (.color-*). */
+   Loaded after screen.css, which supplies the Crew Member colors (.color-*).
+   Colors are the palette in src/palette.ts. */
 
 :root {
   font-size: 17px;
@@ -19,7 +20,7 @@
 .settings h2 {
   margin: 2.2rem 0 0.6rem;
   padding-bottom: 0.3rem;
-  border-bottom: 3px solid var(--header-bg);
+  border-bottom: 3px solid var(--header);
   font-size: 1.4rem;
 }
 
@@ -32,7 +33,7 @@
 .settings-intro,
 .settings-hint {
   margin: 0 0 0.8rem;
-  color: #444444;
+  color: var(--muted);
 }
 
 .settings-table {
@@ -46,18 +47,18 @@
   font-size: 0.85rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #555555;
+  color: var(--muted);
 }
 
 .settings-table td {
   padding: 0.4rem 0.6rem;
-  border-top: 1px solid #d0d0d0;
+  border-top: 1px solid var(--rule);
   vertical-align: middle;
 }
 
 .settings input[type='text'] {
   padding: 0.35rem 0.5rem;
-  border: 1px solid #888888;
+  border: 1px solid var(--muted);
   font: inherit;
 }
 
@@ -82,7 +83,7 @@
 
 .swatch {
   padding: 0.25rem 0.55rem;
-  border: 1px solid rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--name-border);
   font-size: 0.9rem;
   cursor: pointer;
   opacity: 0.45;
@@ -97,7 +98,7 @@
 .swatch:has(input:checked) {
   opacity: 1;
   font-weight: 700;
-  box-shadow: 0 0 0 3px #111111;
+  box-shadow: 0 0 0 3px var(--ink);
 }
 
 .swatch:has(input:focus-visible) {
@@ -121,8 +122,8 @@
 
 .settings button {
   padding: 0.35rem 0.8rem;
-  border: 1px solid #555555;
-  background: #f1f1f1;
+  border: 1px solid var(--muted);
+  background: var(--standing);
   font: inherit;
   cursor: pointer;
 }
@@ -133,15 +134,15 @@
 }
 
 .settings button.remove {
-  border-color: #c00000;
-  background: #ffffff;
-  color: #c00000;
+  border-color: var(--alert);
+  background: var(--paper);
+  color: var(--alert);
 }
 
 .settings button[type='submit'] {
-  border-color: var(--header-bg);
-  background: var(--header-bg);
-  color: #ffffff;
+  border-color: var(--header);
+  background: var(--header);
+  color: var(--paper);
   font-weight: 700;
 }
 
@@ -163,7 +164,7 @@
   gap: 0.8rem 1.2rem;
   margin-top: 1rem;
   padding: 0.9rem 1rem;
-  background: #eef1f5;
+  background: var(--wash);
 }
 
 .add label:not(.foreman):not(.swatch) {

@@ -1,3 +1,4 @@
+import { CREW_COLORS, PALETTE, crewInk } from '../palette';
 import { fullDate, type Color, type CrewView, type ScheduleRow } from '../schedule-rules';
 
 /**
@@ -31,7 +32,7 @@ export function renderCrewPicture(view: CrewView): Promise<Blob> {
   });
 }
 
-// --- The look: keep in step with screen.css ---------------------------------
+// --- The look: colors from the palette, sizes its own ------------------------
 
 const WIDTH = 1000;
 const SHARPNESS = 2;
@@ -46,20 +47,6 @@ const JOB_FONT = font(700, 30);
 const TASK_FONT = font(400, 27);
 const NAME_FONT = font(600, 28);
 const NOTE_FONT = font(700, 27);
-
-const INK = '#111111';
-const GRID = '#1f1f1f';
-const HEADER_BG = '#1f3864';
-const STANDING_BG = '#f1f1f1';
-const NOTE_RED = '#d00000';
-const NAME_BG: Record<Color, string> = {
-  grey: '#bfbfbf',
-  blue: '#9dc3e6',
-  orange: '#f4b183',
-  yellow: '#ffe066',
-  red: '#e03131',
-};
-const nameInk = (color: Color) => (color === 'red' ? '#ffffff' : INK);
 
 const UPDATED_HEIGHT = 64;
 const DATE_HEIGHT = 84;
@@ -179,14 +166,14 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, width: number): strin
 // --- Drawing ----------------------------------------------------------------
 
 function draw(ctx: CanvasRenderingContext2D, view: CrewView, layout: Layout) {
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = PALETTE.paper;
   ctx.fillRect(0, 0, WIDTH, layout.height);
   ctx.textBaseline = 'middle';
 
   if (view.updated) {
-    ctx.fillStyle = NOTE_RED;
+    ctx.fillStyle = PALETTE.alert;
     ctx.fillRect(MARGIN, MARGIN, TABLE_WIDTH, UPDATED_HEIGHT);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = PALETTE.paper;
     ctx.font = UPDATED_FONT;
     ctx.fillText('UPDATED', MARGIN + CELL_PAD_X, MARGIN + UPDATED_HEIGHT / 2 + 2);
     const afterWord = MARGIN + CELL_PAD_X + ctx.measureText('UPDATED').width + 18;
@@ -194,14 +181,14 @@ function draw(ctx: CanvasRenderingContext2D, view: CrewView, layout: Layout) {
     ctx.fillText('This replaces the earlier schedule', afterWord, MARGIN + UPDATED_HEIGHT / 2 + 2);
   }
 
-  ctx.fillStyle = INK;
+  ctx.fillStyle = PALETTE.ink;
   ctx.font = DATE_FONT;
   ctx.fillText(fullDate(view.date), MARGIN, layout.dateTop + DATE_HEIGHT / 2 - 6, TABLE_WIDTH);
 
   // Header: JOB / TASKS / WHO
-  ctx.fillStyle = HEADER_BG;
+  ctx.fillStyle = PALETTE.header;
   ctx.fillRect(MARGIN, layout.headerTop, TABLE_WIDTH, HEADER_HEIGHT);
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = PALETTE.paper;
   ctx.font = HEADER_FONT;
   const headerMiddle = layout.headerTop + HEADER_HEIGHT / 2 + 1;
   ctx.fillText('JOB', JOB_X + CELL_PAD_X, headerMiddle);
@@ -211,7 +198,7 @@ function draw(ctx: CanvasRenderingContext2D, view: CrewView, layout: Layout) {
   for (const rowLayout of layout.rows) drawRow(ctx, rowLayout);
 
   // The ruled grid, drawn last so it sits on top of the cell backgrounds.
-  ctx.strokeStyle = GRID;
+  ctx.strokeStyle = PALETTE.grid;
   ctx.lineWidth = 2;
   ctx.beginPath();
   for (const { top } of layout.rows) {
@@ -232,11 +219,11 @@ function drawRow(ctx: CanvasRenderingContext2D, layout: RowLayout) {
   const middle = top + height / 2;
 
   if (row.destination.kind === 'standing-row') {
-    ctx.fillStyle = STANDING_BG;
+    ctx.fillStyle = PALETTE.standing;
     ctx.fillRect(MARGIN, top, TABLE_WIDTH, height);
   }
 
-  ctx.fillStyle = INK;
+  ctx.fillStyle = PALETTE.ink;
   ctx.font = JOB_FONT;
   drawLines(ctx, layout.jobLines, JOB_X + CELL_PAD_X, middle, JOB_LINE);
   ctx.font = TASK_FONT;
@@ -248,18 +235,18 @@ function drawRow(ctx: CanvasRenderingContext2D, layout: RowLayout) {
     const x = namesLeft + box.x;
     const y = namesTop + box.y;
 
-    ctx.fillStyle = NAME_BG[box.color];
+    ctx.fillStyle = CREW_COLORS[box.color];
     ctx.fillRect(x, y, box.nameWidth, NAME_HEIGHT);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.strokeStyle = PALETTE.nameBorder;
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, box.nameWidth - 1, NAME_HEIGHT - 1);
 
-    ctx.fillStyle = nameInk(box.color);
+    ctx.fillStyle = crewInk(box.color);
     ctx.font = NAME_FONT;
     ctx.fillText(box.name, x + NAME_PAD_X, y + NAME_HEIGHT / 2 + 1);
 
     if (box.note) {
-      ctx.fillStyle = NOTE_RED;
+      ctx.fillStyle = PALETTE.alert;
       ctx.font = NOTE_FONT;
       ctx.fillText(box.note, x + box.nameWidth + NOTE_GAP, y + NAME_HEIGHT / 2 + 1);
     }

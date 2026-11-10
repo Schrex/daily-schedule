@@ -1,28 +1,32 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   crewView,
   lastSentAt,
-  markSent,
   sendCheck,
   type CrewMember,
+  type CrewView,
   type DailySchedule,
   type Roster,
 } from '../schedule-rules';
 import type { CrewDelivery } from '../send';
 import { renderCrewPicture } from '../send/crewPicture';
 
-/** What the Send bar shows. Exactly one of `refused`, `failure` and `justSent` is set, or none. */
-export interface SendState {
-  /** True while the picture is being drawn and delivered. */
-  sending: boolean;
+/** Where Send stands for the Daily Schedule on the screen: exactly one of these. */
+export type SendStatus =
+  /** Never sent, and nothing to report. */
+  | { kind: 'not-sent' }
+  /** The picture is being drawn and delivered. */
+  | { kind: 'sending' }
   /** Send was refused for this Daily Schedule: the Crew Members who are Not Placed. */
-  refused: CrewMember[] | null;
+  | { kind: 'refused'; notPlaced: CrewMember[] }
   /** The last Send could not be delivered: what to tell the Scheduler. */
-  failure: string | null;
-  /** This Daily Schedule was sent just now and not changed since: what he does next. */
-  justSent: { nextStep: string } | null;
-  /** When the Daily Schedule was last sent (from its send record), if ever. */
-  sentAt: string | undefined;
+  | { kind: 'failed'; message: string }
+  /** It has been sent: when (from its send record), and what he does next. */
+  | { kind: 'sent'; sentAt: string; nextStep: string };
+
+/** What the Send bar draws, and what its button does. */
+export interface SendState {
+  status: SendStatus;
   /** "Send to crew" was pressed. */
   send: () => void;
 }
@@ -36,7 +40,8 @@ interface Outcome {
 /**
  * Send, start to finish: ask the schedule rules whether Send is allowed, draw
  * the crew view as a picture, hand it to the delivery, and only when that
- * worked hand back the Daily Schedule marked as Sent through `onSent`.
+ * worked report the crew view that was delivered through `onDelivered`, for
+ * the send record.
  *
  * What a press came to is remembered only for the Daily Schedule it was
  * about: as soon as the schedule changes, the refusal or the "paste it"
@@ -47,25 +52,32 @@ export function useSend({
   roster,
   schedule,
   delivery,
-  onSent,
+  onDelivered,
 }: {
   roster: Roster;
   schedule: DailySchedule;
   delivery: CrewDelivery;
-  /** The delivery worked: the Daily Schedule, marked as Sent, to keep and save. */
-  onSent: (sent: DailySchedule) => void;
+  /**
+   * The delivery worked: the crew view the crew got, and when. Records the
+   * Send on the Daily Schedule as it stands by then, and returns the result.
+   */
+  onDelivered: (sent: CrewView, sentAt: string) => DailySchedule;
 }): SendState {
   const [sending, setSending] = useState(false);
+  /** True from press to delivery, so a second press in between does nothing. */
+  const inFlight = useRef(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const check = sendCheck(roster, schedule);
 
   const send = async () => {
-    if (sending) return;
-    if (!sendCheck(roster, schedule).allowed) {
+    if (inFlight.current) return;
+    if (!check.allowed) {
       setOutcome({ kind: 'refused', schedule });
       return;
     }
 
     const view = crewView(roster, schedule);
+    inFlight.current = true;
     setSending(true);
     try {
       await delivery.deliver(await renderCrewPicture(view));
@@ -74,22 +86,33 @@ export function useSend({
       setOutcome({ kind: 'failed', schedule });
       return;
     } finally {
+      inFlight.current = false;
       setSending(false);
     }
 
-    const sent = markSent(schedule, view, new Date().toISOString());
-    setOutcome({ kind: 'sent', schedule: sent });
-    onSent(sent);
+    setOutcome({ kind: 'sent', schedule: onDelivered(view, new Date().toISOString()) });
   };
 
-  const current = outcome?.schedule === schedule ? outcome.kind : null;
+  const pressed = outcome?.schedule === schedule ? outcome.kind : null;
+  const sentAt = lastSentAt(schedule);
 
-  return {
-    sending,
-    refused: current === 'refused' ? sendCheck(roster, schedule).notPlaced : null,
-    failure: current === 'failed' ? delivery.failureMessage : null,
-    justSent: current === 'sent' ? { nextStep: delivery.nextStep } : null,
-    sentAt: lastSentAt(schedule),
-    send: () => void send(),
-  };
+  const status: SendStatus =
+    pressed === 'refused'
+      ? { kind: 'refused', notPlaced: check.notPlaced }
+      : pressed === 'failed'
+        ? { kind: 'failed', message: delivery.failureMessage }
+        : sending
+          ? { kind: 'sending' }
+          : sentAt === undefined
+            ? { kind: 'not-sent' }
+            : {
+                kind: 'sent',
+                sentAt,
+                nextStep:
+                  pressed === 'sent'
+                    ? delivery.nextStep
+                    : 'If you change something, press "Send to crew" again.',
+              };
+
+  return { status, send: () => void send() };
 }

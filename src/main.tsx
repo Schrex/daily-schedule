@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { applyPalette } from './palette';
 import { scheduleDateOf } from './schedule-rules';
 import { App } from './screen/App';
 import { seedRoster } from './seed/seedRoster';
@@ -8,6 +9,8 @@ import { clipboardDelivery } from './send/clipboardDelivery';
 import { openStore } from './storage';
 import { browserStore } from './storage/browserStore';
 import './screen/screen.css';
+
+applyPalette();
 
 // The one place that chooses where things are saved. On first ever open the
 // store is filled from the seed roster and seed Daily Schedule.
