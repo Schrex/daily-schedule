@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  dailyScheduleFor,
   clearNote,
   fullDate,
+  nextWorkingDay,
+  scheduleDateOf,
   onJob,
   onStandingRow,
   placeCrewMember,
@@ -413,6 +416,300 @@ describe('the full date', () => {
   it('spells out the weekday, month, day and year', () => {
     expect(fullDate('2026-11-10')).toBe('Tuesday, November 10, 2026');
     expect(fullDate('2027-01-01')).toBe('Friday, January 1, 2027');
+  });
+});
+
+describe('the default date', () => {
+  it('is the next weekday after today', () => {
+    // Monday evening opens Tuesday.
+    expect(nextWorkingDay('2026-11-09')).toBe('2026-11-10');
+  });
+
+  it('skips the weekend, so Friday opens Monday', () => {
+    expect(nextWorkingDay('2026-11-13')).toBe('2026-11-16');
+    expect(nextWorkingDay('2026-11-14')).toBe('2026-11-16');
+    expect(nextWorkingDay('2026-11-15')).toBe('2026-11-16');
+  });
+
+  it('carries over the end of a month and of a year', () => {
+    expect(nextWorkingDay('2026-11-30')).toBe('2026-12-01');
+    expect(nextWorkingDay('2026-12-31')).toBe('2027-01-01');
+  });
+
+  it("reads today from the clock on the Scheduler's computer", () => {
+    expect(scheduleDateOf(new Date(2026, 10, 9, 19, 30))).toBe('2026-11-09');
+    expect(scheduleDateOf(new Date(2027, 0, 4, 0, 5))).toBe('2027-01-04');
+  });
+});
+
+describe('the Daily Schedule for a date', () => {
+  const tuesday = schedule({
+    date: '2026-11-10',
+    placements: [
+      placement('fay', onJob('tower'), 1),
+      placement('ann', onJob('tower'), 2, '1/2 Day'),
+      placement('bob', onStandingRow('off-work'), 3),
+      placement('cal', onStandingRow('shop'), 4),
+    ],
+    tasks: { tower: ['Strip topsoil', 'Set forms'] },
+    sends: ['2026-11-09T22:00:00.000Z'],
+  });
+
+  it('is created from the most recent earlier one, copying Placements and Tasks', () => {
+    const wednesday = dailyScheduleFor(roster, [tuesday], '2026-11-11');
+
+    expect(wednesday.date).toBe('2026-11-11');
+    expect(whoIsOn('J100 Tower', wednesday)).toEqual(['fay', 'ann']);
+    expect(whoIsOn('Shop', wednesday)).toEqual(['cal']);
+    expect(scheduleView(roster, wednesday).rows[0]?.tasks).toEqual(['Strip topsoil', 'Set forms']);
+  });
+
+  it('makes Crew Members who were in Off Work Not Placed', () => {
+    const wednesday = dailyScheduleFor(roster, [tuesday], '2026-11-11');
+
+    expect(whoIsOn('Off Work', wednesday)).toEqual([]);
+    expect(notPlaced(wednesday)).toEqual(['bob']);
+  });
+
+  it('drops every Note', () => {
+    const wednesday = dailyScheduleFor(roster, [tuesday], '2026-11-11');
+
+    const notes = scheduleView(roster, wednesday).rows.flatMap((row) =>
+      row.who.map((placed) => placed.note),
+    );
+    expect(notes).toEqual([undefined, undefined, undefined]);
+  });
+
+  it('starts with no send record', () => {
+    expect(dailyScheduleFor(roster, [tuesday], '2026-11-11').sends).toEqual([]);
+  });
+
+  it('drops Placements and Tasks for Crew Members and Jobs no longer in the roster', () => {
+    const smaller: Roster = {
+      crewMembers: roster.crewMembers.filter((member) => member.id !== 'cal'),
+      jobs: roster.jobs.filter((job) => job.id !== 'tower'),
+    };
+
+    const wednesday = dailyScheduleFor(smaller, [tuesday], '2026-11-11');
+
+    expect(wednesday.placements).toEqual([]);
+    expect(wednesday.tasks).toEqual({});
+  });
+
+  it('keeps Foreman first and then the placement order of the day before', () => {
+    const before = schedule({
+      placements: [
+        placement('bob', onJob('tower'), 1),
+        placement('ann', onJob('tower'), 2),
+        placement('fay', onJob('tower'), 3),
+      ],
+    });
+
+    const next = dailyScheduleFor(roster, [before], '2026-11-11');
+
+    expect(whoIsOn('J100 Tower', next)).toEqual(['fay', 'bob', 'ann']);
+  });
+
+  it('copies from the most recent earlier Daily Schedule, whatever order they are given in', () => {
+    const monday = schedule({ date: '2026-11-09', placements: [placement('ann', onJob('bridge'), 1)] });
+    const friday = schedule({ date: '2026-11-13', placements: [placement('ann', onStandingRow('shop'), 1)] });
+
+    const thursday = dailyScheduleFor(roster, [friday, tuesday, monday], '2026-11-12');
+
+    expect(whoIsOn('J100 Tower', thursday)).toEqual(['fay', 'ann']);
+  });
+
+  it('opens the Daily Schedule already saved for that date instead of creating one', () => {
+    const wednesday = schedule({
+      date: '2026-11-11',
+      placements: [placement('ann', onStandingRow('trucking'), 1, 'Late')],
+      sends: ['2026-11-10T22:00:00.000Z'],
+    });
+
+    expect(dailyScheduleFor(roster, [tuesday, wednesday], '2026-11-11')).toEqual(wednesday);
+    expect(dailyScheduleFor(roster, [tuesday, wednesday], '2026-11-10')).toEqual(tuesday);
+  });
+
+  it('leaves the earlier Daily Schedule as it was', () => {
+    const before = structuredClone(tuesday);
+
+    dailyScheduleFor(roster, [tuesday], '2026-11-11');
+
+    expect(tuesday).toEqual(before);
+  });
+
+  it('starts with everyone Not Placed and no Tasks when there is no earlier Daily Schedule', () => {
+    const monday = dailyScheduleFor(roster, [tuesday], '2026-11-09');
+
+    expect(monday).toEqual({ date: '2026-11-09', placements: [], tasks: {}, sends: [] });
+    expect(dailyScheduleFor(roster, [], '2026-11-09')).toEqual(monday);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// The roster, as managed on the settings page
+// ---------------------------------------------------------------------------
+
+import {
+  addCrewMember,
+  addJob,
+  changeCrewMember,
+  moveJob,
+  removeCrewMember,
+  removeJob,
+} from './index';
+
+describe('adding a Crew Member to the roster', () => {
+  it('adds them with their name, color and Foreman flag, and they are Not Placed', () => {
+    const added = addCrewMember(roster, { name: 'Dee Young', color: 'yellow', foreman: true });
+
+    expect(added.crewMembers.at(-1)).toMatchObject({
+      name: 'Dee Young',
+      color: 'yellow',
+      foreman: true,
+    });
+    const daily = schedule({ placements: [placement('ann', onJob('tower'), 1)] });
+    expect(scheduleView(added, daily).notPlaced.map((member) => member.name)).toEqual([
+      'bob',
+      'fay',
+      'cal',
+      'Dee Young',
+    ]);
+  });
+
+  it('gives two Crew Members with the same name different ids', () => {
+    const details = { name: 'Dee Young', color: 'blue', foreman: false } as const;
+
+    const added = addCrewMember(addCrewMember(roster, details), details);
+
+    const ids = added.crewMembers.map((member) => member.id);
+    expect(new Set(ids).size).toBe(6);
+  });
+
+  it('trims the name', () => {
+    const added = addCrewMember(roster, { name: '  Dee Young ', color: 'blue', foreman: false });
+
+    expect(added.crewMembers.at(-1)?.name).toBe('Dee Young');
+  });
+
+  it('changes nothing when the name is blank', () => {
+    expect(addCrewMember(roster, { name: '   ', color: 'blue', foreman: false })).toBe(roster);
+  });
+});
+
+describe('changing a Crew Member', () => {
+  it('changes their name, color and Foreman flag and keeps their Placement', () => {
+    const changed = changeCrewMember(roster, 'ann', {
+      name: ' Ann Lee ',
+      color: 'red',
+      foreman: true,
+    });
+
+    const daily = schedule({
+      placements: [placement('bob', onJob('tower'), 1), placement('ann', onJob('tower'), 2)],
+    });
+    const tower = scheduleView(changed, daily).rows.find((row) => row.label === 'J100 Tower');
+    expect(tower?.who.map((placed) => placed.crewMember)).toEqual([
+      { id: 'ann', name: 'Ann Lee', color: 'red', foreman: true },
+      { id: 'bob', name: 'bob', color: 'blue', foreman: false },
+    ]);
+  });
+
+  it('changes only what is given', () => {
+    const changed = changeCrewMember(roster, 'fay', { color: 'orange' });
+
+    expect(changed.crewMembers.find((member) => member.id === 'fay')).toEqual({
+      id: 'fay',
+      name: 'fay',
+      color: 'orange',
+      foreman: true,
+    });
+  });
+
+  it('changes nothing when the new name is blank', () => {
+    expect(changeCrewMember(roster, 'ann', { name: '  ' })).toBe(roster);
+  });
+});
+
+describe('removing a Crew Member from the roster', () => {
+  it('takes them off the Daily Schedule being edited, placed or Not Placed', () => {
+    const daily = schedule({ placements: [placement('ann', onJob('tower'), 1)] });
+
+    const withoutAnn = scheduleView(removeCrewMember(roster, 'ann'), daily);
+    const withoutBob = scheduleView(removeCrewMember(roster, 'bob'), daily);
+
+    expect(withoutAnn.rows.flatMap((row) => row.who)).toEqual([]);
+    expect(withoutAnn.notPlaced.map((member) => member.name)).toEqual(['bob', 'fay', 'cal']);
+    expect(withoutBob.notPlaced.map((member) => member.name)).toEqual(['fay', 'cal']);
+  });
+
+  it('does not reuse the id of someone still in the roster when a name is added again', () => {
+    const added = addCrewMember(removeCrewMember(roster, 'bob'), {
+      name: 'Ann',
+      color: 'blue',
+      foreman: false,
+    });
+
+    expect(added.crewMembers.map((member) => member.id)).toEqual(['ann', 'fay', 'cal', 'ann-2']);
+  });
+});
+
+const jobLabels = (ofRoster: Roster) =>
+  scheduleView(ofRoster, schedule())
+    .rows.filter((row) => row.destination.kind === 'job')
+    .map((row) => row.label);
+
+describe('adding a Job to the roster', () => {
+  it('adds it after the other Jobs, with or without a job number', () => {
+    const added = addJob(addJob(roster, { name: ' Depot ', jobNumber: ' J300 ' }), {
+      name: 'Quarry',
+      jobNumber: '  ',
+    });
+
+    expect(jobLabels(added)).toEqual(['J100 Tower', 'Bridge', 'J300 Depot', 'Quarry']);
+    expect(added.jobs.at(-1)).toEqual({ id: 'quarry', name: 'Quarry' });
+  });
+
+  it('gives two Jobs with the same name different ids', () => {
+    const added = addJob(addJob(roster, { name: 'Bridge' }), { name: 'Bridge' });
+
+    expect(new Set(added.jobs.map((job) => job.id)).size).toBe(4);
+  });
+
+  it('changes nothing when the name is blank', () => {
+    expect(addJob(roster, { name: ' ', jobNumber: 'J300' })).toBe(roster);
+  });
+});
+
+describe('removing a Job from the roster', () => {
+  it('takes the Job off the Daily Schedule and makes everyone on it Not Placed', () => {
+    const daily = schedule({
+      placements: [
+        placement('ann', onJob('tower'), 1),
+        placement('fay', onJob('tower'), 2),
+        placement('bob', onJob('bridge'), 3),
+      ],
+    });
+
+    const view = scheduleView(removeJob(roster, 'tower'), daily);
+
+    expect(view.rows.map((row) => row.label)).toEqual(['Bridge', 'Shop', 'Trucking', 'Off Work']);
+    expect(view.notPlaced.map((member) => member.name)).toEqual(['ann', 'fay', 'cal']);
+  });
+});
+
+describe('reordering Jobs', () => {
+  it('moves a Job up or down one place in the display order', () => {
+    const three = addJob(roster, { name: 'Depot' });
+
+    expect(jobLabels(moveJob(three, 'depot', 'up'))).toEqual(['J100 Tower', 'Depot', 'Bridge']);
+    expect(jobLabels(moveJob(three, 'tower', 'down'))).toEqual(['Bridge', 'J100 Tower', 'Depot']);
+  });
+
+  it('changes nothing when the Job is already first or last', () => {
+    expect(moveJob(roster, 'tower', 'up')).toBe(roster);
+    expect(moveJob(roster, 'bridge', 'down')).toBe(roster);
   });
 });
 

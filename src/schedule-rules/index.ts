@@ -277,6 +277,198 @@ const destinationKey = (destination: Destination): string =>
     : `standing-row:${destination.standingRow}`;
 
 // ---------------------------------------------------------------------------
+// The default date
+// ---------------------------------------------------------------------------
+
+/** Today's date as the clock on the Scheduler's computer has it. */
+export function scheduleDateOf(now: Date): ScheduleDate {
+  return toScheduleDate(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+}
+
+/** The next weekday after today: Friday, Saturday and Sunday all give Monday. */
+export function nextWorkingDay(today: ScheduleDate): ScheduleDate {
+  const [year = 0, month = 1, day = 1] = today.split('-').map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + 1));
+  while (next.getUTCDay() === 0 || next.getUTCDay() === 6) next.setUTCDate(next.getUTCDate() + 1);
+  return toScheduleDate(next.getTime());
+}
+
+const toScheduleDate = (utcMidnight: number): ScheduleDate =>
+  new Date(utcMidnight).toISOString().slice(0, 10);
+
+// ---------------------------------------------------------------------------
+// The Daily Schedule for a date
+// ---------------------------------------------------------------------------
+
+/**
+ * The Daily Schedule to edit for a date, given the saved Daily Schedules.
+ *
+ * If one is saved for that date, it is that one, untouched. Otherwise a new one
+ * is created from the most recent earlier Daily Schedule: Placements and Tasks
+ * are copied, except that Crew Members who were in Off Work become Not Placed,
+ * every Note is dropped, and anything for a Crew Member or Job no longer in the
+ * roster is dropped. A new Daily Schedule has no send record. With no earlier
+ * Daily Schedule to copy, everyone is Not Placed and there are no Tasks.
+ *
+ * Nothing in `saved` is changed; saving the result is the caller's business.
+ */
+export function dailyScheduleFor(
+  roster: Roster,
+  saved: readonly DailySchedule[],
+  date: ScheduleDate,
+): DailySchedule {
+  const existing = saved.find((schedule) => schedule.date === date);
+  if (existing) return existing;
+
+  const previous = saved
+    .filter((schedule) => schedule.date < date)
+    .reduce<DailySchedule | undefined>(
+      (latest, schedule) => (latest && latest.date > schedule.date ? latest : schedule),
+      undefined,
+    );
+  if (!previous) return { date, placements: [], tasks: {}, sends: [] };
+
+  const crewMemberIds = new Set(roster.crewMembers.map((crewMember) => crewMember.id));
+  const jobIds = new Set(roster.jobs.map((job) => job.id));
+
+  const carriesOver = ({ crewMemberId, destination }: Placement): boolean =>
+    crewMemberIds.has(crewMemberId) &&
+    (destination.kind === 'job'
+      ? jobIds.has(destination.jobId)
+      : destination.standingRow !== 'off-work');
+
+  return {
+    date,
+    placements: previous.placements
+      .filter(carriesOver)
+      .map(({ crewMemberId, destination, order }) => ({ crewMemberId, destination, order })),
+    tasks: Object.fromEntries(
+      Object.entries(previous.tasks)
+        .filter(([jobId]) => jobIds.has(jobId))
+        .map(([jobId, tasks]) => [jobId, [...tasks]]),
+    ),
+    sends: [],
+  };
+}
+
+
+// ---------------------------------------------------------------------------
+// The roster (managed on the settings page)
+// ---------------------------------------------------------------------------
+
+/** What the office fills in for a Crew Member. */
+export interface CrewMemberDetails {
+  name: string;
+  color: Color;
+  foreman: boolean;
+}
+
+/** Adds a Crew Member at the end of the roster. On any Daily Schedule they are Not Placed. */
+export function addCrewMember(roster: Roster, details: CrewMemberDetails): Roster {
+  const name = details.name.trim();
+  if (name === '') return roster;
+  const crewMember: CrewMember = {
+    id: newId(name, roster.crewMembers),
+    name,
+    color: details.color,
+    foreman: details.foreman,
+  };
+  return { ...roster, crewMembers: [...roster.crewMembers, crewMember] };
+}
+
+/**
+ * Changes a Crew Member's name, color or Foreman flag; whatever is not given
+ * stays as it is. Their id, and so their Placements, are untouched. A blank
+ * name changes nothing.
+ */
+export function changeCrewMember(
+  roster: Roster,
+  crewMemberId: string,
+  changes: Partial<CrewMemberDetails>,
+): Roster {
+  const name = changes.name?.trim();
+  if (name === '') return roster;
+  return {
+    ...roster,
+    crewMembers: roster.crewMembers.map((crewMember) =>
+      crewMember.id === crewMemberId
+        ? {
+            id: crewMember.id,
+            name: name ?? crewMember.name,
+            color: changes.color ?? crewMember.color,
+            foreman: changes.foreman ?? crewMember.foreman,
+          }
+        : crewMember,
+    ),
+  };
+}
+
+/**
+ * Removes a Crew Member from the roster. They no longer appear on the Daily
+ * Schedule being edited or on later ones; saved Daily Schedules are not rewritten.
+ */
+export function removeCrewMember(roster: Roster, crewMemberId: string): Roster {
+  return {
+    ...roster,
+    crewMembers: roster.crewMembers.filter((crewMember) => crewMember.id !== crewMemberId),
+  };
+}
+
+/** What the office fills in for a Job. The job number may be left out or blank. */
+export interface JobDetails {
+  name: string;
+  jobNumber?: string;
+}
+
+/** Adds a Job after the other Jobs, above the Standing Rows. A blank name changes nothing. */
+export function addJob(roster: Roster, details: JobDetails): Roster {
+  const name = details.name.trim();
+  if (name === '') return roster;
+  const jobNumber = details.jobNumber?.trim();
+  const labelled: Omit<Job, 'id'> = jobNumber ? { name, jobNumber } : { name };
+  const job: Job = { id: newId(jobLabel({ id: '', ...labelled }), roster.jobs), ...labelled };
+  return { ...roster, jobs: [...roster.jobs, job] };
+}
+
+/**
+ * Removes a Job from the roster. It no longer appears on the Daily Schedule
+ * being edited or on later ones, and anyone placed on it is Not Placed; saved
+ * Daily Schedules are not rewritten.
+ */
+export function removeJob(roster: Roster, jobId: string): Roster {
+  return { ...roster, jobs: roster.jobs.filter((job) => job.id !== jobId) };
+}
+
+/**
+ * Moves a Job one place up or down the display order. A Job that is already
+ * first cannot move up and one that is last cannot move down: nothing changes.
+ */
+export function moveJob(roster: Roster, jobId: string, direction: 'up' | 'down'): Roster {
+  const from = roster.jobs.findIndex((job) => job.id === jobId);
+  const to = direction === 'up' ? from - 1 : from + 1;
+  const moved = roster.jobs[from];
+  const swapped = roster.jobs[to];
+  if (moved === undefined || swapped === undefined) return roster;
+  const jobs = [...roster.jobs];
+  jobs[from] = swapped;
+  jobs[to] = moved;
+  return { ...roster, jobs };
+}
+
+/**
+ * An id not used by anything in the list: the label in lower case with dashes
+ * ("Dee Young" gives "dee-young"), then "-2", "-3", ... if that is taken.
+ * Once given, an id never changes.
+ */
+function newId(label: string, existing: { id: string }[]): string {
+  const taken = new Set(existing.map((item) => item.id));
+  const base = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
+  let id = base;
+  for (let count = 2; taken.has(id); count += 1) id = `${base}-${count}`;
+  return id;
+}
+
+// ---------------------------------------------------------------------------
 // Undo
 // ---------------------------------------------------------------------------
 

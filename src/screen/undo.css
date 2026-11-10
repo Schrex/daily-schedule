@@ -1,13 +1,9 @@
 /* --- The Undo button: large, always top right, greyed out with nothing to undo */
 
-.screen {
-  position: relative;
-}
-
 .undo {
   position: absolute;
   top: 0.7rem;
-  right: 1.5rem;
+  right: 12rem; /* clear of the "Change date" button, which sits in the corner */
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
