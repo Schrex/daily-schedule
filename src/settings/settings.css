@@ -14,6 +14,11 @@
   padding: var(--space-6) var(--space-5) 4rem;
 }
 
+/* The way back to the Scheduler's screen. */
+.settings-back {
+  margin-bottom: var(--space-4);
+}
+
 .settings h1 {
   margin: 0 0 var(--space-1);
   font-size: 1.9rem;

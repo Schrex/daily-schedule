@@ -18,6 +18,7 @@ import {
 import type { CrewDelivery } from '../send';
 import { openDate, type Opened, type ScheduleStore } from '../storage';
 import { ChangeDate } from './ChangeDate';
+import { SettingsLink } from './SettingsLink';
 import { ScheduleScreen } from './ScheduleScreen';
 import { SendBar } from './SendBar';
 import { UndoButton } from './UndoButton';
@@ -159,6 +160,7 @@ export function App({
         <>
           <UndoButton canUndo={canUndo(editing)} onUndo={undoLastChange} />
           <ChangeDate date={schedule.date} onChangeDate={changeDate} />
+          <SettingsLink />
         </>
       }
       footer={<SendBar send={send} />}

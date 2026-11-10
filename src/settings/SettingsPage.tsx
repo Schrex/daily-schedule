@@ -32,6 +32,9 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
 
   return (
     <main className="settings">
+      <a className="button settings-back" href="index.html">
+        <span aria-hidden="true">←</span> Back to the Daily Schedule
+      </a>
       <h1>Daily Schedule settings</h1>
       <p className="settings-intro">
         Changes are saved automatically. The Daily Schedule shows them the next time it is opened.

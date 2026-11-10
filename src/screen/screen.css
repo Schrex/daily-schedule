@@ -54,6 +54,12 @@
   font-size: 1.35rem;
 }
 
+/* A button that is its icon alone: square, the same height as its neighbours. */
+.toolbar-button-icon-only {
+  min-width: 2.7rem;
+  padding: var(--space-1);
+}
+
 .toolbar-button-icon {
   font-size: 1.8rem;
   line-height: 1;
