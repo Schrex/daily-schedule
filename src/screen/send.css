@@ -72,6 +72,45 @@
   color: var(--alert);
 }
 
+/* On a phone: the button the whole width, and under it what happened. */
+@media (max-width: 700px) {
+  .send-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    min-height: 0;
+    padding-top: var(--space-2);
+    padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
+  }
+
+  .send-button {
+    min-height: 3.4rem;
+    font-size: 1.5rem;
+  }
+
+  .send-message {
+    font-size: 1.05rem;
+  }
+
+  .send-headline {
+    font-size: 1.2rem;
+  }
+
+  .send-sent,
+  .send-refused,
+  .send-failed {
+    padding: var(--space-1) var(--space-3);
+  }
+}
+
+@media (max-height: 480px) {
+  .send-bar {
+    position: sticky;
+    bottom: 0;
+    min-height: 0;
+  }
+}
+
 /* The Not Placed list while Send is refused: a red ring on each name. */
 .not-placed.not-placed-alert {
   border-color: var(--alert);
@@ -85,7 +124,7 @@
   box-shadow: var(--ring-alert);
 }
 
-.not-placed-alert .names {
+.not-placed.not-placed-alert .names {
   gap: var(--space-4);
   padding: var(--space-1);
 }

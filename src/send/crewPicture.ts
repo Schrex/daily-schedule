@@ -8,8 +8,7 @@ import { fullDate, type Color, type CrewView, type ScheduleRow } from '../schedu
  * Job, large, with its Tasks under it), who on the right, one name to a line,
  * every name the same width and in its color. So a Crew Member runs an eye
  * down the one column of names to find their own, and the Job is right beside
- * it, inside the same frame. A Foreman's name carries a star; a Note hangs
- * under its name in red. It draws exactly the rows it is given and nothing
+ * it, inside the same frame. A Note hangs under its name in red. It draws exactly the rows it is given and nothing
  * else: no buttons and no Not Placed list. No rule is applied here.
  *
  * Drawn by hand on a canvas rather than photographed from the screen, so it
@@ -39,10 +38,9 @@ export function renderCrewPicture(view: CrewView): Promise<Blob> {
 }
 
 // --- The look: the Scheduler's screen, drawn by hand ------------------------
-// Colors are the palette. The type family, the weights, the letter-spacings,
-// the corners and the Foreman's star are the shared look's (the tokens in
-// src/look.css), read off the page, so the picture and the screen cannot
-// drift apart. Sizes are the picture's own: it is looked at on a phone, at
+// Colors are the palette. The type family, the weights, the letter-spacings
+// and the corners are the shared look's (the tokens in src/look.css), read off
+// the page, so the picture and the screen cannot drift apart. Sizes are the picture's own: it is looked at on a phone, at
 // under half its width, so they are large.
 
 const WIDTH = 780;
@@ -61,13 +59,11 @@ interface Type {
   letterSpacing: string;
 }
 
-/** The shared look as the picture uses it: its kinds of text, its corners and its star. */
+/** The shared look as the picture uses it: its kinds of text and its corners. */
 interface Look {
   type: Record<'date' | 'updated' | 'updatedNote' | 'job' | 'task' | 'name' | 'note', Type>;
   /** Corner radii, in the picture's pixels. */
   radius: { card: number; control: number; chip: number };
-  /** The Foreman's star: its corners, each from 0 to 1 across and down a square. */
-  star: [x: number, y: number][];
 }
 
 /** Reads the look's tokens off the page. Only the sizes of the text are the picture's own. */
@@ -101,9 +97,6 @@ function readLook(): Look {
       note: type('strong', 27),
     },
     radius: { card: corner('card'), control: corner('control'), chip: corner('chip') },
-    star: [...token('--shape-star').matchAll(/([\d.]+)%\s+([\d.]+)%/g)].map(
-      ([, x, y]): [number, number] => [Number(x) / 100, Number(y) / 100],
-    ),
   };
 }
 
@@ -131,7 +124,6 @@ const NAME_WIDTH = 344;
 const NAME_HEIGHT = 56;
 const NAME_GAP = 6;
 const NAME_PAD_X = 18;
-const STAR = 25;
 const NOTE_LINE = 34;
 const NOTE_PAD_TOP = 6;
 const NOTE_PAD_BOTTOM = 8;
@@ -152,7 +144,6 @@ const TASK_INDENT = 20;
 interface NameBox {
   name: string;
   color: Color;
-  foreman: boolean;
   noteLines: string[];
   y: number;
   height: number;
@@ -219,8 +210,8 @@ function stackNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look)
     const height =
       NAME_HEIGHT +
       (noteLines.length > 0 ? NOTE_PAD_TOP + noteLines.length * NOTE_LINE + NOTE_PAD_BOTTOM : 0);
-    const { name, color, foreman } = crewMember;
-    names.push({ name, color, foreman, noteLines, y, height });
+    const { name, color } = crewMember;
+    names.push({ name, color, noteLines, y, height });
     y += height + NAME_GAP;
   }
 
@@ -360,20 +351,5 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, x: number, y: num
 
   ctx.fillStyle = crewInk(box.color);
   setType(ctx, look.type.name);
-  const starRoom = box.foreman ? STAR + 12 : 0;
-  ctx.fillText(box.name, x + NAME_PAD_X, middle, NAME_WIDTH - 2 * NAME_PAD_X - starRoom);
-
-  // A Foreman: the look's star at the end of the name, in the name's own ink.
-  if (box.foreman) {
-    const left = x + NAME_WIDTH - NAME_PAD_X - STAR;
-    const starTop = y + (NAME_HEIGHT - STAR) / 2;
-    ctx.beginPath();
-    look.star.forEach(([across, down], index) => {
-      const point: [number, number] = [left + across * STAR, starTop + down * STAR];
-      if (index === 0) ctx.moveTo(...point);
-      else ctx.lineTo(...point);
-    });
-    ctx.closePath();
-    ctx.fill();
-  }
+  ctx.fillText(box.name, x + NAME_PAD_X, middle, NAME_WIDTH - 2 * NAME_PAD_X);
 }

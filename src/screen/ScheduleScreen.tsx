@@ -75,13 +75,16 @@ const headcount = (count: number): string => (count === 1 ? '1 person' : `${coun
  * Every move is shown: a name that is somewhere else after a redraw travels
  * there from where it was (`MoveNames`), whatever moved it.
  *
- * Each Job and Standing Row is a block of its own: its name as the heading,
- * its Tasks under it, then its Crew Members one to a line, all the same
- * width, so a name is found by running an eye down one column, as on the
- * sheet the crew knows. A Foreman's name carries a star.
+ * It is the sheet the crew gets, made to be worked on: the date on top, then
+ * one stack of blocks, a block for each Job and Standing Row. In a block,
+ * where is on the left (the Job, with its Tasks under it) and who is on the
+ * right, one name to a line, every name the same width, so a name is found by
+ * running an eye down the one column. The picture sent to the crew
+ * (`crewPicture`) is this same view, without what is only the Scheduler's.
  *
  * It is one screen: the toolbar (date, Undo, Change date and the hint) and the
- * Send bar stay put, and only the blocks scroll, beside the Not Placed list.
+ * Send bar stay put, and so does the Not Placed list (beside the stack on a
+ * wide window, above it on a narrow one). Only the stack scrolls.
  */
 export function ScheduleScreen({
   roster,
@@ -142,11 +145,10 @@ export function ScheduleScreen({
   const name = (crewMember: CrewMember) => (
     <button
       type="button"
-      className={`name color-${crewMember.color}${crewMember.foreman ? ' name-foreman' : ''}${
+      className={`name color-${crewMember.color}${
         crewMember.id === selected?.id ? ' name-selected' : ''
       }`}
       aria-pressed={crewMember.id === selected?.id}
-      aria-description={crewMember.foreman ? 'Foreman' : undefined}
       onClick={(event) => onNameClick(crewMember, event)}
       {...drag.nameProps(crewMember.id)}
       onDoubleClick={() => onMoveCrewMember(crewMember.id, NOT_PLACED)}
@@ -177,8 +179,10 @@ export function ScheduleScreen({
           ) : moving ? (
             <>
               <span>
-                Moving <strong>{selected.name}</strong>. Now click where they go.
-                <span className="move-hint-cancel"> (Click the name again to cancel.)</span>
+                Moving <strong>{selected.name}</strong>.{' '}
+                <span className="on-wide">Now click where they go.</span>
+                <span className="on-narrow">Tap where they go.</span>
+                <span className="move-hint-cancel on-wide"> (Click the name again to cancel.)</span>
               </span>
               {selectedPlaced && (
                 <button type="button" className="button action" onClick={onEditNote}>
@@ -187,14 +191,19 @@ export function ScheduleScreen({
               )}
             </>
           ) : (
-            'To move someone, drag their name, or click it. To change tasks, click the tasks.'
+            <>
+              <span className="on-wide">
+                To move someone, drag their name, or click it. To change tasks, click the tasks.
+              </span>
+              <span className="on-narrow">Tap a name, then tap where they go.</span>
+            </>
           )}
         </div>
       </header>
 
       <div className="layout">
         <div className="schedule-scroll" data-motion-area>
-          <div className="board">
+          <div className="stack">
             {shown.rows.map(({ destination, ...row }) => (
               <section
                 key={row.key}
@@ -204,18 +213,20 @@ export function ScheduleScreen({
                 onClick={moveSelectedTo(destination)}
                 {...drag.dropProps(row.key)}
               >
-                <header className="block-head">
-                  <h2 className="job">{row.label}</h2>
-                  {row.who.length > 0 && <span className="count">{headcount(row.who.length)}</span>}
-                </header>
-                {destination.kind === 'job' && (
-                  <TasksCell
-                    jobLabel={row.label}
-                    tasks={row.tasks}
-                    canEdit={!moving}
-                    onCommit={(text) => onSetTasks(destination.jobId, text)}
-                  />
-                )}
+                <div className="where">
+                  <header className="block-head">
+                    <h2 className="job">{row.label}</h2>
+                    {row.who.length > 0 && <span className="count">{headcount(row.who.length)}</span>}
+                  </header>
+                  {destination.kind === 'job' && (
+                    <TasksCell
+                      jobLabel={row.label}
+                      tasks={row.tasks}
+                      canEdit={!moving}
+                      onCommit={(text) => onSetTasks(destination.jobId, text)}
+                    />
+                  )}
+                </div>
                 {row.who.length === 0 ? (
                   <p className="block-empty">Nobody here yet</p>
                 ) : (

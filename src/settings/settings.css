@@ -5,8 +5,8 @@
    the root size below; colors come from the palette (src/palette.ts). */
 
 :root {
-  /* The Scheduler's own size: never below 22px, growing with the window. */
-  font-size: clamp(22px, min(1.146vw, 2.037vh), 48px);
+  /* The Scheduler's own size on a computer; scaled to the width on a phone. */
+  font-size: var(--size-plain-page);
 }
 
 .settings {
