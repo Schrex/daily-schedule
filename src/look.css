@@ -38,6 +38,10 @@
   --focus-ring: 0 0 0 2px var(--paper), 0 0 0 5px var(--accent);
 
   --ease: 120ms ease-out;
+
+  /* A name moving from one place to another: quick, easing away and slowing as it arrives. */
+  --move-duration: 200ms;
+  --move-ease: cubic-bezier(0.3, 0, 0.2, 1);
 }
 
 /* --- Buttons: secondary by default, primary for the one main action -------

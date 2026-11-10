@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 import {
   fullDate,
   scheduleView,
@@ -9,6 +9,9 @@ import {
 } from '../schedule-rules';
 import { NOT_PLACED_DROP } from './drag/nameDrag';
 import { useNameDrag } from './drag/useNameDrag';
+import { dropTarget, viewWhileDragging } from './dropPreview';
+import { MoveNames } from './motion/MoveNames';
+import { createNameMotion } from './motion/nameMotion';
 import { NoteEditor } from './NoteEditor';
 import { TasksCell } from './TasksCell';
 
@@ -63,6 +66,12 @@ interface ScheduleScreenProps {
  *
  * A name can also be dragged and dropped on one of those blocks (`useNameDrag`).
  * The drag only says who was dropped where; like a click, it is reported.
+ * While a name is held over a destination, the schedule is drawn as the rules
+ * say it would be after the drop (`viewWhileDragging`), so the names there
+ * make room where it would land.
+ *
+ * Every move is shown: a name that is somewhere else after a redraw travels
+ * there from where it was (`MoveNames`), whatever moved it.
  *
  * It is one screen: the toolbar (date, Undo, Change date and the hint) and the
  * Send bar stay put, and only the table scrolls, beside the Not Placed list.
@@ -99,14 +108,17 @@ export function ScheduleScreen({
   const moving = selected !== undefined && !typingNote;
 
   // Dragging a name: no drag while a Note is being typed. A drop names the block by its key.
+  const [motion] = useState(createNameMotion);
   const drag = useNameDrag({
     enabled: !typingNote,
     onDrop: (crewMemberId, over) => {
-      const row = view.rows.find((candidate) => candidate.key === over);
-      if (row) onDrop(crewMemberId, row.destination);
-      else if (over === NOT_PLACED_DROP) onDrop(crewMemberId, 'not-placed');
+      const to = dropTarget(view, over);
+      if (to !== null) onDrop(crewMemberId, to);
     },
+    onLetGo: motion.letGoAt,
   });
+  /** What is drawn: while a name is held over a destination, the schedule as the drop would leave it. */
+  const shown = viewWhileDragging(roster, schedule, drag.dragging);
 
   const onNameClick = (crewMember: CrewMember, event: MouseEvent) => {
     if (!moving) {
@@ -172,7 +184,7 @@ export function ScheduleScreen({
       </header>
 
       <div className="layout">
-        <div className="schedule-scroll">
+        <div className="schedule-scroll" data-motion-area>
           <table className="schedule">
             <thead>
               <tr>
@@ -182,7 +194,7 @@ export function ScheduleScreen({
               </tr>
             </thead>
             <tbody>
-              {view.rows.map(({ destination, ...row }) => (
+              {shown.rows.map(({ destination, ...row }) => (
                 <tr
                   key={row.key}
                   className={`row row-${destination.kind} destination`}
@@ -223,14 +235,15 @@ export function ScheduleScreen({
           className={`not-placed destination${alertNotPlaced ? ' not-placed-alert' : ''}`}
           aria-labelledby="not-placed-heading"
           onClick={moving ? onReturnToNotPlaced : undefined}
+          data-motion-area
           {...drag.dropProps(NOT_PLACED_DROP)}
         >
           <h2 id="not-placed-heading">NOT PLACED</h2>
-          {view.notPlaced.length === 0 ? (
+          {shown.notPlaced.length === 0 ? (
             <p className="not-placed-empty">Everyone is placed.</p>
           ) : (
             <ul className="names names-stacked">
-              {view.notPlaced.map((crewMember) => (
+              {shown.notPlaced.map((crewMember) => (
                 <li key={crewMember.id}>{name(crewMember)}</li>
               ))}
             </ul>
@@ -240,6 +253,7 @@ export function ScheduleScreen({
 
       {footer}
       {drag.overlay}
+      <MoveNames motion={motion} scene={view.date} />
     </main>
   );
 }

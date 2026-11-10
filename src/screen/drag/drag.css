@@ -16,14 +16,17 @@ body[data-name-dragging] * {
   user-select: none;
 }
 
-/* Where the dragged name came from: still there, faded, until it is dropped. */
+/* The dragged name's own place on the page, faded: where it came from, or,
+   over a destination, where it would land if let go now. */
 [data-crew-member][data-dragging] {
   opacity: 0.35;
   box-shadow: none;
 }
 
-/* The lifted copy that follows the pointer. It lets the pointer through, so
-   what is under it can be found. Its place is set from the pointer, in script. */
+/* The lifted copy that follows the pointer: raised off the page (a little
+   larger, with a shadow under it). It lets the pointer through, so what is
+   under it can be found. Its place is set from the pointer, in script, as
+   `translate`; the lift animates only `transform` and `opacity`. */
 .name-drag-overlay {
   position: fixed;
   top: 0;
@@ -35,9 +38,39 @@ body[data-name-dragging] * {
   opacity: 1;
   box-shadow:
     0 0 0 3px var(--paper),
-    0 0 0 8px var(--selected),
-    0 10px 22px 6px var(--shadow-strong);
-  will-change: transform;
+    0 0 0 8px var(--selected);
+  transform: scale(1.05);
+  animation: name-lift var(--move-duration) var(--move-ease);
+  will-change: translate, transform;
+}
+
+/* Its shadow, on a layer of its own so it can fade in without being redrawn. */
+.name-drag-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 12px 26px 8px var(--shadow-strong);
+  animation: name-lift-shadow var(--move-duration) var(--move-ease);
+}
+
+@keyframes name-lift {
+  from {
+    transform: none;
+  }
+}
+
+@keyframes name-lift-shadow {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .name-drag-overlay,
+  .name-drag-overlay::after {
+    animation: none;
+  }
 }
 
 /* The Job, Standing Row or Not Placed list the name would land on if let go

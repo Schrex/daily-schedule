@@ -41,6 +41,12 @@ export interface NameDragOptions {
   enabled: boolean;
   /** A name was let go over a destination. Not called for a drop outside one, or after Escape. */
   onDrop: (crewMemberId: string, over: DropKey) => void;
+  /**
+   * A drag ended, by a drop or not: where in the window the lifted copy was at
+   * that instant, for whoever shows the name going from there to its place.
+   * Called before `onDrop`.
+   */
+  onLetGo?: (crewMemberId: string, liftedAt: DOMRect) => void;
 }
 
 export interface NameDragHandle {
@@ -56,6 +62,31 @@ export interface NameDragHandle {
   dropProps: (key: DropKey) => { 'data-drop': DropKey; 'data-drop-over': true | undefined };
   /** The lifted copy of the name, following the pointer. Draw it anywhere; it is null when idle. */
   overlay: ReactNode;
+}
+
+/**
+ * While a name is dragged the page under it is redrawn (the names make room
+ * where it would land), which may take away the very element that was pressed.
+ * So the pointer is held by the page itself, which is always there.
+ */
+const pointerHolder = () => document.body;
+
+/**
+ * Keeps every destination at least as tall as it is now, until the function
+ * returned is called. A destination that lost the dragged name would otherwise
+ * shrink, and pull the others out from under a pointer that has not moved.
+ */
+function holdDestinationHeights(): () => void {
+  const held = [...document.querySelectorAll<HTMLElement>('[data-drop]')].map((destination) => {
+    // A table row's height is already "at least this"; anything else needs min-height.
+    const property = destination instanceof HTMLTableRowElement ? 'height' : 'minHeight';
+    const before = destination.style[property];
+    return { destination, property, before, height: destination.getBoundingClientRect().height } as const;
+  });
+  for (const { destination, property, height } of held) destination.style[property] = `${height}px`;
+  return () => {
+    for (const { destination, property, before } of held) destination.style[property] = before;
+  };
 }
 
 /** The destination under a point of the window, if any. The lifted copy never counts: it lets the pointer through. */
@@ -87,7 +118,7 @@ function swallowNextClick(): void {
   window.addEventListener('pointerdown', stop, true);
 }
 
-export function useNameDrag({ enabled, onDrop }: NameDragOptions): NameDragHandle {
+export function useNameDrag({ enabled, onDrop, onLetGo }: NameDragOptions): NameDragHandle {
   const [dragging, setDragging] = useState<Dragging | null>(null);
   const [lifted, setLifted] = useState<Lifted | null>(null);
 
@@ -101,6 +132,8 @@ export function useNameDrag({ enabled, onDrop }: NameDragOptions): NameDragHandl
   const stopListening = useRef<() => void>(() => {});
   const onDropLatest = useRef(onDrop);
   onDropLatest.current = onDrop;
+  const onLetGoLatest = useRef(onLetGo);
+  onLetGoLatest.current = onLetGo;
 
   /** Puts the lifted copy under the pointer, held where it was taken hold of. No redraw. */
   const follow = () => {
@@ -108,7 +141,8 @@ export function useNameDrag({ enabled, onDrop }: NameDragOptions): NameDragHandl
     if (!element) return;
     const x = pointer.current.x - grip.current.x;
     const y = pointer.current.y - grip.current.y;
-    element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    // `translate`, not `transform`: the lift (a slight scale) is the style sheet's to animate.
+    element.style.translate = `${x}px ${y}px`;
   };
 
   /** Takes a step of the drag and shows it, redrawing only when who or where changed. */
@@ -122,11 +156,19 @@ export function useNameDrag({ enabled, onDrop }: NameDragOptions): NameDragHandl
     document.body.toggleAttribute('data-name-dragging', next.kind === 'dragging');
   };
 
-  /** Whatever press or drag is under way is over: nothing lifted, nothing listened for. */
+  /**
+   * Whatever press or drag is under way is over: nothing lifted, nothing
+   * listened for. The lifted copy goes at once; where it was is passed on, so
+   * the name can be shown settling into its place (or gliding back to it).
+   */
   const end = () => {
     stopListening.current();
     stopListening.current = () => {};
-    show(cancel(drag.current));
+    const was = drag.current;
+    if (was.kind === 'dragging' && overlayElement.current) {
+      onLetGoLatest.current?.(was.crewMemberId, overlayElement.current.getBoundingClientRect());
+    }
+    show(cancel(was));
   };
 
   // Names can no longer be dragged (a Note is now being typed), or the screen is gone.
@@ -144,6 +186,7 @@ export function useNameDrag({ enabled, onDrop }: NameDragOptions): NameDragHandl
     pointer.current = at;
     drag.current = press(crewMemberId, at);
     let stopEdgeScroll = () => {};
+    let releaseHeights = () => {};
 
     const onMove = (moved: PointerEvent) => {
       if (moved.pointerId !== pointerId) return;
@@ -164,6 +207,7 @@ export function useNameDrag({ enabled, onDrop }: NameDragOptions): NameDragHandl
           height: box.height,
         });
         swallowNextClick();
+        releaseHeights = holdDestinationHeights();
         // A row out of sight is reached by holding the name at the edge of the schedule.
         stopEdgeScroll = startEdgeScroll(
           () => pointer.current,
@@ -171,7 +215,7 @@ export function useNameDrag({ enabled, onDrop }: NameDragOptions): NameDragHandl
         );
         // Keep hearing the pointer if it leaves the window with the button down.
         try {
-          source.setPointerCapture(pointerId);
+          pointerHolder().setPointerCapture(pointerId);
         } catch {
           // The pointer is already gone; the window listeners still end the drag.
         }
@@ -183,7 +227,10 @@ export function useNameDrag({ enabled, onDrop }: NameDragOptions): NameDragHandl
 
     const onUp = (up: PointerEvent) => {
       if (up.pointerId !== pointerId) return;
-      if (drag.current.kind === 'dragging') {
+      // Let go where the pointer last was: the drop goes to the destination that was
+      // highlighted, even if the names making room have since shifted the page under it.
+      const moved = up.clientX !== pointer.current.x || up.clientY !== pointer.current.y;
+      if (drag.current.kind === 'dragging' && moved) {
         pointer.current = { x: up.clientX, y: up.clientY };
         show(moveTo(drag.current, pointer.current, dropKeyAt(pointer.current)));
       }
@@ -204,12 +251,13 @@ export function useNameDrag({ enabled, onDrop }: NameDragOptions): NameDragHandl
 
     stopListening.current = () => {
       stopEdgeScroll();
+      releaseHeights();
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', end);
       window.removeEventListener('blur', end);
       window.removeEventListener('keydown', onKeyDown, true);
-      if (source.hasPointerCapture?.(pointerId)) source.releasePointerCapture(pointerId);
+      if (pointerHolder().hasPointerCapture?.(pointerId)) pointerHolder().releasePointerCapture(pointerId);
     };
   };
 

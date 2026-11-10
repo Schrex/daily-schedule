@@ -1,0 +1,25 @@
+/* A name travelling from where it was to where it is now. Its place and the
+   motion itself are set in script (nameMotion.ts), which animates only
+   `transform` and `opacity`; this is how the copy that flies over the page is
+   drawn. Colors are the palette's. */
+
+.name-flying {
+  position: fixed;
+  z-index: 900; /* over the page, under a name being dragged */
+  box-sizing: border-box;
+  margin: 0;
+  pointer-events: none;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* The shadow it casts while it is off the page. On a layer of its own, so it
+   can fade without the shadow being redrawn. */
+.name-flying::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 10px 22px 6px var(--shadow-strong);
+  pointer-events: none;
+}
