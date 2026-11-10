@@ -1,0 +1,88 @@
+/* The Send bar: one large button and a plain message. It is the bottom of the
+   screen and never scrolls, so the button is always in sight. The message is
+   short enough to keep the bar the same few lines whatever it says. */
+
+.send-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
+  border-top: 3px solid var(--grid);
+  background: var(--paper);
+}
+
+.send-button {
+  flex: 0 0 auto;
+  min-height: 3.6rem;
+  padding: 0.4rem 2.2rem;
+  border: 3px solid var(--go-dark);
+  border-radius: 0.4rem;
+  background: var(--go);
+  color: var(--paper);
+  font: inherit;
+  font-size: 1.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.send-button:hover,
+.send-button:focus-visible {
+  background: var(--go-dark);
+}
+
+.send-button:disabled {
+  border-color: var(--disabled);
+  background: var(--disabled);
+  cursor: default;
+}
+
+.send-message {
+  flex: 1 1 auto;
+  font-size: 1.1rem;
+}
+
+.send-message p {
+  margin: 0;
+}
+
+.send-headline {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.send-sent .send-headline {
+  color: var(--go-dark);
+}
+
+.send-refused,
+.send-failed {
+  padding: 0.3rem 0.9rem 0.4rem;
+  border: 3px solid var(--alert);
+  background: var(--alert-wash);
+}
+
+.send-refused .send-headline,
+.send-failed .send-headline {
+  color: var(--alert);
+}
+
+/* The Not Placed list while Send is refused: a red ring on each name. */
+.not-placed.not-placed-alert {
+  border-style: solid;
+  border-width: 5px;
+  background: var(--alert-wash-strong);
+}
+
+.not-placed-alert .name:not(.name-selected) {
+  font-weight: 800;
+  box-shadow:
+    0 0 0 3px var(--paper),
+    0 0 0 7px var(--alert);
+}
+
+.not-placed-alert .names-stacked {
+  gap: 1rem;
+  padding: 0.3rem;
+}

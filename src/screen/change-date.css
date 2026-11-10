@@ -1,0 +1,85 @@
+/* The panel "Change date" opens: one large date box and two large buttons.
+   The button itself is a toolbar button (screen.css). Sizes are in rem, off
+   the root size in screen.css; colors come from the palette (src/palette.ts). */
+
+.change-date-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4rem;
+  background: var(--backdrop);
+}
+
+.change-date-panel {
+  width: min(32rem, 92vw);
+  padding: 1.4rem 1.6rem 1.6rem;
+  border: 3px solid var(--grid);
+  border-radius: 0.4rem;
+  background: var(--paper);
+}
+
+.change-date-panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1.6rem;
+}
+
+.change-date-input {
+  display: block;
+  width: 100%;
+  min-height: 4rem;
+  padding: 0.4rem 0.8rem;
+  border: 2px solid var(--grid);
+  border-radius: 0.3rem;
+  font: inherit;
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+/* The calendar icon is the thing to click: make it as large as the text. */
+.change-date-input::-webkit-calendar-picker-indicator {
+  width: 2.2rem;
+  height: 2.2rem;
+  cursor: pointer;
+}
+
+.change-date-picked {
+  margin: 0.9rem 0 1.2rem;
+  min-height: 2rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.change-date-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.change-date-actions button {
+  flex: 1;
+  min-height: 3.4rem;
+  border: 2px solid var(--grid);
+  border-radius: 0.3rem;
+  font: inherit;
+  font-size: 1.4rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.change-date-open {
+  background: var(--header);
+  color: var(--paper);
+}
+
+.change-date-open:disabled {
+  background: var(--disabled);
+  border-color: var(--disabled);
+  cursor: default;
+}
+
+.change-date-cancel {
+  background: var(--paper);
+  color: var(--ink);
+}

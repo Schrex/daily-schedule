@@ -1,0 +1,174 @@
+/* The settings page, used by the office: an ordinary form page at ordinary size.
+   Loaded after screen.css, which supplies the Crew Member colors (.color-*).
+   Colors are the palette in src/palette.ts. */
+
+:root {
+  font-size: 17px;
+}
+
+.settings {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.settings h1 {
+  margin: 0 0 0.3rem;
+  font-size: 1.9rem;
+}
+
+.settings h2 {
+  margin: 2.2rem 0 0.6rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 3px solid var(--header);
+  font-size: 1.4rem;
+}
+
+.settings h3 {
+  flex: 0 0 100%;
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.settings-intro,
+.settings-hint {
+  margin: 0 0 0.8rem;
+  color: var(--muted);
+}
+
+.settings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.settings-table th {
+  padding: 0.3rem 0.6rem;
+  text-align: left;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.settings-table td {
+  padding: 0.4rem 0.6rem;
+  border-top: 1px solid var(--rule);
+  vertical-align: middle;
+}
+
+.settings input[type='text'] {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--muted);
+  font: inherit;
+}
+
+.name-field {
+  width: 14rem;
+}
+
+.job-number-field {
+  width: 8rem;
+}
+
+.job-label {
+  font-weight: 700;
+}
+
+/* --- Color swatches ------------------------------------------------------ */
+
+.colors {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.swatch {
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--name-border);
+  font-size: 0.9rem;
+  cursor: pointer;
+  opacity: 0.45;
+}
+
+.swatch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.swatch:has(input:checked) {
+  opacity: 1;
+  font-weight: 700;
+  box-shadow: 0 0 0 3px var(--ink);
+}
+
+.swatch:has(input:focus-visible) {
+  outline: 3px solid var(--selected);
+  outline-offset: 3px;
+}
+
+.foreman {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.foreman input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* --- Buttons ------------------------------------------------------------- */
+
+.settings button {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--muted);
+  background: var(--standing);
+  font: inherit;
+  cursor: pointer;
+}
+
+.settings button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.settings button.remove {
+  border-color: var(--alert);
+  background: var(--paper);
+  color: var(--alert);
+}
+
+.settings button[type='submit'] {
+  border-color: var(--header);
+  background: var(--header);
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.actions button + button {
+  margin-left: 0.4rem;
+}
+
+/* --- Add forms ----------------------------------------------------------- */
+
+.add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem 1.2rem;
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  background: var(--wash);
+}
+
+.add label:not(.foreman):not(.swatch) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
