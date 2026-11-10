@@ -7,6 +7,8 @@ import {
   type Destination,
   type Roster,
 } from '../schedule-rules';
+import { NOT_PLACED_DROP } from './drag/nameDrag';
+import { useNameDrag } from './drag/useNameDrag';
 import { NoteEditor } from './NoteEditor';
 import { TasksCell } from './TasksCell';
 
@@ -24,6 +26,10 @@ interface ScheduleScreenProps {
   onPlace: (destination: Destination) => void;
   /** The Not Placed list was clicked while a Crew Member is selected. */
   onReturnToNotPlaced: () => void;
+  /** A dragged name was dropped on a Job or Standing Row, or on the Not Placed list. */
+  onDrop: (crewMemberId: string, to: Destination | 'not-placed') => void;
+  /** A name was double-clicked: that Crew Member is to go to the Not Placed list. */
+  onSetAside: (crewMemberId: string) => void;
   /** "Add note" / "Change note" was clicked for the selected Crew Member. */
   onEditNote: () => void;
   /** The Note typed for the selected Crew Member was saved. */
@@ -48,8 +54,15 @@ interface ScheduleScreenProps {
  * Standing Row or the Not Placed list. While a name is selected, a click
  * anywhere in one of those blocks (even on another name) is the destination.
  *
+ * Double-clicking a name sets that Crew Member aside, in the Not Placed list.
+ * The browser reports a double-click as two clicks and then the double-click,
+ * so the name is selected and let go of first.
+ *
  * With no name selected, clicking a Job's Tasks lets him type them. A selected
  * Crew Member who has a Placement also offers "Add note".
+ *
+ * A name can also be dragged and dropped on one of those blocks (`useNameDrag`).
+ * The drag only says who was dropped where; like a click, it is reported.
  *
  * It is one screen: the toolbar (date, Undo, Change date and the hint) and the
  * Send bar stay put, and only the table scrolls, beside the Not Placed list.
@@ -62,6 +75,8 @@ export function ScheduleScreen({
   onDeselect,
   onPlace,
   onReturnToNotPlaced,
+  onDrop,
+  onSetAside,
   editingNote,
   onEditNote,
   onSaveNote,
@@ -83,6 +98,16 @@ export function ScheduleScreen({
   const typingNote = selected !== undefined && selectedPlaced !== undefined && editingNote;
   const moving = selected !== undefined && !typingNote;
 
+  // Dragging a name: no drag while a Note is being typed. A drop names the block by its key.
+  const drag = useNameDrag({
+    enabled: !typingNote,
+    onDrop: (crewMemberId, over) => {
+      const row = view.rows.find((candidate) => candidate.key === over);
+      if (row) onDrop(crewMemberId, row.destination);
+      else if (over === NOT_PLACED_DROP) onDrop(crewMemberId, 'not-placed');
+    },
+  });
+
   const onNameClick = (crewMember: CrewMember, event: MouseEvent) => {
     if (!moving) {
       event.stopPropagation();
@@ -102,6 +127,8 @@ export function ScheduleScreen({
       }`}
       aria-pressed={crewMember.id === selected?.id}
       onClick={(event) => onNameClick(crewMember, event)}
+      {...drag.nameProps(crewMember.id)}
+      onDoubleClick={() => onSetAside(crewMember.id)}
     >
       {crewMember.name}
     </button>
@@ -139,7 +166,7 @@ export function ScheduleScreen({
               )}
             </>
           ) : (
-            'To move someone, click their name. To change tasks, click the tasks.'
+            'To move someone, drag their name, or click it. To change tasks, click the tasks.'
           )}
         </div>
       </header>
@@ -161,6 +188,7 @@ export function ScheduleScreen({
                   className={`row row-${destination.kind} destination`}
                   data-row={row.key}
                   onClick={moving ? () => onPlace(destination) : undefined}
+                  {...drag.dropProps(row.key)}
                 >
                   <th scope="row" className="job">
                     {row.label}
@@ -195,6 +223,7 @@ export function ScheduleScreen({
           className={`not-placed destination${alertNotPlaced ? ' not-placed-alert' : ''}`}
           aria-labelledby="not-placed-heading"
           onClick={moving ? onReturnToNotPlaced : undefined}
+          {...drag.dropProps(NOT_PLACED_DROP)}
         >
           <h2 id="not-placed-heading">NOT PLACED</h2>
           {view.notPlaced.length === 0 ? (
@@ -210,6 +239,7 @@ export function ScheduleScreen({
       </div>
 
       {footer}
+      {drag.overlay}
     </main>
   );
 }
