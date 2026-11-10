@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { scheduleDateOf } from './schedule-rules';
 import { App } from './screen/App';
 import { seedRoster } from './seed/seedRoster';
 import { seedSchedule } from './seed/seedSchedule';
@@ -12,7 +13,10 @@ import './screen/screen.css';
 // store is filled from the seed roster and seed Daily Schedule.
 const store = browserStore();
 
-openStore(store, { roster: seedRoster, schedule: seedSchedule }).then((opened) => {
+// It opens on the Daily Schedule for the next working day after today.
+const today = scheduleDateOf(new Date());
+
+openStore(store, { roster: seedRoster, schedule: seedSchedule }, today).then((opened) => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App store={store} opened={opened} delivery={clipboardDelivery()} />

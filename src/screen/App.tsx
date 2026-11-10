@@ -7,9 +7,11 @@ import {
   setTasks,
   type DailySchedule,
   type Destination,
+  type ScheduleDate,
 } from '../schedule-rules';
 import type { CrewDelivery } from '../send';
-import type { Opened, ScheduleStore } from '../storage';
+import { openDate, type Opened, type ScheduleStore } from '../storage';
+import { ChangeDate } from './ChangeDate';
 import { ScheduleScreen } from './ScheduleScreen';
 import { SendBar } from './SendBar';
 import { useSend } from './useSend';
@@ -78,7 +80,17 @@ export function App({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  /** Opens the Daily Schedule for another date, creating it if there is none. */
+  const changeDate = (date: ScheduleDate) => {
+    select(null);
+    openDate(store, roster, date)
+      .then(setSchedule)
+      .catch((error) => console.error('Could not open the Daily Schedule', error));
+  };
+
   return (
+    <>
+    <ChangeDate date={schedule.date} onChangeDate={changeDate} />
     <ScheduleScreen
       roster={roster}
       schedule={schedule}
@@ -99,5 +111,6 @@ export function App({
       alertNotPlaced={send.refused !== null}
       footer={<SendBar send={send} />}
     />
+    </>
   );
 }
