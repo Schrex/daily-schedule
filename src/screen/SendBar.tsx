@@ -15,7 +15,7 @@ export function SendBar({ send }: { send: SendState }) {
     <section className="send-bar" aria-label="Send to crew">
       <button
         type="button"
-        className="send-button"
+        className="button button-primary send-button"
         disabled={send.status.kind === 'sending'}
         onClick={send.send}
       >

@@ -41,15 +41,15 @@ export function NoteEditor({ crewMemberName, note, onSave, onClear, onCancel }: 
           onFocus={(event) => event.target.select()}
         />
       </label>
-      <button type="submit" className="action action-main">
+      <button type="submit" className="button button-primary action action-main">
         Save note
       </button>
       {note && (
-        <button type="button" className="action" onClick={onClear}>
+        <button type="button" className="button action" onClick={onClear}>
           Remove note
         </button>
       )}
-      <button type="button" className="action" onClick={onCancel}>
+      <button type="button" className="button action" onClick={onCancel}>
         Cancel
       </button>
     </form>

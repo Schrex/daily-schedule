@@ -1,69 +1,118 @@
-/* The settings page, used by the office: an ordinary form page at ordinary size.
-   Loaded after screen.css, which supplies the Crew Member colors (.color-*).
-   Colors are the palette in src/palette.ts. */
+/* The settings page, used by the office: an ordinary form page at ordinary
+   size, in the look of the Scheduler's screen. Loaded after the shared look
+   (src/look.css), which supplies the page itself (canvas, type), the buttons
+   and the Crew Member colors (.color-*). Colors are the palette in
+   src/palette.ts. */
 
 :root {
   font-size: 17px;
 }
 
 .settings {
-  max-width: 56rem;
+  max-width: 58rem;
   margin: 0 auto;
-  padding: 1.5rem 1.5rem 4rem;
+  padding: var(--space-6) var(--space-5) 4rem;
 }
 
 .settings h1 {
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-1);
   font-size: 1.9rem;
+  font-weight: var(--weight-heading);
+  letter-spacing: var(--tracking-heading);
+  line-height: 1.15;
+}
+
+.settings-intro,
+.settings-hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* --- Crew Members and Jobs: one white card each --------------------------- */
+
+.settings section {
+  margin-top: var(--space-5);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border: var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  box-shadow: var(--elevation-2);
 }
 
 .settings h2 {
-  margin: 2.2rem 0 0.6rem;
-  padding-bottom: 0.3rem;
-  border-bottom: 3px solid var(--header);
-  font-size: 1.4rem;
+  margin: 0 0 var(--space-1);
+  font-size: 1.35rem;
+  font-weight: var(--weight-heading);
+  letter-spacing: var(--tracking-heading);
 }
 
 .settings h3 {
   flex: 0 0 100%;
   margin: 0;
   font-size: 1.05rem;
-}
-
-.settings-intro,
-.settings-hint {
-  margin: 0 0 0.8rem;
-  color: var(--muted);
+  font-weight: var(--weight-heading);
 }
 
 .settings-table {
   width: 100%;
+  margin-top: var(--space-3);
   border-collapse: collapse;
 }
 
 .settings-table th {
-  padding: 0.3rem 0.6rem;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line-strong);
   text-align: left;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+  font-weight: var(--weight-strong);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--muted);
 }
 
 .settings-table td {
-  padding: 0.4rem 0.6rem;
-  border-top: 1px solid var(--rule);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--hairline);
   vertical-align: middle;
 }
 
+/* The table keeps to the card's own edge on both sides. */
+.settings-table th:first-child,
+.settings-table td:first-child {
+  padding-left: 0;
+}
+
+.settings-table th:last-child,
+.settings-table td:last-child {
+  padding-right: 0;
+}
+
 .settings input[type='text'] {
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--muted);
+  min-height: 2.2rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  outline: none;
+  background: var(--paper);
+  color: var(--ink);
   font: inherit;
+  transition:
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+
+.settings input[type='text']:hover {
+  border-color: var(--muted);
+}
+
+.settings input[type='text']:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
 }
 
 .name-field {
   width: 14rem;
+  font-weight: var(--weight-strong);
 }
 
 .job-number-field {
@@ -71,22 +120,29 @@
 }
 
 .job-label {
-  font-weight: 700;
+  font-weight: var(--weight-heading);
+  letter-spacing: var(--tracking-name);
 }
 
-/* --- Color swatches ------------------------------------------------------ */
+/* --- Color swatches: the name chips of the Daily Schedule ----------------- */
 
 .colors {
   display: inline-flex;
-  gap: 0.35rem;
+  gap: var(--space-2);
 }
 
 .swatch {
-  padding: 0.25rem 0.55rem;
-  border: 1px solid var(--name-border);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-chip);
+  box-shadow: inset 0 0 0 1px var(--name-border);
   font-size: 0.9rem;
+  font-weight: var(--weight-strong);
+  letter-spacing: var(--tracking-name);
   cursor: pointer;
-  opacity: 0.45;
+  opacity: 0.5;
+  transition:
+    opacity var(--ease),
+    box-shadow var(--ease);
 }
 
 .swatch input {
@@ -95,55 +151,53 @@
   pointer-events: none;
 }
 
+.swatch:hover {
+  opacity: 0.75;
+}
+
 .swatch:has(input:checked) {
   opacity: 1;
-  font-weight: 700;
-  box-shadow: 0 0 0 3px var(--ink);
+  box-shadow:
+    inset 0 0 0 1px var(--name-border),
+    0 0 0 2px var(--paper),
+    0 0 0 4px var(--ink);
 }
 
 .swatch:has(input:focus-visible) {
-  outline: 3px solid var(--selected);
-  outline-offset: 3px;
+  opacity: 1;
+  box-shadow: var(--focus-ring);
 }
 
 .foreman {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   white-space: nowrap;
 }
 
 .foreman input {
   width: 1.1rem;
   height: 1.1rem;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
-/* --- Buttons ------------------------------------------------------------- */
+/* --- Buttons: the shared buttons, at this page's size --------------------- */
 
-.settings button {
-  padding: 0.35rem 0.8rem;
-  border: 1px solid var(--muted);
-  background: var(--standing);
-  font: inherit;
-  cursor: pointer;
+.settings .button {
+  min-height: 2.2rem;
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.95rem;
 }
 
-.settings button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.settings button.remove {
-  border-color: var(--alert);
-  background: var(--paper);
+.settings .button.remove:not(:disabled) {
+  border-color: var(--alert-line);
   color: var(--alert);
 }
 
-.settings button[type='submit'] {
-  border-color: var(--header);
-  background: var(--header);
-  color: var(--paper);
-  font-weight: 700;
+.settings .button.remove:hover:not(:disabled) {
+  border-color: var(--alert);
+  background: var(--alert-wash);
 }
 
 .actions {
@@ -151,8 +205,8 @@
   white-space: nowrap;
 }
 
-.actions button + button {
-  margin-left: 0.4rem;
+.actions .button + .button {
+  margin-left: var(--space-2);
 }
 
 /* --- Add forms ----------------------------------------------------------- */
@@ -161,14 +215,20 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.8rem 1.2rem;
-  margin-top: 1rem;
-  padding: 0.9rem 1rem;
-  background: var(--wash);
+  gap: var(--space-3) var(--space-5);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: var(--hairline);
+  border-radius: var(--radius-control);
+  background: var(--canvas);
 }
 
 .add label:not(.foreman):not(.swatch) {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
+}
+
+.add .button {
+  margin-left: auto;
 }

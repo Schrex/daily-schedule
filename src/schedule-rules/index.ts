@@ -233,6 +233,27 @@ export function returnToNotPlaced(schedule: DailySchedule, crewMemberId: string)
   return placements.length === schedule.placements.length ? schedule : { ...schedule, placements };
 }
 
+/** Where a move can take a Crew Member, besides a Job or Standing Row: back to Not Placed. */
+export const NOT_PLACED = 'not-placed';
+
+/** Where a Crew Member can be moved to: a Job or Standing Row, or Not Placed. */
+export type MoveTo = Destination | typeof NOT_PLACED;
+
+/**
+ * Moves a Crew Member, however the Scheduler did it (a click-click move, a
+ * drop, a double-click): onto a Job or Standing Row (`placeCrewMember`), or to
+ * Not Placed (`returnToNotPlaced`). If they are already there, the same Daily
+ * Schedule is returned unchanged.
+ */
+export const moveCrewMember = (
+  schedule: DailySchedule,
+  crewMemberId: string,
+  to: MoveTo,
+): DailySchedule =>
+  to === NOT_PLACED
+    ? returnToNotPlaced(schedule, crewMemberId)
+    : placeCrewMember(schedule, crewMemberId, to);
+
 const withoutCrewMember = (schedule: DailySchedule, crewMemberId: string): Placement[] =>
   schedule.placements.filter((placement) => placement.crewMemberId !== crewMemberId);
 

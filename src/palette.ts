@@ -8,46 +8,53 @@
 import type { Color } from './schedule-rules';
 
 export const PALETTE = {
-  ink: '#111111',
+  ink: '#141922',
   paper: '#ffffff',
-  /** The ruled lines of the schedule. */
-  grid: '#1f1f1f',
-  /** The JOB / TASKS / WHO header, and the main action buttons. */
-  header: '#1f3864',
-  headerHover: '#2f5597',
+  /** Behind everything: the calm surface the white cards sit on. */
+  canvas: '#f2f4f7',
+  /** Hairlines: the rules between rows, the edge of a card. */
+  line: '#e3e6ec',
+  /** The edge of something to click or type in. */
+  lineStrong: '#c9ced8',
   /** The Standing Rows. */
-  standing: '#f1f1f1',
-  /** Quiet backgrounds: the hint bar, a hovered plain button. */
-  wash: '#eef1f5',
-  /** Where typing or a click would land. */
-  highlight: '#fff3bf',
+  standing: '#f6f7f9',
+  /** Quiet backgrounds: a hovered plain button, the Tasks under the pointer. */
+  wash: '#eceff4',
   /** The one alert red: Notes, Not Placed, a refused Send, UPDATED. */
-  alert: '#c00000',
-  alertWash: '#fff5f5',
-  alertWashStrong: '#ffe3e3',
-  /** The name being moved: a color no Crew Member has. */
-  selected: '#7a00cc',
+  alert: '#c5221f',
+  alertWash: '#fef4f3',
+  alertWashStrong: '#fde3e0',
+  alertLine: '#f0b4ae',
+  /**
+   * The one accent: the name being moved, where it would land, and the main
+   * action. No Crew Member has it.
+   */
+  accent: '#4f46e5',
+  accentHover: '#4038c7',
+  accentWash: '#eef0fe',
   /** The block the pointer would place them in. */
-  target: '#e9d5ff',
-  /** Send. */
-  go: '#1e7b34',
-  goDark: '#14532d',
-  muted: '#555555',
-  disabled: '#9a9a9a',
-  rule: '#d0d0d0',
-  /** The outline of a name cell. */
-  nameBorder: 'rgba(0, 0, 0, 0.45)',
+  target: '#e4e7fd',
+  /** A Send that worked. */
+  goDark: '#12603d',
+  goWash: '#e8f5ee',
+  muted: '#566070',
+  disabled: '#9aa1ad',
+  /** Soft shadows: a resting card, and something lifted above the screen. */
+  shadow: 'rgba(20, 25, 34, 0.07)',
+  shadowStrong: 'rgba(20, 25, 34, 0.18)',
+  /** The outline of a name. */
+  nameBorder: 'rgba(20, 25, 34, 0.14)',
   /** Behind the Change date panel. */
-  backdrop: 'rgba(0, 0, 0, 0.45)',
+  backdrop: 'rgba(20, 25, 34, 0.5)',
 } as const;
 
 /** The fill of a Crew Member's name, by their color. */
 export const CREW_COLORS: Record<Color, string> = {
-  grey: '#bfbfbf',
-  blue: '#9dc3e6',
-  orange: '#f4b183',
-  yellow: '#ffe066',
-  red: '#e03131',
+  grey: '#d3d7de',
+  blue: '#aed0f8',
+  orange: '#fcbf8b',
+  yellow: '#fbe170',
+  red: '#d63a3a',
 };
 
 /** The text on a name: white on red, ink on the lighter colors. */

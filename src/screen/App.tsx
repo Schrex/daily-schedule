@@ -4,16 +4,15 @@ import {
   change as changeEditing,
   clearNote,
   markSent,
-  placeCrewMember,
-  returnToNotPlaced,
+  moveCrewMember,
   setNote,
   setTasks,
   startEditing,
   undo,
   type CrewView,
   type DailySchedule,
-  type Destination,
   type Editing,
+  type MoveTo,
   type ScheduleDate,
 } from '../schedule-rules';
 import type { CrewDelivery } from '../send';
@@ -98,13 +97,23 @@ export function App({
   /** Lets go of the selected Crew Member: no move, and any Note being typed is dropped. */
   const deselect = () => select(null);
 
-  /** Applies one rule to the selected Crew Member (a move or a Note), then lets go of them. */
+  /** Applies one rule to the selected Crew Member (a Note), then lets go of them. */
   const changeSelected = (
     rule: (schedule: DailySchedule, crewMemberId: string) => DailySchedule,
   ) => {
     if (selectedCrewMemberId === null) return;
     const crewMemberId = selectedCrewMemberId;
     change((current) => rule(current, crewMemberId));
+    deselect();
+  };
+
+  /**
+   * Moves one Crew Member, selected or not, however the Scheduler did it (a
+   * click-click move, a drop, a double-click), and lets go of anyone selected.
+   * The rules change nothing if they are already there.
+   */
+  const move = (crewMemberId: string, to: MoveTo) => {
+    change((current) => moveCrewMember(current, crewMemberId, to));
     deselect();
   };
 
@@ -138,12 +147,7 @@ export function App({
       editingNote={editingNote}
       onSelectCrewMember={select}
       onDeselect={deselect}
-      onPlace={(destination: Destination) =>
-        changeSelected((current, crewMemberId) =>
-          placeCrewMember(current, crewMemberId, destination),
-        )
-      }
-      onReturnToNotPlaced={() => changeSelected(returnToNotPlaced)}
+      onMoveCrewMember={move}
       onEditNote={() => setEditingNote(true)}
       onSaveNote={(text) =>
         changeSelected((current, crewMemberId) => setNote(current, crewMemberId, text))

@@ -1,12 +1,17 @@
-import type { MouseEvent, ReactNode } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 import {
   fullDate,
+  NOT_PLACED,
   scheduleView,
   type CrewMember,
   type DailySchedule,
-  type Destination,
+  type MoveTo,
   type Roster,
 } from '../schedule-rules';
+import { useNameDrag } from './drag/useNameDrag';
+import { dropTarget, viewWhileDragging } from './dropPreview';
+import { MoveNames } from './motion/MoveNames';
+import { createNameMotion } from './motion/nameMotion';
 import { NoteEditor } from './NoteEditor';
 import { TasksCell } from './TasksCell';
 
@@ -20,10 +25,12 @@ interface ScheduleScreenProps {
   onSelectCrewMember: (crewMemberId: string) => void;
   /** The selected name was clicked again, or "Cancel" on a Note: let go of them. */
   onDeselect: () => void;
-  /** A Job or Standing Row block was clicked while a Crew Member is selected. */
-  onPlace: (destination: Destination) => void;
-  /** The Not Placed list was clicked while a Crew Member is selected. */
-  onReturnToNotPlaced: () => void;
+  /**
+   * The Scheduler moved a Crew Member to a Job, a Standing Row or Not Placed:
+   * by clicking there with them selected, by dropping their name there, or (to
+   * Not Placed) by double-clicking their name.
+   */
+  onMoveCrewMember: (crewMemberId: string, to: MoveTo) => void;
   /** "Add note" / "Change note" was clicked for the selected Crew Member. */
   onEditNote: () => void;
   /** The Note typed for the selected Crew Member was saved. */
@@ -48,8 +55,22 @@ interface ScheduleScreenProps {
  * Standing Row or the Not Placed list. While a name is selected, a click
  * anywhere in one of those blocks (even on another name) is the destination.
  *
+ * Double-clicking a name moves that Crew Member to Not Placed. The browser
+ * reports a double-click as two clicks and then the double-click, so the name
+ * is selected and let go of first. A double-click made with a shaky hand, which
+ * the browser takes for a small drag, is reported by `useNameDrag` instead.
+ *
  * With no name selected, clicking a Job's Tasks lets him type them. A selected
  * Crew Member who has a Placement also offers "Add note".
+ *
+ * A name can also be dragged and dropped on one of those blocks (`useNameDrag`).
+ * The drag only says who was dropped where; like a click, it is reported.
+ * While a name is held over a destination, the schedule is drawn as the rules
+ * say it would be after the drop (`viewWhileDragging`), so the names there
+ * make room where it would land.
+ *
+ * Every move is shown: a name that is somewhere else after a redraw travels
+ * there from where it was (`MoveNames`), whatever moved it.
  *
  * It is one screen: the toolbar (date, Undo, Change date and the hint) and the
  * Send bar stay put, and only the table scrolls, beside the Not Placed list.
@@ -60,8 +81,7 @@ export function ScheduleScreen({
   selectedCrewMemberId,
   onSelectCrewMember,
   onDeselect,
-  onPlace,
-  onReturnToNotPlaced,
+  onMoveCrewMember,
   editingNote,
   onEditNote,
   onSaveNote,
@@ -83,6 +103,20 @@ export function ScheduleScreen({
   const typingNote = selected !== undefined && selectedPlaced !== undefined && editingNote;
   const moving = selected !== undefined && !typingNote;
 
+  // Dragging a name: no drag while a Note is being typed. A drop names the block by its key.
+  const [motion] = useState(createNameMotion);
+  const drag = useNameDrag({
+    enabled: !typingNote,
+    onDrop: (crewMemberId, over) => {
+      const to = dropTarget(view, over);
+      if (to !== null) onMoveCrewMember(crewMemberId, to);
+    },
+    onLetGo: motion.letGoAt,
+    onShakyDoubleClick: (crewMemberId) => onMoveCrewMember(crewMemberId, NOT_PLACED),
+  });
+  /** What is drawn: while a name is held over a destination, the schedule as the drop would leave it. */
+  const shown = viewWhileDragging(roster, schedule, drag.dragging);
+
   const onNameClick = (crewMember: CrewMember, event: MouseEvent) => {
     if (!moving) {
       event.stopPropagation();
@@ -94,6 +128,9 @@ export function ScheduleScreen({
     // Otherwise the click carries on to the block the name sits in: the destination.
   };
 
+  /** A destination was clicked while a Crew Member is selected: they go there. */
+  const moveSelectedTo = (to: MoveTo) => (moving ? () => onMoveCrewMember(selected.id, to) : undefined);
+
   const name = (crewMember: CrewMember) => (
     <button
       type="button"
@@ -102,6 +139,8 @@ export function ScheduleScreen({
       }`}
       aria-pressed={crewMember.id === selected?.id}
       onClick={(event) => onNameClick(crewMember, event)}
+      {...drag.nameProps(crewMember.id)}
+      onDoubleClick={() => onMoveCrewMember(crewMember.id, NOT_PLACED)}
     >
       {crewMember.name}
     </button>
@@ -133,19 +172,19 @@ export function ScheduleScreen({
                 <span className="move-hint-cancel"> (Click the name again to cancel.)</span>
               </span>
               {selectedPlaced && (
-                <button type="button" className="action" onClick={onEditNote}>
+                <button type="button" className="button action" onClick={onEditNote}>
                   {selectedPlaced.note ? 'Change note' : 'Add note'}
                 </button>
               )}
             </>
           ) : (
-            'To move someone, click their name. To change tasks, click the tasks.'
+            'To move someone, drag their name, or click it. To change tasks, click the tasks.'
           )}
         </div>
       </header>
 
       <div className="layout">
-        <div className="schedule-scroll">
+        <div className="schedule-scroll" data-motion-area>
           <table className="schedule">
             <thead>
               <tr>
@@ -155,12 +194,13 @@ export function ScheduleScreen({
               </tr>
             </thead>
             <tbody>
-              {view.rows.map(({ destination, ...row }) => (
+              {shown.rows.map(({ destination, ...row }) => (
                 <tr
                   key={row.key}
                   className={`row row-${destination.kind} destination`}
                   data-row={row.key}
-                  onClick={moving ? () => onPlace(destination) : undefined}
+                  onClick={moveSelectedTo(destination)}
+                  {...drag.dropProps(row.key)}
                 >
                   <th scope="row" className="job">
                     {row.label}
@@ -194,14 +234,16 @@ export function ScheduleScreen({
         <aside
           className={`not-placed destination${alertNotPlaced ? ' not-placed-alert' : ''}`}
           aria-labelledby="not-placed-heading"
-          onClick={moving ? onReturnToNotPlaced : undefined}
+          onClick={moveSelectedTo(NOT_PLACED)}
+          data-motion-area
+          {...drag.dropProps(NOT_PLACED)}
         >
           <h2 id="not-placed-heading">NOT PLACED</h2>
-          {view.notPlaced.length === 0 ? (
+          {shown.notPlaced.length === 0 ? (
             <p className="not-placed-empty">Everyone is placed.</p>
           ) : (
             <ul className="names names-stacked">
-              {view.notPlaced.map((crewMember) => (
+              {shown.notPlaced.map((crewMember) => (
                 <li key={crewMember.id}>{name(crewMember)}</li>
               ))}
             </ul>
@@ -210,6 +252,8 @@ export function ScheduleScreen({
       </div>
 
       {footer}
+      {drag.overlay}
+      <MoveNames motion={motion} scene={view.date} />
     </main>
   );
 }

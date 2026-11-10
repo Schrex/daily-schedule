@@ -7,7 +7,7 @@ export function UndoButton({ canUndo, onUndo }: { canUndo: boolean; onUndo: () =
   return (
     <button
       type="button"
-      className="toolbar-button"
+      className="button toolbar-button"
       disabled={!canUndo}
       title={canUndo ? 'Take back your last change' : 'Nothing to undo'}
       onClick={onUndo}

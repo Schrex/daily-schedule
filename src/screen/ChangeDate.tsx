@@ -23,7 +23,7 @@ export function ChangeDate({ date, onChangeDate }: ChangeDateProps) {
 
   return (
     <>
-      <button type="button" className="toolbar-button" onClick={() => setPicked(date)}>
+      <button type="button" className="button toolbar-button" onClick={() => setPicked(date)}>
         Change date
       </button>
 
@@ -64,10 +64,10 @@ export function ChangeDate({ date, onChangeDate }: ChangeDateProps) {
             </p>
 
             <div className="change-date-actions">
-              <button type="submit" className="change-date-open" disabled={!valid}>
+              <button type="submit" className="button button-primary change-date-open" disabled={!valid}>
                 Open this day
               </button>
-              <button type="button" className="change-date-cancel" onClick={close}>
+              <button type="button" className="button change-date-cancel" onClick={close}>
                 Cancel
               </button>
             </div>

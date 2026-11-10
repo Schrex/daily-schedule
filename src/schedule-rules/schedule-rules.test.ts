@@ -7,6 +7,8 @@ import {
   scheduleDateOf,
   onJob,
   onStandingRow,
+  moveCrewMember,
+  NOT_PLACED,
   placeCrewMember,
   returnToNotPlaced,
   scheduleView,
@@ -276,6 +278,33 @@ describe('returning a Crew Member to Not Placed', () => {
     const before = schedule({ placements: [placement('ann', onJob('tower'), 1)] });
 
     expect(returnToNotPlaced(before, 'bob')).toBe(before);
+  });
+});
+
+describe('moving a Crew Member', () => {
+  const before = schedule({
+    placements: [placement('ann', onJob('tower'), 1), placement('bob', onJob('tower'), 2)],
+  });
+
+  it('places them on the Job or Standing Row they are moved to, last in placement order', () => {
+    const toShop = moveCrewMember(before, 'ann', onStandingRow('shop'));
+    expect(whoIsOn('Shop', toShop)).toEqual(['ann']);
+    expect(whoIsOn('J100 Tower', toShop)).toEqual(['bob']);
+
+    const cal = moveCrewMember(before, 'cal', onJob('tower'));
+    expect(whoIsOn('J100 Tower', cal)).toEqual(['ann', 'bob', 'cal']);
+  });
+
+  it('removes their Placement when they are moved to Not Placed', () => {
+    const moved = moveCrewMember(before, 'ann', NOT_PLACED);
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['bob']);
+    expect(notPlaced(moved)).toEqual(['ann', 'fay', 'cal']);
+  });
+
+  it('changes nothing when they are moved to where they already are', () => {
+    expect(moveCrewMember(before, 'ann', onJob('tower'))).toBe(before);
+    expect(moveCrewMember(before, 'cal', NOT_PLACED)).toBe(before);
   });
 });
 

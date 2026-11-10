@@ -1,21 +1,17 @@
-/* The look of the existing Excel sheet: a ruled grid, colored name cells, large text.
-   Sizes are in rem off one root size so the whole screen can be scaled in one place.
-   Colors are the palette in src/palette.ts, handed over as custom properties. */
+/* The Scheduler's screen: the JOB / TASKS / WHO schedule he knows, on calm
+   white cards with large text. Type, spacing, corners, shadows, the page, the
+   buttons and the Crew Member colors come from the shared look (src/look.css);
+   colors are the palette in src/palette.ts, handed over as custom properties.
+   Sizes are in rem off one root size so the whole screen can be scaled in one
+   place. */
+
+@import '../look.css';
 
 :root {
-  font-size: 22px; /* the one knob for "bigger / smaller" */
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: Calibri, 'Segoe UI', Arial, Helvetica, sans-serif;
-  line-height: 1.25;
+  /* The one knob for "bigger / smaller". Never below 22px; on a window larger
+     than 1920 x 1080 the whole screen grows with it instead of leaving the
+     same small schedule in a corner of a big monitor. */
+  font-size: clamp(22px, min(1.146vw, 2.037vh), 48px);
 }
 
 /* --- One screen ----------------------------------------------------------
@@ -24,11 +20,12 @@ body {
    long) beside the Not Placed list. Nothing he needs ever scrolls away. */
 
 .screen {
+  --gutter: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-3);
   height: 100vh;
-  padding: 0.5rem 1.2rem 0;
+  padding: var(--space-3) var(--gutter) 0;
 }
 
 /* --- The toolbar: the date, Undo, Change date, and under them the hint ---- */
@@ -38,49 +35,28 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem 0.8rem;
+  gap: var(--space-3);
 }
 
 .date-heading {
   flex: 1 1 auto;
   margin: 0;
   font-size: 2.1rem;
-  font-weight: 700;
+  font-weight: var(--weight-heading);
+  letter-spacing: var(--tracking-heading);
+  line-height: 1.15;
 }
 
 .toolbar-button {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
   min-height: 2.7rem;
-  padding: 0.2rem 1.2rem;
-  border: 3px solid var(--ink);
-  border-radius: 0.4rem;
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
+  padding: var(--space-1) var(--space-5);
   font-size: 1.35rem;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
 }
 
 .toolbar-button-icon {
   font-size: 1.8rem;
   line-height: 1;
-}
-
-.toolbar-button:hover:not(:disabled),
-.toolbar-button:focus-visible {
-  background: var(--highlight);
-}
-
-.toolbar-button:disabled {
-  border-color: var(--disabled);
-  background: var(--standing);
-  color: var(--disabled);
-  cursor: default;
 }
 
 /* The hint is always there, a full line of the toolbar, and keeps one height
@@ -90,32 +66,61 @@ body {
   flex: 1 0 100%;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
   min-height: 3rem;
-  padding: 0.2rem 0.9rem;
-  background: var(--wash);
+  padding: var(--space-1) var(--space-4);
+  border: var(--hairline);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  color: var(--muted);
   font-size: 1.15rem;
+  transition:
+    background-color var(--ease),
+    border-color var(--ease);
 }
 
 .move-hint-active {
-  background: var(--selected);
+  border-color: var(--accent);
+  background: var(--accent);
   color: var(--paper);
-  font-weight: 700;
+  font-weight: var(--weight-strong);
+}
+
+.move-hint-active > span {
+  flex: 1 1 auto;
 }
 
 .move-hint-active strong {
   font-size: 1.4rem;
-  text-decoration: underline;
+  font-weight: var(--weight-heading);
 }
 
 .move-hint-cancel {
-  font-weight: 400;
+  font-weight: var(--weight-body);
+  opacity: 0.85;
+}
+
+/* On the accent bar the button is plain white: no second edge, no hover wash
+   that would vanish into the bar. */
+.move-hint-active .action {
+  border-color: var(--paper);
+}
+
+.move-hint-active .action:hover {
+  border-color: var(--paper);
+  background: var(--accent-wash);
+}
+
+.move-hint-active .action:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 5px var(--paper);
 }
 
 .move-hint-note {
+  border-color: var(--alert-line);
   background: var(--alert-wash);
-  outline: 3px solid var(--alert);
-  outline-offset: -3px;
+  color: var(--ink);
 }
 
 /* --- The table and the Not Placed list, side by side ----------------------- */
@@ -125,20 +130,23 @@ body {
   min-height: 0; /* lets the table scroll inside instead of stretching the screen */
   display: flex;
   align-items: flex-start;
-  gap: 1.2rem;
+  gap: var(--space-4);
 }
 
 .schedule-scroll {
   flex: 1 1 auto;
   max-height: 100%;
   overflow-y: auto;
-  border: 3px solid var(--grid);
+  border: var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  box-shadow: var(--elevation-2);
 }
 
-/* --- The schedule grid --------------------------------------------------- */
+/* --- The schedule -------------------------------------------------------- */
 
-/* Separate borders (each cell rules its right and bottom edge) so the header
-   keeps its lines while it stays put above the scrolling rows. */
+/* Separate borders (each cell rules its bottom edge) so the header keeps its
+   line while it stays put above the scrolling rows. */
 .schedule {
   width: 100%;
   border-collapse: separate;
@@ -148,15 +156,11 @@ body {
 
 .schedule th,
 .schedule td {
-  border: 0 solid var(--grid);
-  border-width: 0 2px 2px 0;
-  padding: 0.3rem 0.6rem;
+  border: 0;
+  border-bottom: var(--hairline);
+  padding: var(--space-2) var(--space-4);
   vertical-align: middle;
   text-align: left;
-}
-
-.schedule tr > :last-child {
-  border-right-width: 0;
 }
 
 .schedule tbody tr:last-child > * {
@@ -167,34 +171,46 @@ body {
   position: sticky;
   top: 0;
   z-index: 2; /* above the ring of a selected name scrolling under it */
-  padding-block: 0.15rem;
-  background: var(--header);
-  color: var(--paper);
+  padding-block: var(--space-2);
+  border-bottom-color: var(--line-strong);
+  background: var(--paper);
+  color: var(--muted);
   font-size: 1.1rem;
-  letter-spacing: 0.08em;
+  font-weight: var(--weight-strong);
+  letter-spacing: var(--tracking-label);
 }
 
 .col-job {
-  width: 22%;
+  width: 12rem; /* the longest Job on one line, whatever the window */
 }
 
 .col-tasks {
-  width: 28%;
+  width: 27%;
 }
 
 .row {
-  height: 3rem;
+  height: 3.4rem;
+}
+
+.row > * {
+  transition: background-color var(--ease);
 }
 
 .job {
   font-size: 1.2rem;
-  font-weight: 700;
+  font-weight: var(--weight-heading);
+  letter-spacing: var(--tracking-name);
 }
 
+/* The Standing Rows: a quiet tint, and a firmer line where the Jobs end. */
 .row-standing-row .job,
 .row-standing-row .tasks,
 .row-standing-row .who {
   background: var(--standing);
+}
+
+.row-job + .row-standing-row > * {
+  box-shadow: inset 0 1px 0 var(--line-strong);
 }
 
 .task {
@@ -206,7 +222,7 @@ body {
 .names {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.7rem;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -215,42 +231,53 @@ body {
 .names li {
   display: flex;
   align-items: center;
-  gap: 0.7rem; /* room for the selected ring between a name and its Note */
+  gap: var(--space-3); /* room for the selected ring between a name and its Note */
 }
 
 .names-stacked {
   flex-direction: column;
-  align-items: stretch;
+  align-items: flex-start;
+  gap: var(--space-2);
 }
 
 .name {
   display: inline-block;
-  min-height: 2.1rem;
-  padding: 0.2rem 0.7rem;
-  border: 1px solid var(--name-border);
-  border-radius: 0;
+  min-height: 2.2rem;
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-chip);
   font: inherit;
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: var(--weight-strong);
+  letter-spacing: var(--tracking-name);
   white-space: nowrap;
   color: var(--ink);
   cursor: pointer;
+  transition: box-shadow var(--ease);
 }
 
-.name:hover {
-  box-shadow: 0 0 0 3px var(--ink);
+/* The fine edge of a name, and the ring under the pointer. Kept weak
+   (`:where`) so the marks a drag puts on a name always win over them. */
+:where(.name) {
+  box-shadow: inset 0 0 0 1px var(--name-border);
+}
+
+:where(.name):hover {
+  box-shadow:
+    inset 0 0 0 1px var(--name-border),
+    0 0 0 3px var(--ink);
+}
+
+.name:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* The Crew Member being moved: must be impossible to miss. */
 .name.name-selected {
   position: relative;
   z-index: 1;
-  border-color: var(--paper);
-  box-shadow:
-    0 0 0 3px var(--paper),
-    0 0 0 9px var(--selected);
-  font-weight: 800;
-  text-decoration: underline;
+  box-shadow: var(--ring-selected), var(--elevation-lifted);
 }
 
 /* While moving, every Job, Standing Row and the Not Placed list is one big target. */
@@ -264,38 +291,13 @@ body {
 }
 
 .moving .name:not(.name-selected):hover {
-  box-shadow: none;
-}
-
-.color-grey {
-  background: var(--crew-grey);
-  color: var(--crew-grey-ink);
-}
-
-.color-blue {
-  background: var(--crew-blue);
-  color: var(--crew-blue-ink);
-}
-
-.color-orange {
-  background: var(--crew-orange);
-  color: var(--crew-orange-ink);
-}
-
-.color-yellow {
-  background: var(--crew-yellow);
-  color: var(--crew-yellow-ink);
-}
-
-.color-red {
-  background: var(--crew-red);
-  color: var(--crew-red-ink);
+  box-shadow: inset 0 0 0 1px var(--name-border);
 }
 
 .note {
   color: var(--alert);
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: var(--weight-heading);
   white-space: nowrap;
 }
 
@@ -305,93 +307,120 @@ body {
   flex: 0 0 13.5rem;
   max-height: 100%;
   overflow-y: auto;
-  border: 3px dashed var(--alert);
+  border: 1px solid var(--alert-line);
+  border-radius: var(--radius-card);
   background: var(--alert-wash);
-  padding: 0.5rem 0.8rem 0.8rem;
+  box-shadow: var(--elevation-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  transition:
+    background-color var(--ease),
+    border-color var(--ease);
 }
 
 .not-placed h2 {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--space-3);
   font-size: 1.25rem;
-  letter-spacing: 0.06em;
+  font-weight: var(--weight-heading);
+  letter-spacing: var(--tracking-label);
   color: var(--alert);
+}
+
+/* Nobody left to place: nothing to warn about, so the red goes. */
+.not-placed:has(.not-placed-empty) {
+  border-color: var(--line);
+  background: var(--paper);
+}
+
+.not-placed:has(.not-placed-empty) h2 {
+  color: var(--muted);
 }
 
 .not-placed-empty {
   margin: 0;
+  color: var(--muted);
   font-size: 1.05rem;
 }
 
 /* --- Buttons that do something other than move a name -------------------- */
 
 .action {
-  min-height: 2.3rem;
-  padding: 0.2rem 1rem;
-  border: 2px solid var(--ink);
-  border-radius: 0.3rem;
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
+  min-height: 2.4rem;
+  padding: var(--space-1) var(--space-4);
   font-size: 1.1rem;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.action:hover,
-.action:focus-visible {
-  background: var(--highlight);
-}
-
-.action-main {
-  background: var(--header);
-  border-color: var(--header);
-  color: var(--paper);
-}
-
-.action-main:hover,
-.action-main:focus-visible {
-  background: var(--header-hover);
 }
 
 /* --- Typing Tasks -------------------------------------------------------- */
 
-/* The whole Tasks cell of a Job is the thing to click. */
+/* The whole Tasks cell of a Job is the thing to click: the button fills the
+   cell, side to side and top to bottom, but for a sliver all round. The cell
+   gives up most of its padding to it, and what is inside (the button, the
+   Tasks shown while a name is being moved, the field) makes that up, so the
+   text never shifts. */
+.schedule td.tasks {
+  --tasks-inset: var(--space-1);
+  height: 1px; /* a height to take a share of: lets the button be as tall as the row */
+  padding: var(--tasks-inset);
+}
+
+.tasks-open,
+.tasks-shown {
+  padding: calc(var(--space-2) - var(--tasks-inset)) calc(var(--space-4) - var(--tasks-inset));
+}
+
 .tasks-open {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 100%;
+  height: 100%;
   min-height: 2.2rem;
-  padding: 0.1rem 0.3rem;
-  border: 2px dashed transparent;
+  border: 0;
+  border-radius: var(--radius-control);
   background: none;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: text;
+  transition:
+    background-color var(--ease),
+    box-shadow var(--ease);
 }
 
-.tasks-open:hover,
-.tasks-open:focus-visible {
-  border-color: var(--header);
+.tasks-open:hover {
   background: var(--wash);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.tasks-open:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .tasks-empty {
   color: var(--muted);
   font-size: 1rem;
-  font-style: italic;
+}
+
+/* The field reaches a little past the text on each side, so what is typed
+   stays where the Tasks were. */
+.tasks-editing {
+  margin: calc(var(--space-2) - var(--tasks-inset))
+    calc(var(--space-4) - var(--tasks-inset) - var(--space-2));
 }
 
 .tasks-input {
   display: block;
   width: 100%;
-  padding: 0.3rem 0.4rem;
-  border: 3px solid var(--header);
-  background: var(--highlight);
+  padding: var(--space-2) var(--space-2);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-control);
+  outline: none;
+  background: var(--paper);
+  box-shadow: 0 0 0 4px var(--accent-wash);
   color: var(--ink);
   font: inherit;
   font-size: 1.05rem;
-  line-height: 1.35;
+  line-height: 1.4;
   resize: vertical;
 }
 
@@ -399,8 +428,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
-  margin-top: 0.4rem;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  color: var(--muted);
   font-size: 1rem;
 }
 
@@ -410,30 +440,36 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.8rem;
+  gap: var(--space-3);
   width: 100%;
 }
 
 .note-editor-label {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: var(--space-3);
   font-size: 1.15rem;
 }
 
 .note-input {
   width: 16rem;
-  min-height: 2.3rem;
-  padding: 0.2rem 0.5rem;
-  border: 3px solid var(--alert);
+  min-height: 2.4rem;
+  padding: var(--space-1) var(--space-3);
+  border: 2px solid var(--alert);
+  border-radius: var(--radius-control);
+  outline: none;
   background: var(--paper);
   color: var(--alert);
   font: inherit;
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: var(--weight-heading);
+}
+
+.note-input:focus {
+  box-shadow: 0 0 0 4px var(--alert-wash-strong);
 }
 
 .note-input::placeholder {
   color: var(--muted);
-  font-weight: 400;
+  font-weight: var(--weight-body);
 }
