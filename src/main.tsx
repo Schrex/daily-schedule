@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './screen/App';
 import { seedRoster } from './seed/seedRoster';
 import { seedSchedule } from './seed/seedSchedule';
+import { clipboardDelivery } from './send/clipboardDelivery';
 import { openStore } from './storage';
 import { browserStore } from './storage/browserStore';
 import './screen/screen.css';
@@ -14,7 +15,7 @@ const store = browserStore();
 openStore(store, { roster: seedRoster, schedule: seedSchedule }).then((opened) => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App store={store} opened={opened} />
+      <App store={store} opened={opened} delivery={clipboardDelivery()} />
     </StrictMode>,
   );
 });

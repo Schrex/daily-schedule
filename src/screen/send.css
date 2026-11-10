@@ -1,0 +1,106 @@
+/* The Send bar: one large button and a plain message. It stays at the bottom
+   of the window so the button is always in sight, however long the schedule. */
+
+.send-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding: 0.7rem 0 0.8rem;
+  border-top: 3px solid #1f1f1f;
+  background: #ffffff;
+}
+
+.send-button {
+  flex: 0 0 auto;
+  min-height: 4.2rem;
+  padding: 0.6rem 2.2rem;
+  border: 3px solid #14532d;
+  border-radius: 0.4rem;
+  background: #1e7b34;
+  color: #ffffff;
+  font: inherit;
+  font-size: 1.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.send-button:hover,
+.send-button:focus-visible {
+  background: #14532d;
+}
+
+.send-button:disabled {
+  background: #6b8f73;
+  cursor: default;
+}
+
+.send-message {
+  flex: 1 1 auto;
+  font-size: 1.2rem;
+}
+
+.send-message p {
+  margin: 0;
+}
+
+.send-headline {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.send-sent .send-headline {
+  color: #14532d;
+}
+
+.send-refused,
+.send-failed {
+  padding: 0.5rem 0.9rem 0.6rem;
+  border: 3px solid #c00000;
+  background: #fff5f5;
+}
+
+.send-refused .send-headline,
+.send-failed .send-headline {
+  color: #c00000;
+}
+
+/* Room around each name for its red ring. */
+.send-refused .send-refused-names {
+  gap: 1.1rem 1.4rem;
+  margin: 0.9rem 0.4rem 1rem;
+}
+
+/* A name in the refusal: not a button, and ringed in red so it cannot be missed. */
+.send-refused-name,
+.send-refused-name:hover {
+  cursor: default;
+  font-size: 1.3rem;
+  font-weight: 800;
+  box-shadow:
+    0 0 0 3px #ffffff,
+    0 0 0 7px #c00000;
+}
+
+/* The Not Placed list while Send is refused: the same red ring on each name. */
+.not-placed.not-placed-alert {
+  border-style: solid;
+  border-width: 5px;
+  background: #ffe3e3;
+}
+
+.not-placed-alert .name:not(.name-selected) {
+  font-weight: 800;
+  box-shadow:
+    0 0 0 3px #ffffff,
+    0 0 0 7px #c00000;
+}
+
+.not-placed-alert .names-stacked {
+  gap: 1rem;
+  padding: 0.3rem;
+}

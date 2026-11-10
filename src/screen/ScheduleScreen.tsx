@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import {
   fullDate,
   scheduleView,
@@ -31,6 +31,10 @@ interface ScheduleScreenProps {
   onClearNote: () => void;
   /** The Scheduler finished typing a Job's Tasks: the whole text, one Task per line. */
   onSetTasks: (jobId: string, text: string) => void;
+  /** Send was just refused: make the Not Placed list and its names stand out. */
+  alertNotPlaced?: boolean;
+  /** Drawn under the schedule: the Send bar. */
+  footer?: ReactNode;
 }
 
 /**
@@ -57,6 +61,8 @@ export function ScheduleScreen({
   onSaveNote,
   onClearNote,
   onSetTasks,
+  alertNotPlaced = false,
+  footer,
 }: ScheduleScreenProps) {
   const view = scheduleView(roster, schedule);
   const selected = roster.crewMembers.find((member) => member.id === selectedCrewMemberId);
@@ -171,7 +177,7 @@ export function ScheduleScreen({
         </table>
 
         <aside
-          className="not-placed destination"
+          className={`not-placed destination${alertNotPlaced ? ' not-placed-alert' : ''}`}
           aria-labelledby="not-placed-heading"
           onClick={moving ? onReturnToNotPlaced : undefined}
         >
@@ -187,6 +193,8 @@ export function ScheduleScreen({
           )}
         </aside>
       </div>
+
+      {footer}
     </main>
   );
 }

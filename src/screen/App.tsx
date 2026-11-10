@@ -8,8 +8,11 @@ import {
   type DailySchedule,
   type Destination,
 } from '../schedule-rules';
+import type { CrewDelivery } from '../send';
 import type { Opened, ScheduleStore } from '../storage';
 import { ScheduleScreen } from './ScheduleScreen';
+import { SendBar } from './SendBar';
+import { useSend } from './useSend';
 
 /**
  * Holds the Daily Schedule being edited and which Crew Member is selected to
@@ -18,7 +21,16 @@ import { ScheduleScreen } from './ScheduleScreen';
  * below only draws and reports clicks. `opened` is what the store held when
  * the page loaded.
  */
-export function App({ store, opened }: { store: ScheduleStore; opened: Opened }) {
+export function App({
+  store,
+  opened,
+  delivery,
+}: {
+  store: ScheduleStore;
+  opened: Opened;
+  /** How the picture of the Daily Schedule reaches the crew. */
+  delivery: CrewDelivery;
+}) {
   const roster = opened.roster;
   const [schedule, setSchedule] = useState<DailySchedule>(opened.schedule);
   const [selectedCrewMemberId, setSelectedCrewMemberId] = useState<string | null>(null);
@@ -32,6 +44,16 @@ export function App({ store, opened }: { store: ScheduleStore; opened: Opened })
     setSchedule(next);
     store.saveSchedule(next).catch((error) => console.error('Could not save the Daily Schedule', error));
   };
+
+  /**
+   * A Send is not a change to the schedule: it is recorded here, on its own
+   * path and never through `change`, so Undo can never take it back.
+   */
+  const recordSend = (sent: DailySchedule) => {
+    setSchedule(sent);
+    store.saveSchedule(sent).catch((error) => console.error('Could not save the Daily Schedule', error));
+  };
+  const send = useSend({ roster, schedule, delivery, onSent: recordSend });
 
   const select = (crewMemberId: string | null) => {
     setSelectedCrewMemberId(crewMemberId);
@@ -74,6 +96,8 @@ export function App({ store, opened }: { store: ScheduleStore; opened: Opened })
       }
       onClearNote={() => changeSelected(clearNote)}
       onSetTasks={(jobId, text) => change((current) => setTasks(current, jobId, text))}
+      alertNotPlaced={send.refused !== null}
+      footer={<SendBar send={send} />}
     />
   );
 }
