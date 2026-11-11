@@ -20,10 +20,9 @@ import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
 import { NoteEditor } from './NoteEditor';
-import { emptyOpenJobKeys, foldedHeading, type OpenJobs } from './openJobs';
+import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
 import { PersonTasks } from './PersonTasks';
 import { TasksCell } from './TasksCell';
-import { useColumnCount } from './useColumnCount';
 
 interface ScheduleScreenProps {
   roster: Roster;
@@ -202,9 +201,6 @@ export function ScheduleScreen({
     setFocusJob(null);
   });
 
-  /** The board in as many columns as fit (up to three), each packed from the top. */
-  const [board, setBoard] = useState<HTMLDivElement | null>(null);
-  const columns = useColumnCount(board);
 
   const onNameClick = (crewMember: CrewMember, event: MouseEvent) => {
     if (!moving) {
@@ -332,9 +328,6 @@ export function ScheduleScreen({
     (row) => row.destination.kind === 'job' && !openJobs.has(row.key),
   );
 
-  /** Open cards with nobody on them (by who is really there, not a drag's preview). */
-  const emptyOpen = emptyOpenJobKeys(openJobs, view);
-
   /**
    * A folded Job's button: with someone in hand they are put on it (which
    * opens it and lets go of them); with nobody, it opens as an empty card so
@@ -362,18 +355,12 @@ export function ScheduleScreen({
 
       <div className="layout">
         <div className="schedule-scroll" data-motion-area>
-          <div className="board" ref={setBoard}>
-            {Array.from({ length: columns }, (_, column) => (
-              <div key={column} className="board-column">
-                {jobRows.filter((_, index) => index % columns === column).map(block)}
-              </div>
-            ))}
-          </div>
-          {(foldedRows.length > 0 || emptyOpen.length > 0) && (
+          <div className="board">{jobRows.map(block)}</div>
+          {showNoCrewSection(openJobs, view) && (
             <section className="folded-jobs" aria-labelledby="folded-jobs-heading">
               <header className="folded-jobs-head">
                 <h2 id="folded-jobs-heading">{foldedHeading(view.date, scheduleDateOf(new Date()))}</h2>
-                {emptyOpen.length > 0 && (
+                {showPutAway(openJobs, view) && (
                   <button type="button" className="button action" onClick={onPutAwayEmptyJobs}>
                     Put away empty jobs
                   </button>

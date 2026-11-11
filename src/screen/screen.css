@@ -190,29 +190,20 @@
 
 /* --- The cards ------------------------------------------------------------ */
 
-/* The Job cards in columns (as many as fit, up to three; see useColumnCount),
-   dealt left to right, each column packed from the top so no gaps open up
-   under a short card. */
-.board,
-.board-column {
-  display: flex;
+/* The Job cards in rows, as many to a row as fit and at most three. The
+   cards in a row stretch to the tallest; each card's contents stay at the
+   top, so the extra space is at the bottom. */
+.board {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(max(min(18.125rem, 100%), calc((100% - 2 * var(--space-4)) / 3)), 1fr)
+  );
   gap: var(--space-4);
 }
 
-.board {
-  align-items: flex-start;
-}
-
-.board-column {
-  flex: 1 1 0;
-  min-width: 0;
-  flex-direction: column;
-}
-
 .block,
-.not-placed,
-.folded-jobs,
-.day-notes {
+.not-placed {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -468,11 +459,15 @@
   border: 2px dashed var(--accent-strong);
 }
 
+/* How many are waiting: a filled dark badge with white text. At zero it is
+   the plain grey number every count is. */
 .not-placed:not(.not-placed-none) .not-placed-count {
-  padding: 0 0.5rem;
+  min-width: 1.5rem;
+  padding: 0.0625rem 0.5rem;
   border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--ink);
+  color: var(--paper);
+  text-align: center;
 }
 
 
@@ -748,13 +743,21 @@
   font-weight: var(--weight-strong);
 }
 
+/* --- Under the cards: No crew tomorrow, and Notes for the day -------------
+   Not cards: no background, edge or shadow. The heading and what is under it
+   sit straight on the page, lined up with the edges of the cards above. */
+
+.folded-jobs,
+.day-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 /* --- Folded Jobs: a row of large buttons under the cards ------------------
    A Job with nobody on it, by name; with someone in hand, "Put Mike on Pond",
    still grey so nothing lights up. The buttons wrap, and so do long names. */
-
-.folded-jobs {
-  gap: var(--space-2);
-}
 
 .folded-jobs-head {
   display: flex;
@@ -788,10 +791,6 @@
 }
 
 /* --- Notes for the day: under the Job cards, one under the other ---------- */
-
-.day-notes {
-  gap: var(--space-2);
-}
 
 .day-notes h2 {
   margin-bottom: var(--space-1);

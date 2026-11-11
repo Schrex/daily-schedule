@@ -61,14 +61,16 @@ export const PALETTE = {
 } as const;
 
 /**
- * The dot beside a Crew Member's name on the board and in the picture, by
- * their color: strong enough to tell apart on the grey chip.
+ * The role colours: the dot beside a Crew Member's name on the board and in
+ * the picture. Operator blue, driver orange, laborer green (stored as
+ * "yellow"), mechanic red; a Foreman's chip is dark with a white dot. Each is
+ * at least 3:1 against the grey chip (WCAG AA for a non-text mark).
  */
 export const CREW_DOTS: Record<Color, string> = {
   grey: '#1a1a1a',
   blue: '#3b7dd8',
-  orange: '#f26b00',
-  yellow: '#f5b800',
+  orange: '#d9620b',
+  yellow: '#2f9e5b',
   red: '#e02020',
 };
 
@@ -77,7 +79,7 @@ export const CREW_COLORS: Record<Color, string> = {
   grey: '#1a1a1a',
   blue: '#dce9f8',
   orange: '#f7c59a',
-  yellow: '#ffe27a',
+  yellow: '#cfeedd',
   red: '#b8322a',
 };
 
@@ -86,7 +88,7 @@ export const COLOR_NAMES: Record<Color, string> = {
   grey: 'Black',
   blue: 'Blue',
   orange: 'Orange',
-  yellow: 'Yellow',
+  yellow: 'Green',
   red: 'Red',
 };
 
