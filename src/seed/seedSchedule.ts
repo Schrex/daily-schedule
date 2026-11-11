@@ -1,21 +1,10 @@
-/* ===========================================================================
- * PLACEHOLDER  --  PLACEHOLDER  --  PLACEHOLDER
- *
- * The Placements and Tasks below are INVENTED. The real Tuesday, November 10,
- * 2026 Excel sheet was not available when this was written. They MUST BE
- * REPLACED from the real sheet before the Scheduler's first evening.
- *
- * Only these facts are real (from the spec, issue #1):
- *   - the date: Tuesday, November 10, 2026
- *   - Glenn Munger is Not Placed (he has no Placement here)
- *   - Wintergarden has nobody on it
- *   - Evan Kozlowsky has the Note "1/2 Day"
- *   - "Strip topsoil" is an example Task
- *
- * Everything else (who is on which Job or Standing Row, the placement order,
- * and every other Task) is a plausible guess. The roster is real and lives in
- * seedRoster.ts.
- * ======================================================================== */
+/**
+ * The seed Daily Schedule: the real sheet for Wednesday, November 11, 2026,
+ * as the Scheduler sent it. Who is on each Job, Shop, Trucking and Off Work,
+ * in the sheet's order, and each Job's Tasks (the sheet's "* " before a Task
+ * was only a bullet). Scott Schreiber and Glenn Munger are not on the sheet,
+ * so they are Not Placed; Bishop Kearney and Wintergarden have nobody.
+ */
 
 import {
   onJob,
@@ -25,56 +14,30 @@ import {
   type Placement,
 } from '../schedule-rules';
 
-/** [Crew Member id, Note?] in placement order. */
-type Who = [crewMemberId: string, note?: string];
-
-// PLACEHOLDER: invented, except Evan Kozlowsky's Note and Wintergarden being empty.
-const placeholderPlacements: [Destination, Who[]][] = [
-  [
-    onJob('j2601-tiuny'),
-    [
-      ['brody-wilson'],
-      ['josh-syrell'],
-      ['mike-arena'],
-      ['evan-kozlowsky', '1/2 Day'],
-      ['christian-cirilla'],
-    ],
-  ],
+/** Who is where, in the sheet's order (the Foreman is listed first on a Job anyway). */
+const sheet: [Destination, string[]][] = [
+  [onJob('j2601-tiuny'), ['brody-wilson', 'corey-mahoney', 'rob-harris', 'mike-arena']],
   [
     onJob('j25008-los'),
-    [['ed-stokes'], ['brock-phillips'], ['ethan-casselbury'], ['scott-schreiber']],
+    ['ed-stokes', 'nick-monachino', 'brock-phillips', 'christian-cirilla', 'john-briggs'],
   ],
-  [
-    onJob('bishop-kearney'),
-    [['nick-monachino'], ['rob-harris'], ['randy-snyder'], ['corey-mahoney']],
-  ],
-  [onJob('cobblestone'), [['kris-thomas'], ['tim-motler'], ['nate-kotvis']]],
-  // Wintergarden: nobody. Glenn Munger: Not Placed.
-  [onStandingRow('shop'), [['john-briggs']]],
-  [onStandingRow('trucking'), [['jason-vine']]],
-  [onStandingRow('off-work'), [['greg-black']]],
+  [onJob('cobblestone'), ['kris-thomas', 'tim-motler', 'ethan-casselbury']],
+  [onStandingRow('shop'), ['greg-black']],
+  [onStandingRow('trucking'), ['randy-snyder']],
+  [onStandingRow('off-work'), ['jason-vine', 'nate-kotvis', 'josh-syrell', 'evan-kozlowsky']],
 ];
 
-const placements: Placement[] = placeholderPlacements
-  .flatMap(([destination, who]) =>
-    who.map(([crewMemberId, note]) => ({ crewMemberId, destination, note })),
-  )
-  .map(({ crewMemberId, destination, note }, index) => ({
-    crewMemberId,
-    destination,
-    order: index + 1,
-    ...(note ? { note } : {}),
-  }));
+const placements: Placement[] = sheet
+  .flatMap(([destination, who]) => who.map((crewMemberId) => ({ crewMemberId, destination })))
+  .map((placement, index) => ({ ...placement, order: index + 1 }));
 
 export const seedSchedule: DailySchedule = {
-  date: '2026-11-10',
+  date: '2026-11-11',
   placements,
-  // PLACEHOLDER: invented Tasks ("Strip topsoil" is the spec's example).
   tasks: {
-    'j2601-tiuny': ['Strip topsoil', 'Rough grade building pad'],
-    'j25008-los': ['Install storm pipe'],
-    'bishop-kearney': ['Backfill foundation', 'Fine grade parking lot'],
-    cobblestone: ['Set curb'],
+    'j2601-tiuny': ['Catch Basin', 'Pipe'],
+    'j25008-los': ['Curb at Hazel Alley (Towers)', 'Take the Dump trailer'],
+    cobblestone: ['Sanitary'],
   },
   sends: [],
 };

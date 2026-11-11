@@ -3,8 +3,8 @@ import { fullDate, scheduleView } from '../schedule-rules';
 import { seedRoster } from './seedRoster';
 import { seedSchedule } from './seedSchedule';
 
-// Only facts given in the spec are asserted here. Which Job each Crew Member is
-// on in the seed Daily Schedule is a placeholder and is deliberately not tested.
+// The roster is from the spec; the Daily Schedule is the real sheet for
+// Wednesday, November 11, 2026.
 
 const namesWith = (color: string) =>
   seedRoster.crewMembers.filter((member) => member.color === color).map((member) => member.name);
@@ -47,9 +47,11 @@ describe('the seed roster', () => {
 
 describe('the seed Daily Schedule', () => {
   const view = scheduleView(seedRoster, seedSchedule);
+  const who = (label: string) =>
+    view.rows.find((row) => row.label === label)?.who.map((placed) => placed.crewMember.name);
 
-  it('is for Tuesday, November 10, 2026', () => {
-    expect(fullDate(view.date)).toBe('Tuesday, November 10, 2026');
+  it('is for Wednesday, November 11, 2026', () => {
+    expect(fullDate(view.date)).toBe('Wednesday, November 11, 2026');
   });
 
   it('shows the five Jobs in order, then Shop, Trucking and Off Work', () => {
@@ -65,26 +67,32 @@ describe('the seed Daily Schedule', () => {
     ]);
   });
 
-  it('has nobody on Wintergarden', () => {
-    expect(view.rows.find((row) => row.label === 'Wintergarden')?.who).toEqual([]);
+  it('puts everyone where the sheet has them, Foremen first on a Job', () => {
+    expect(who('J2601 TIUNY')).toEqual(['Brody Wilson', 'Corey Mahoney', 'Rob Harris', 'Mike Arena']);
+    expect(who('J25008 Los')).toEqual([
+      'Ed Stokes',
+      'Nick Monachino',
+      'Brock Phillips',
+      'Christian Cirilla',
+      'John Briggs',
+    ]);
+    expect(who('Bishop Kearney')).toEqual([]);
+    expect(who('Cobblestone')).toEqual(['Kris Thomas', 'Tim Motler', 'Ethan Casselbury']);
+    expect(who('Wintergarden')).toEqual([]);
+    expect(who('Shop')).toEqual(['Greg Black']);
+    expect(who('Trucking')).toEqual(['Randy Snyder']);
+    expect(who('Off Work')).toEqual(['Jason Vine', 'Nate Kotvis', 'Josh Syrell', 'Evan Kozlowsky']);
   });
 
-  it('has Glenn Munger, and only him, Not Placed', () => {
-    expect(view.notPlaced.map((member) => member.name)).toEqual(['Glenn Munger']);
+  it('has the Tasks from the sheet', () => {
+    const tasks = (label: string) => view.rows.find((row) => row.label === label)?.tasks;
+    expect(tasks('J2601 TIUNY')).toEqual(['Catch Basin', 'Pipe']);
+    expect(tasks('J25008 Los')).toEqual(['Curb at Hazel Alley (Towers)', 'Take the Dump trailer']);
+    expect(tasks('Cobblestone')).toEqual(['Sanitary']);
   });
 
-  it('places every other Crew Member exactly once', () => {
-    const placedNames = view.rows.flatMap((row) => row.who.map((placed) => placed.crewMember.name));
-    expect(placedNames).toHaveLength(19);
-    expect(new Set(placedNames).size).toBe(19);
-    expect(seedSchedule.placements).toHaveLength(19);
-  });
-
-  it('has the Note "1/2 Day" on Evan Kozlowsky', () => {
-    const evan = view.rows
-      .flatMap((row) => row.who)
-      .find((placed) => placed.crewMember.name === 'Evan Kozlowsky');
-    expect(evan?.note).toBe('1/2 Day');
+  it('has Scott Schreiber and Glenn Munger, who are not on the sheet, Not Placed', () => {
+    expect(view.notPlaced.map((member) => member.name)).toEqual(['Scott Schreiber', 'Glenn Munger']);
   });
 
   it('has not been sent', () => {
