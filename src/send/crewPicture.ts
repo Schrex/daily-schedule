@@ -76,7 +76,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 
 /** The picture's side in real pixels: 4K, so it stays sharp however far it is zoomed. */
 const PIXELS = 3840;
-const MARGIN = 16;
+const MARGIN = 30;
 
 /**
  * One rem of the look, in the picture's pixels: what turns the look's corners
@@ -203,10 +203,10 @@ const SCALE_STEP = 0.025;
  * at the right (busy days carry Jobs on under them). The Notes for the day go
  * across the top, above all of them.
  */
-const CARD_GAP = 12;
-const COLUMN_GAP = 12;
+const CARD_GAP = 20;
+const COLUMN_GAP = 20;
 const CARD_EDGE = 2;
-const CARD_PAD = 14;
+const CARD_PAD = 20;
 /** The columns of Jobs. */
 const JOB_COLUMNS = 2;
 /** The right column (Shop, Trucking, Off Work) is this much as wide as a Job column. */
