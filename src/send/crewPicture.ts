@@ -94,7 +94,6 @@ type Kind =
   | 'name'
   | 'personTask'
   | 'note'
-  | 'noteLabel'
   | 'dayNote';
 
 /** The shared look as the picture uses it: its kinds of text and its corners. */
@@ -138,7 +137,6 @@ function readLook(): Look {
       name: type(text, 'strong', 28, 'name'),
       personTask: type(text, 'strong', 23),
       note: type(text, 'body', 24),
-      noteLabel: type(text, 'bold', 24),
       dayNote: type(text, 'body', 27),
     },
     radius: { card: corner('card'), chip: corner('chip') },
@@ -199,11 +197,10 @@ const SUBS_PAD_BOTTOM = 14;
 const SUB_LINE = 32;
 const SUB_BULLET = 8;
 const SUB_BULLET_GAP = 14;
-/** A Note: a soft yellow strip at the foot of the chip, "Note" and the text. */
+/** A Note: a soft yellow strip at the foot of the chip, its text lined up with the name. */
 const NOTE_LINE = 32;
 const NOTE_PAD_Y = 10;
-const NOTE_LABEL = 'Note';
-const NOTE_LABEL_GAP = 10;
+
 
 /** The Notes for the day: one under the other, ruled apart. */
 /** The Notes for the day: each note on a soft ground of its own, one under the other. */
@@ -225,7 +222,7 @@ interface NameBox {
   chipHeight: number;
   /** From the top of the chip to the first Person Task line. */
   subsTop: number;
-  /** The Note's text in lines that fit beside "Note". */
+  /** The Note's text in lines that fit under the name. */
   noteLines: string[];
   y: number;
   height: number;
@@ -339,10 +336,8 @@ function stackNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look)
     const subsTop = NAME_HEIGHT + (crewMember.foreman ? SUBS_PAD_TOP : SUBS_PAD_TOP_GREY);
     const chipHeight =
       subLines.length > 0 ? subsTop + subLines.length * SUB_LINE + SUBS_PAD_BOTTOM : NAME_HEIGHT;
-    setType(ctx, look.type.noteLabel);
-    const labelWidth = ctx.measureText(NOTE_LABEL).width + NOTE_LABEL_GAP;
     setType(ctx, look.type.note);
-    const noteLines = note ? wrap(ctx, note, CARD_INNER_WIDTH - 2 * NAME_PAD_X - labelWidth) : [];
+    const noteLines = note ? wrap(ctx, note, textWidth) : [];
     const height = chipHeight + (noteLines.length > 0 ? 2 * NOTE_PAD_Y + noteLines.length * NOTE_LINE : 0);
     names.push({
       name: crewMember.name,
@@ -564,7 +559,7 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: 
     ctx.fillText(line.text, textX, lineMiddle + 1, textWidth);
   });
 
-  // The Note: a soft yellow strip at the foot, "Note" and then the text.
+  // The Note: a soft yellow strip at the foot, its text lined up with the name.
   if (hasNote) {
     const top = y + box.chipHeight;
     ctx.fillStyle = PALETTE.noteWash;
@@ -572,13 +567,9 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: 
     ctx.roundRect(x, top, width, box.height - box.chipHeight, [0, 0, r, r]);
     ctx.fill();
     ctx.fillStyle = PALETTE.noteInk;
-    setType(ctx, look.type.noteLabel);
-    const firstMiddle = top + NOTE_PAD_Y + NOTE_LINE / 2 + 1;
-    ctx.fillText(NOTE_LABEL, x + NAME_PAD_X, firstMiddle);
-    const noteX = x + NAME_PAD_X + ctx.measureText(NOTE_LABEL).width + NOTE_LABEL_GAP;
     setType(ctx, look.type.note);
     box.noteLines.forEach((line, index) =>
-      ctx.fillText(line, noteX, firstMiddle + index * NOTE_LINE, x + width - NAME_PAD_X - noteX),
+      ctx.fillText(line, textX, top + NOTE_PAD_Y + (index + 0.5) * NOTE_LINE + 1, textWidth),
     );
   }
 }

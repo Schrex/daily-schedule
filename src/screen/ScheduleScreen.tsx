@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type MouseEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
 import {
   canHaveTasks,
@@ -188,6 +188,20 @@ export function ScheduleScreen({
       </span>
     ) : null;
 
+  /**
+   * When someone is let go of while the focus was in their panel (Escape in
+   * its field, the last × in it), the panel goes and the focus with it. Hand
+   * it back to their name so the keyboard keeps its place.
+   */
+  const wasSelected = useRef<string | null>(null);
+  useEffect(() => {
+    const was = wasSelected.current;
+    wasSelected.current = selectedCrewMemberId;
+    if (was === null || was === selectedCrewMemberId) return;
+    if (document.activeElement !== null && document.activeElement !== document.body) return;
+    document.querySelector<HTMLElement>(`[data-crew-member="${CSS.escape(was)}"]`)?.focus();
+  }, [selectedCrewMemberId]);
+
   /** A Job just opened from its folded button: its card's heading takes the focus once drawn. */
   const [focusJob, setFocusJob] = useState<string | null>(null);
   useEffect(() => {
@@ -310,11 +324,7 @@ export function ScheduleScreen({
               <Fragment key={crewMember.id}>
                 <li className={note ? 'noted' : undefined}>
                   {name(crewMember, personTasks)}
-                  {note && (
-                    <span className="note">
-                      <span className="note-label">Note</span> {note}
-                    </span>
-                  )}
+                  {note && <span className="note">{note}</span>}
                 </li>
                 {crewMember.id === selectedPlaced?.crewMember.id && personPanel}
               </Fragment>

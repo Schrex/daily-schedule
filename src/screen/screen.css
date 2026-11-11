@@ -467,8 +467,30 @@
   border-bottom-left-radius: 0;
 }
 
+/* With a Note, the name and its Note are one piece: the ring of the selected
+   name goes round both, and a name being dragged fades with its Note. */
+.names li.noted {
+  border-radius: var(--radius-chip);
+  transition: box-shadow var(--ease);
+}
+
+.names li.noted:has(> .name-selected) {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--ring-selected);
+}
+
+.names li.noted > .name.name-selected {
+  box-shadow: none;
+}
+
+.names li.noted:has(> .name[data-dragging]) > .note {
+  opacity: 0.35;
+}
+
 .note {
-  padding: 0.5rem 0.75rem;
+  /* Indented to line up with the name and the tasks above it. */
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
   border-radius: 0 0 var(--radius-chip) var(--radius-chip);
   background: var(--note-wash);
   color: var(--note-ink);
@@ -477,10 +499,6 @@
   overflow-wrap: anywhere;
 }
 
-.note-label {
-  margin-right: 0.25rem;
-  font-weight: var(--weight-bold);
-}
 
 /* --- Not Placed: always in sight, at the top of the right column ---------- */
 
