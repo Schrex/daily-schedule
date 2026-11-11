@@ -4,10 +4,11 @@ import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } fro
 
 /**
  * Draws the crew view as a picture (a PNG) of the Daily Schedule, laid out as
- * the Scheduler's board is: the Schreiber logo at the top left with "SCHEDULE
- * FOR" and the date in the middle of that row, the Notes for the day across the top, then the
- * Job cards in two columns and Shop, Trucking and Off Work in a third (with
- * Jobs carrying on under them on a busy day).
+ * the Scheduler's board is: the Schreiber logo at the top left with
+ * "SCHEDULE FOR" and the date in the middle of that row, the Notes
+ * across the top, then the Job cards in two columns and Shop, Trucking and
+ * Off Work in a narrower third (with Jobs carrying on under them on a busy
+ * day).
  *
  * It is always the same square (`PICTURE_SIZE`): a busy day is drawn smaller
  * and a quiet one larger, so the whole day fits and fills it (`fit`). Text
@@ -90,7 +91,7 @@ interface Type {
 }
 
 type Kind =
-  | 'dateLabel'
+  | 'schedule'
   | 'date'
   | 'updated'
   | 'updatedNote'
@@ -102,6 +103,7 @@ type Kind =
   | 'name'
   | 'personTask'
   | 'note'
+  | 'notesTitle'
   | 'dayNote';
 
 /** The shared look as the picture uses it: its kinds of text and its corners. */
@@ -134,18 +136,19 @@ function readLook(): Look {
   // everything read, strong for the names.
   return {
     type: {
-      dateLabel: type(text, 'bold', 19, 'label'),
+      schedule: type(text, 'bold', 19, 'label'),
       date: type(display, 'display', 48, 'heading'),
       updated: type(display, 'display', 38, 'button'),
       updatedNote: type(text, 'strong', 24),
       job: type(display, 'display', 42, 'heading'),
       yard: type(display, 'display', 34, 'heading'),
-      count: type(text, 'strong', 21),
-      task: type(text, 'body', 24),
-      yardTask: type(text, 'body', 22),
+      count: type(text, 'strong', 17),
+      task: type(text, 'medium', 24),
+      yardTask: type(text, 'medium', 22),
       name: type(text, 'strong', 27, 'name'),
-      personTask: type(text, 'body', 22),
-      note: type(text, 'medium', 22),
+      personTask: type(text, 'medium', 22),
+      note: type(text, 'strong', 22),
+      notesTitle: type(display, 'display', 32, 'heading'),
       dayNote: type(text, 'body', 24),
     },
     radius: { card: corner('card'), chip: corner('chip') },
@@ -166,14 +169,15 @@ function setType(ctx: CanvasRenderingContext2D, { font, letterSpacing }: Type) {
   ctx.letterSpacing = letterSpacing;
 }
 
-/** The top row: the logo, as tall as this, at the left, and the date in the middle. */
+/** The top row: the logo at the left, and "SCHEDULE FOR" over the date in the middle. */
 const LOGO_HEIGHT = 84;
-/** The date keeps at least this clear of the logo. */
-const DATE_GAP = 30;
+const HEADER_HEIGHT = LOGO_HEIGHT;
 /** From the top of the row to the middle of "SCHEDULE FOR", and of the date a clear gap under it. */
 const DATE_LABEL_MIDDLE = 12;
 const DATE_MIDDLE = 58;
-/** Under the top row, before the UPDATED bar, the Notes for the day or the cards. */
+/** The date keeps at least this clear of the logo. */
+const DATE_GAP = 30;
+/** Under the top row, before the UPDATED bar, the Notes or the cards. */
 const HEADER_GAP = 22;
 const UPDATED_HEIGHT = 72;
 const UPDATED_GAP = 18;
@@ -204,6 +208,8 @@ const CARD_EDGE = 2;
 const CARD_PAD = 20;
 /** The columns of Jobs. */
 const JOB_COLUMNS = 2;
+/** The right column (Shop, Trucking, Off Work) is this much as wide as a Job column. */
+const YARD_SHARE = 0.75;
 /** The space between the parts of a card: the head, the Tasks, the names. */
 const PART_GAP = 12;
 
@@ -346,7 +352,7 @@ function layOut(
   sheetWidth: number,
 ): Layout {
   const contentWidth = sheetWidth - 2 * MARGIN;
-  let top = MARGIN + LOGO_HEIGHT + HEADER_GAP + (view.updated ? UPDATED_HEIGHT + UPDATED_GAP : 0);
+  let top = MARGIN + HEADER_HEIGHT + HEADER_GAP + (view.updated ? UPDATED_HEIGHT + UPDATED_GAP : 0);
 
   // The Notes for the day across the top, so everyone reads them first.
   const notes = layOutNotes(view.dayNotes ?? [], ctx, look, contentWidth);
@@ -356,14 +362,33 @@ function layOut(
     top += notes.height + CARD_GAP;
   }
 
+  // Two Job columns and a narrower one at the right for Shop, Trucking and
+  // Off Work, which carries on with Jobs under them on a busy day.
   const jobRows = view.rows.filter((row) => row.destination.kind === 'job');
-  const hasYard = view.rows.some((row) => row.destination.kind !== 'job');
+  const yardRows = view.rows.filter((row) => row.destination.kind !== 'job');
   const jobColumns = Math.max(1, Math.min(JOB_COLUMNS, jobRows.length));
-  const columns = jobColumns + (hasYard ? 1 : 0);
-  const cardWidth = (contentWidth - (columns - 1) * COLUMN_GAP) / columns;
-
-  const cards = view.rows.map((row) => layOutCard(row, roster, ctx, look, cardWidth));
-  const height = placeCards(cards, jobColumns, cardWidth, top);
+  const shares = [...Array<number>(jobColumns).fill(1), ...(yardRows.length > 0 ? [YARD_SHARE] : [])];
+  const unit = (contentWidth - (shares.length - 1) * COLUMN_GAP) / shares.reduce((sum, share) => sum + share, 0);
+  let left = MARGIN;
+  const columns = shares.map((share) => {
+    const column = { left, width: share * unit, bottom: top };
+    left += column.width + COLUMN_GAP;
+    return column;
+  });
+  const cards: CardLayout[] = [];
+  const put = (row: ScheduleRow, column: { left: number; width: number; bottom: number }) => {
+    const card = layOutCard(row, roster, ctx, look, column.width);
+    card.left = column.left;
+    card.top = column.bottom;
+    column.bottom += card.height + CARD_GAP;
+    cards.push(card);
+  };
+  for (const row of yardRows) put(row, columns.at(-1)!);
+  for (const row of jobRows) {
+    const shortest = columns.reduce((best, column) => (column.bottom < best.bottom ? column : best));
+    put(row, shortest);
+  }
+  const height = Math.max(...columns.map((column) => column.bottom)) - CARD_GAP + MARGIN;
   return { cards, notes, width: sheetWidth, height };
 }
 
@@ -423,27 +448,6 @@ function layOutCard(
     namesTop,
     names,
   };
-}
-
-/**
- * Puts the cards in their columns, from `top`: Shop, Trucking and Off Work
- * one under the other at the top of the column at the right, then each Job,
- * in order, in whichever column is shortest (the right one too, under the
- * Standing Rows, once it is the shortest). Returns the sheet's height.
- */
-function placeCards(cards: CardLayout[], jobColumns: number, cardWidth: number, top: number): number {
-  const yard = cards.filter((card) => !card.isJob);
-  const columns = jobColumns + (yard.length > 0 ? 1 : 0);
-  const columnLeft = (column: number) => MARGIN + column * (cardWidth + COLUMN_GAP);
-  const bottoms = Array.from({ length: columns }, () => top);
-  const put = (card: CardLayout, column: number) => {
-    card.left = columnLeft(column);
-    card.top = bottoms[column]!;
-    bottoms[column]! += card.height + CARD_GAP;
-  };
-  for (const card of yard) put(card, jobColumns);
-  for (const card of cards) if (card.isJob) put(card, bottoms.indexOf(Math.min(...bottoms)));
-  return Math.max(...bottoms) - CARD_GAP + MARGIN;
 }
 
 /** Names one under the other, each with its Person Tasks in its chip and its Note under it. */
@@ -568,14 +572,14 @@ function draw(
   ctx.drawImage(logo, MARGIN, MARGIN, logoWidth, LOGO_HEIGHT);
 
   // In the middle of the top row, clear of the logo: "SCHEDULE FOR" small,
-  // and under it the day and date (no year).
+  // and a clear gap under it the day and date (no year).
   const middle = MARGIN + contentWidth / 2;
   const dateWidth = contentWidth - 2 * (logoWidth + DATE_GAP);
   const [weekday, monthDay] = fullDate(view.date).split(', ');
   const date = `${weekday}, ${monthDay}`.toUpperCase();
   ctx.textAlign = 'center';
   ctx.fillStyle = PALETTE.muted;
-  setType(ctx, fitType(ctx, look.type.dateLabel, 'SCHEDULE FOR', dateWidth));
+  setType(ctx, fitType(ctx, look.type.schedule, 'SCHEDULE FOR', dateWidth));
   ctx.fillText('SCHEDULE FOR', middle, MARGIN + DATE_LABEL_MIDDLE);
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, fitType(ctx, look.type.date, date, dateWidth));
@@ -589,7 +593,7 @@ function draw(
 
 /** The UPDATED marker: a solid bar of the alert red under the top row. */
 function drawUpdated(ctx: CanvasRenderingContext2D, look: Look, width: number) {
-  const top = MARGIN + LOGO_HEIGHT + HEADER_GAP;
+  const top = MARGIN + HEADER_HEIGHT + HEADER_GAP;
   const middle = top + UPDATED_HEIGHT / 2 + 2;
   ctx.fillStyle = PALETTE.alert;
   ctx.beginPath();
@@ -754,7 +758,7 @@ function drawNotes(ctx: CanvasRenderingContext2D, layout: NotesLayout, look: Loo
   drawCardGround(ctx, layout, look);
   const inner = layout.left + CARD_PAD;
   ctx.fillStyle = PALETTE.ink;
-  setType(ctx, look.type.yard);
+  setType(ctx, look.type.notesTitle);
   ctx.fillText('NOTES', inner, layout.top + CARD_PAD + YARD_LINE / 2 + 2);
 
   const innerWidth = layout.width - 2 * CARD_PAD;
