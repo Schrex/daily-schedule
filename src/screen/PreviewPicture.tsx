@@ -8,8 +8,8 @@ type Shown = { kind: 'drawing' } | { kind: 'ready'; url: string } | { kind: 'fai
 /**
  * "Preview": the picture the crew would get if "Send to crew" were pressed
  * now, drawn exactly as Send draws it (the same crew view, UPDATED marker and
- * all), shown over the board. It records nothing and copies nothing: only
- * Send does that.
+ * all), shown large over the blurred board with nothing else around it.
+ * Escape, or a click outside it, closes it. It records nothing and copies nothing: only Send does that.
  */
 export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule: DailySchedule }) {
   const [shown, setShown] = useState<Shown | null>(null);
@@ -34,6 +34,17 @@ export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule:
     setShown(null);
   };
 
+  // While it is open, Escape closes it, wherever the focus is.
+  const isOpen = shown !== null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen]);
+
   // The picture's address is let go of once it is no longer shown.
   useEffect(() => {
     if (shown?.kind !== 'ready') return;
@@ -47,35 +58,19 @@ export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule:
       </button>
 
       {shown && (
-        <div
-          className="preview-backdrop"
-          onClick={close}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.stopPropagation();
-              close();
-            }
-          }}
-        >
+        <div className="preview-backdrop" onClick={close}>
           <div
             className="preview-panel"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="preview-title"
+            aria-label="What the crew will see. Nothing is sent or copied. Press Escape to close."
+            tabIndex={-1}
+            ref={(panel) => panel?.focus()}
             onClick={(event) => event.stopPropagation()}
           >
-            <header className="preview-head">
-              <h2 id="preview-title">What the crew will see</h2>
-              <button type="button" className="button preview-close" autoFocus onClick={close}>
-                Close
-              </button>
-            </header>
-            <p className="preview-hint">Nothing is sent or copied. Press "Send to crew" when it looks right.</p>
-            <div className="preview-picture">
-              {shown.kind === 'drawing' && <p className="preview-status">Drawing the picture…</p>}
-              {shown.kind === 'failed' && <p className="preview-status">The picture could not be drawn.</p>}
-              {shown.kind === 'ready' && <img src={shown.url} alt="The Daily Schedule picture for the crew" />}
-            </div>
+            {shown.kind === 'drawing' && <p className="preview-status">Drawing the picture…</p>}
+            {shown.kind === 'failed' && <p className="preview-status">The picture could not be drawn.</p>}
+            {shown.kind === 'ready' && <img src={shown.url} alt="The Daily Schedule picture for the crew" />}
           </div>
         </div>
       )}

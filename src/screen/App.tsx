@@ -17,6 +17,7 @@ import { SettingsLink } from './SettingsLink';
 import { TvLink } from './TvLink';
 import { ScheduleScreen } from './ScheduleScreen';
 import { SendButton, SendMessage } from './SendBar';
+import { emptyHistory, remember, undo, type UndoHistory } from './undoHistory';
 import { useSend } from './useSend';
 
 /**
@@ -95,6 +96,18 @@ export function App({
   };
   const send = useSend({ roster, schedule, delivery, onDelivered: recordSend });
 
+  /**
+   * The schedules before each of the Scheduler's edits, for Undo (see
+   * undoHistory.ts). Kept as it stands this instant, like `latest`; the state
+   * copy is only for drawing the Undo button.
+   */
+  const history = useRef<UndoHistory>(emptyHistory);
+  const [canUndo, setCanUndo] = useState(false);
+  const setHistory = (next: UndoHistory) => {
+    history.current = next;
+    setCanUndo(next.length > 0);
+  };
+
   const select = (crewMemberId: string | null) => setSelectedCrewMemberId(crewMemberId);
 
   /** Lets go of the selected Crew Member: no move. */
@@ -107,13 +120,33 @@ export function App({
    * them selected. The rules change nothing if nothing is different.
    */
   const edit = (scheduleEdit: ScheduleEdit) => {
-    change((current) => applyEdit(current, scheduleEdit));
+    const before = latest.current;
+    const after = change((current) => applyEdit(current, scheduleEdit));
+    if (after !== before) setHistory(remember(history.current, before));
     if (scheduleEdit.kind === 'move') deselect();
   };
+
+  /** Undo: takes back the Scheduler's latest edit (never a Send), and lets go of anyone selected. */
+  const undoLast = () => {
+    const back = undo(history.current, latest.current);
+    if (!back) return;
+    setHistory(back.history);
+    change(() => back.schedule);
+    deselect();
+  };
+  const undoLatest = useRef(undoLast);
+  undoLatest.current = undoLast;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') deselect();
+      // Ctrl+Z (Cmd+Z on a Mac) is Undo, except in a field, where it undoes the typing.
+      const inField =
+        event.target instanceof HTMLElement && event.target.closest('input, textarea, [contenteditable]');
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z' && !inField) {
+        event.preventDefault();
+        undoLatest.current();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -122,6 +155,8 @@ export function App({
   /** Opens the Daily Schedule for another date, creating it if there is none. */
   const changeDate = (date: ScheduleDate) => {
     deselect();
+    // Undo is for the day on the screen: another day starts with nothing to undo.
+    setHistory(emptyHistory);
     openDate(store, roster, date)
       .then((next) => {
         show(next);
@@ -151,6 +186,15 @@ export function App({
       }
       toolbarButtons={
         <>
+          <button
+            type="button"
+            className="button toolbar-button"
+            disabled={!canUndo}
+            title="Undo the last change (Ctrl+Z)"
+            onClick={undoLast}
+          >
+            Undo
+          </button>
           <ChangeDate date={schedule.date} onChangeDate={changeDate} />
           <PreviewPicture roster={roster} schedule={schedule} />
           <SendButton send={send} />

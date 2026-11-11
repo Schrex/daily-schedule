@@ -19,7 +19,7 @@ export function DayNotes({ notes, onAdd, onChange, onRemove }: DayNotesProps) {
 
   return (
     <section className="day-notes" aria-labelledby="day-notes-heading">
-      <h2 id="day-notes-heading">Notes for the day</h2>
+      <h2 id="day-notes-heading">Notes</h2>
 
       {notes.map((note, index) =>
         editing === index ? (
