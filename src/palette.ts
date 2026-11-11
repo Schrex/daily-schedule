@@ -23,7 +23,7 @@ export const PALETTE = {
   /** A Note on a Crew Member: dark text on a soft yellow. */
   noteWash: '#fff4d1',
   noteInk: '#3d2f00',
-  /** The one alert red: a failed Send, UPDATED. */
+  /** The one alert red: a failed Send. */
   alert: '#c5221f',
   alertWash: '#fef4f3',
   alertLine: '#f0b4ae',
