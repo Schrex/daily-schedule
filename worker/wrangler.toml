@@ -3,6 +3,9 @@
 name = "daily-schedule-slack"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
+# Served at https://daily-schedule-slack.<account>.workers.dev; no extra preview addresses.
+workers_dev = true
+preview_urls = false
 
 [vars]
 # The channel the picture goes to when Settings names none.
