@@ -2,13 +2,12 @@ import { useState } from 'react';
 import type { CrewMember } from '../schedule-rules';
 import { LineEditor } from './LineEditor';
 
-interface PersonTasksProps {
+interface PersonLinesProps {
   crewMember: CrewMember;
-  /** Their Note, if any: one short line in red. */
+  /** Their Note, if any: the soft yellow strip at the foot of the chip. */
   note?: string;
   tasks: string[];
-  onAdd: (text: string) => void;
-  /** A line was changed; blank text takes it away. */
+  /** A Person Task was changed; blank text takes it away. */
   onChange: (index: number, text: string) => void;
   onRemove: (index: number) => void;
   /** Their Note is now this text; blank text takes it away. */
@@ -19,57 +18,78 @@ interface PersonTasksProps {
 type Editing = 'note' | number | null;
 
 /**
- * What is only about the selected Crew Member, right under their name: their
- * Note (in red) and their Person Tasks, each one to tap and change or to take
- * away with ×, and one field ("Task or note") with Add task and Add note.
+ * The selected Crew Member's Person Tasks and Note, drawn in their chip just
+ * as when not selected, but each with × to take it away, and tapped to
+ * change it in place. Clicks here are about them, not a move to this card.
  */
-export function PersonTasks({ crewMember, note, tasks, onAdd, onChange, onRemove, onSetNote }: PersonTasksProps) {
+export function PersonLines({ crewMember, note, tasks, onChange, onRemove, onSetNote }: PersonLinesProps) {
   const [editing, setEditing] = useState<Editing>(null);
 
-  /** One line: its text to tap and change, and × to take it away. */
-  const line = (key: string, text: string, onEdit: () => void, onTakeAway: () => void, isNote = false) => (
-    <li key={key} className={`person-task${isNote ? ' person-task-note' : ''}`}>
-      <button type="button" className="person-task-text" aria-label={`Change "${text}"`} onClick={onEdit}>
-        {text}
-      </button>
-      <button type="button" className="person-task-remove" aria-label={`Remove "${text}"`} onClick={onTakeAway}>
-        ×
-      </button>
-    </li>
+  const changing = (text: string, label: string, onDone: (text: string) => void, tone?: 'note') => (
+    <LineEditor
+      initial={text}
+      label={label}
+      buttonText="Save"
+      tone={tone}
+      onCommit={(next) => {
+        onDone(next);
+        setEditing(null);
+      }}
+      onCancel={() => setEditing(null)}
+    />
   );
 
-  /** A line being changed in place. */
-  const changing = (key: string, text: string, label: string, onDone: (text: string) => void, isNote = false) => (
-    <li key={key}>
-      <LineEditor
-        initial={text}
-        label={label}
-        buttonText="Save"
-        tone={isNote ? 'note' : undefined}
-        onCommit={(next) => {
-          onDone(next);
-          setEditing(null);
-        }}
-        onCancel={() => setEditing(null)}
-      />
-    </li>
+  /** A line's text, to tap and change, and its ×. */
+  const line = (text: string, onEdit: () => void, onTakeAway: () => void) => (
+    <>
+      <button type="button" className="line-text" aria-label={`Change "${text}"`} onClick={onEdit}>
+        {text}
+      </button>
+      <button type="button" className="line-remove" aria-label={`Remove "${text}"`} onClick={onTakeAway}>
+        ×
+      </button>
+    </>
   );
 
   return (
-    <div className="person-tasks" onClick={(event) => event.stopPropagation()}>
-      {(note || tasks.length > 0) && (
-        <ul className="person-task-list" aria-label={`Note and tasks for ${crewMember.name}`}>
-          {note &&
-            (editing === 'note'
-              ? changing('note', note, `Change note for ${crewMember.name}`, onSetNote, true)
-              : line('note', note, () => setEditing('note'), () => onSetNote(''), true))}
-          {tasks.map((task, index) =>
-            editing === index
-              ? changing(`task-${index}`, task, `Change task for ${crewMember.name}`, (text) => onChange(index, text))
-              : line(`task-${index}`, task, () => setEditing(index), () => onRemove(index)),
-          )}
+    <>
+      {tasks.length > 0 && (
+        <ul
+          className="name-subs name-subs-open"
+          aria-label={`Tasks for ${crewMember.name}`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {tasks.map((task, index) => (
+            <li key={index} className={editing === index ? 'name-sub-editing' : 'name-sub'} data-sub={task}>
+              {editing === index
+                ? changing(task, `Change task for ${crewMember.name}`, (text) => onChange(index, text))
+                : line(task, () => setEditing(index), () => onRemove(index))}
+            </li>
+          ))}
         </ul>
       )}
+      {note && (
+        <div className="note note-open" onClick={(event) => event.stopPropagation()}>
+          {editing === 'note'
+            ? changing(note, `Change note for ${crewMember.name}`, onSetNote, 'note')
+            : line(note, () => setEditing('note'), () => onSetNote(''))}
+        </div>
+      )}
+    </>
+  );
+}
+
+interface PersonAddProps {
+  crewMember: CrewMember;
+  onAddTask: (text: string) => void;
+  /** Their Note is now this text. */
+  onSetNote: (text: string) => void;
+}
+
+/** Under the selected Crew Member's chip: one field ("Task or note") with Add task and Add note. */
+export function PersonAdd({ crewMember, onAddTask, onSetNote }: PersonAddProps) {
+  return (
+    <div className="person-tasks" onClick={(event) => event.stopPropagation()}>
       <LineEditor
         key={crewMember.id}
         initial=""
@@ -79,7 +99,7 @@ export function PersonTasks({ crewMember, note, tasks, onAdd, onChange, onRemove
         second={{ text: 'Add note', onCommit: onSetNote }}
         keepOpen
         autoFocus={false}
-        onCommit={onAdd}
+        onCommit={onAddTask}
       />
     </div>
   );

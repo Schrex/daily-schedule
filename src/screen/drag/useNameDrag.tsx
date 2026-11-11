@@ -242,7 +242,10 @@ export function useNameDrag({
           // The name, and any Person Tasks under it, as they are drawn.
           text: source.querySelector('.name-text')?.textContent ?? source.textContent ?? '',
           dot: source.querySelector('.name-dot')?.className ?? 'name-dot',
-          subs: [...source.querySelectorAll('.name-sub')].map((sub) => sub.textContent ?? ''),
+          // Read from the whole chip: a selected name's tasks sit beside its button, not in it.
+          subs: [...(source.closest('li') ?? source).querySelectorAll('[data-sub]')].map(
+            (sub) => sub.getAttribute('data-sub') ?? '',
+          ),
           width: box.width,
           height: box.height,
         });

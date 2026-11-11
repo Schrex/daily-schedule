@@ -467,8 +467,110 @@
   border-bottom-left-radius: 0;
 }
 
+/* With a Note, the name and its Note are one piece: the ring of the selected
+   name goes round both, and a name being dragged fades with its Note. */
+.names li.noted,
+.names li.person-open {
+  border-radius: var(--radius-chip);
+  transition: box-shadow var(--ease);
+}
+
+.names li.noted:has(> .name-selected),
+.names li.person-open:has(> .name-selected) {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--ring-selected);
+}
+
+.names li.noted > .name.name-selected,
+.names li.person-open > .name.name-selected {
+  box-shadow: none;
+}
+
+/* --- The selected Crew Member's chip: each task and the Note with × -------
+   Drawn just as when not selected; the tasks sit beside the name's button
+   (a button cannot hold buttons), on the same grey. */
+.names li.person-open > .name:not(:last-child) {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.name-subs-open {
+  margin: 0;
+  list-style: none;
+  background: var(--chip);
+}
+
+.name-subs-open:last-child {
+  border-radius: 0 0 var(--radius-chip) var(--radius-chip);
+}
+
+.person-open > .name:not(.name-foreman) + .name-subs-open {
+  padding-top: 0;
+}
+
+.name-subs-open .name-sub,
+.note-open {
+  display: flex;
+  align-items: flex-start;
+}
+
+.name-sub-editing {
+  margin-left: -2rem;
+}
+
+/* A line's text, tapped to change it. */
+.line-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.25rem;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+/* Its ×: borderless and grey, red when pointed at. */
+.line-remove {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 1.25rem;
+  margin-right: -0.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.25rem;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.125rem;
+  font-weight: var(--weight-body);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.line-text:focus-visible,
+.line-remove:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (hover: hover) {
+  .line-remove:hover {
+    color: var(--alert);
+  }
+}
+
+.names li.noted:has(> .name[data-dragging]) > .note {
+  opacity: 0.35;
+}
+
 .note {
-  padding: 0.5rem 0.75rem;
+  /* Indented to line up with the name and the tasks above it. */
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
   border-radius: 0 0 var(--radius-chip) var(--radius-chip);
   background: var(--note-wash);
   color: var(--note-ink);
@@ -477,10 +579,6 @@
   overflow-wrap: anywhere;
 }
 
-.note-label {
-  margin-right: 0.25rem;
-  font-weight: var(--weight-bold);
-}
 
 /* --- Not Placed: always in sight, at the top of the right column ---------- */
 
@@ -699,28 +797,11 @@
   gap: var(--space-2);
 }
 
-.person-task-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.person-task,
 .day-note {
   display: flex;
   align-items: stretch;
 }
 
-/* A Person Task: a soft grey row, the × inside it at the right. */
-.person-task {
-  border-radius: var(--radius-chip);
-  background: var(--canvas);
-}
-
-.person-task-text,
 .day-note-text {
   flex: 1 1 auto;
   min-width: 0;
@@ -734,15 +815,7 @@
   cursor: text;
 }
 
-.person-task-text {
-  min-height: 2.25rem;
-  padding: var(--space-1) var(--space-3);
-  border: 0;
-  font-size: 0.875rem;
-}
-
-/* The × of a Person Task or a Day Note: borderless, grey, red when pointed at. */
-.person-task-remove,
+/* The × of a Day Note: borderless, grey, red when pointed at. */
 .day-note-remove {
   flex: 0 0 auto;
   width: max(2.25rem, var(--touch-target));
@@ -753,28 +826,6 @@
   font: inherit;
   font-size: 1.125rem;
   line-height: 1;
-}
-
-.person-task-text:focus-visible,
-.person-task-remove:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-@media (hover: hover) {
-  .person-task-remove:hover {
-    color: var(--alert);
-  }
-}
-
-/* Their Note: the same row on the soft yellow of a Note. */
-.person-task-note {
-  background: var(--note-wash);
-}
-
-.person-task-note .person-task-text {
-  color: var(--note-ink);
-  font-weight: var(--weight-strong);
 }
 
 /* --- Under the cards: No crew tomorrow, and Notes for the day -------------

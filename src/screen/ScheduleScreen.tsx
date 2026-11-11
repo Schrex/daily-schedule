@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type MouseEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
 import {
   canHaveTasks,
@@ -20,7 +20,7 @@ import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
 import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
-import { PersonTasks } from './PersonTasks';
+import { PersonAdd, PersonLines } from './PersonTasks';
 import { TasksCell } from './TasksCell';
 
 interface ScheduleScreenProps {
@@ -188,6 +188,20 @@ export function ScheduleScreen({
       </span>
     ) : null;
 
+  /**
+   * When someone is let go of while the focus was in their panel (Escape in
+   * its field, the last × in it), the panel goes and the focus with it. Hand
+   * it back to their name so the keyboard keeps its place.
+   */
+  const wasSelected = useRef<string | null>(null);
+  useEffect(() => {
+    const was = wasSelected.current;
+    wasSelected.current = selectedCrewMemberId;
+    if (was === null || was === selectedCrewMemberId) return;
+    if (document.activeElement !== null && document.activeElement !== document.body) return;
+    document.querySelector<HTMLElement>(`[data-crew-member="${CSS.escape(was)}"]`)?.focus();
+  }, [selectedCrewMemberId]);
+
   /** A Job just opened from its folded button: its card's heading takes the focus once drawn. */
   const [focusJob, setFocusJob] = useState<string | null>(null);
   useEffect(() => {
@@ -213,12 +227,27 @@ export function ScheduleScreen({
     // Otherwise the click carries on to the block the name sits in: the destination.
   };
 
+  /** A destination was clicked with a Crew Member picked up to move: they go there. */
+  const moveSelectedTo = (to: MoveTo) => (moving ? () => onMoveCrewMember(selected.id, to) : undefined);
+
   /**
-   * A destination was clicked: with a Crew Member picked up to move, they go
-   * there; with someone's panel open, it is closed.
+   * While someone's panel is open, a click anywhere outside their chip and
+   * the field under it closes it: a card, the header, the empty page. A click
+   * on another name is left to select that name instead.
    */
-  const moveSelectedTo = (to: MoveTo) =>
-    moving ? () => onMoveCrewMember(selected.id, to) : panelOpen ? onDeselect : undefined;
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onClick = (event: globalThis.MouseEvent) => {
+      // The path as it was when clicked: a × or a task tapped to change it may be gone by now.
+      const inside = event
+        .composedPath()
+        .some((at) => at instanceof Element && at.matches('.person-open, .person-panel, .name'));
+      if (inside) return;
+      onDeselect();
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, [panelOpen, onDeselect]);
 
   /**
    * A name: a grey chip whose top line is a dot of the Crew Member's color and
@@ -243,7 +272,7 @@ export function ScheduleScreen({
       {personTasks.length > 0 && (
         <span className="name-subs">
           {personTasks.map((task, index) => (
-            <span key={index} className="name-sub">
+            <span key={index} className="name-sub" data-sub={task}>
               {task}
             </span>
           ))}
@@ -261,15 +290,7 @@ export function ScheduleScreen({
    */
   const personPanel = selectedPlaced && !drag.dragging && (
     <li className="person-panel" onClick={(event) => event.stopPropagation()}>
-      <PersonTasks
-        crewMember={selectedPlaced.crewMember}
-        note={selectedPlaced.note}
-        tasks={selectedPlaced.personTasks ?? []}
-        onAdd={onAddPersonTask}
-        onChange={onChangePersonTask}
-        onRemove={onRemovePersonTask}
-        onSetNote={onSetNote}
-      />
+      <PersonAdd crewMember={selectedPlaced.crewMember} onAddTask={onAddPersonTask} onSetNote={onSetNote} />
     </li>
   );
 
@@ -306,19 +327,30 @@ export function ScheduleScreen({
         )}
         {row.who.length > 0 && (
           <ul className="names">
-            {row.who.map(({ crewMember, note, personTasks }) => (
-              <Fragment key={crewMember.id}>
-                <li className={note ? 'noted' : undefined}>
-                  {name(crewMember, personTasks)}
-                  {note && (
-                    <span className="note">
-                      <span className="note-label">Note</span> {note}
-                    </span>
-                  )}
-                </li>
-                {crewMember.id === selectedPlaced?.crewMember.id && personPanel}
-              </Fragment>
-            ))}
+            {row.who.map(({ crewMember, note, personTasks = [] }) => {
+              // The selected Crew Member's tasks and Note each get × in place.
+              const open = crewMember.id === selectedPlaced?.crewMember.id && !drag.dragging;
+              return (
+                <Fragment key={crewMember.id}>
+                  <li className={`${note ? 'noted' : ''}${open ? ' person-open' : ''}`.trim() || undefined}>
+                    {name(crewMember, open ? [] : personTasks)}
+                    {open ? (
+                      <PersonLines
+                        crewMember={crewMember}
+                        note={note}
+                        tasks={personTasks}
+                        onChange={onChangePersonTask}
+                        onRemove={onRemovePersonTask}
+                        onSetNote={onSetNote}
+                      />
+                    ) : (
+                      note && <span className="note">{note}</span>
+                    )}
+                  </li>
+                  {crewMember.id === selectedPlaced?.crewMember.id && personPanel}
+                </Fragment>
+              );
+            })}
           </ul>
         )}
         {moveHere(row.key)}
