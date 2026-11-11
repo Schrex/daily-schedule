@@ -171,6 +171,9 @@ export function App({
       onMoveCrewMember={move}
       openJobs={openJobs}
       onOpenJob={(jobKey) => openJobsAfter({ kind: 'open', jobKey })}
+      onPutAwayEmptyJobs={() =>
+        openJobsAfter({ kind: 'put-away', view: scheduleView(roster, latest.current) })
+      }
       onEditNote={() => setEditingNote(true)}
       onSaveNote={(text) =>
         changeSelected((current, crewMemberId) => setNote(current, crewMemberId, text))

@@ -8,7 +8,7 @@ import {
   type DailySchedule,
   type Roster,
 } from '../schedule-rules';
-import { foldedHeading, nextOpenJobs, type OpenJobs } from './openJobs';
+import { emptyOpenJobKeys, foldedHeading, nextOpenJobs, type OpenJobs } from './openJobs';
 
 const roster: Roster = {
   crewMembers: [
@@ -83,6 +83,24 @@ describe('the open set of Jobs', () => {
       placements: [{ crewMemberId: 'bob', destination: onJob('bridge'), order: 1 }],
     };
     expect([...nextOpenJobs(opened, { kind: 'rebuild', view: view(otherDay) })]).toEqual(['job:bridge']);
+  });
+
+  it('folds every empty open Job at once when they are put away, and only those', () => {
+    const withBob = moveCrewMember(start, 'bob', onJob('bridge'));
+    const emptied = moveCrewMember(withBob, 'ann', NOT_PLACED);
+    let open = changed(loaded(start), withBob);
+    open = nextOpenJobs(open, { kind: 'open', jobKey: 'job:pond' });
+    open = changed(open, emptied);
+    expect(emptyOpenJobKeys(open, view(emptied)).sort()).toEqual(['job:pond', 'job:tower']);
+
+    const putAway = nextOpenJobs(open, { kind: 'put-away', view: view(emptied) });
+    expect([...putAway]).toEqual(['job:bridge']);
+    expect(emptyOpenJobKeys(putAway, view(emptied))).toEqual([]);
+  });
+
+  it('changes nothing when there are no empty open Jobs to put away', () => {
+    const open = loaded(start);
+    expect(nextOpenJobs(open, { kind: 'put-away', view: view(start) })).toBe(open);
   });
 
   it('returns the same set when nothing opens', () => {

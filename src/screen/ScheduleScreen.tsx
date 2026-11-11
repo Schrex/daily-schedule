@@ -20,7 +20,7 @@ import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
 import { NoteEditor } from './NoteEditor';
-import { foldedHeading, type OpenJobs } from './openJobs';
+import { emptyOpenJobKeys, foldedHeading, type OpenJobs } from './openJobs';
 import { PersonTasks } from './PersonTasks';
 import { TasksCell } from './TasksCell';
 import { useColumnCount } from './useColumnCount';
@@ -45,6 +45,8 @@ interface ScheduleScreenProps {
   openJobs: OpenJobs;
   /** A folded Job's button was tapped with nobody in hand: open it as an empty card. */
   onOpenJob: (jobKey: string) => void;
+  /** "Put away empty jobs": every open Job with nobody on it folds now. */
+  onPutAwayEmptyJobs: () => void;
   /** "Add note" / "Change note" was clicked for the selected Crew Member. */
   onEditNote: () => void;
   /** The Note typed for the selected Crew Member was saved. */
@@ -127,6 +129,7 @@ export function ScheduleScreen({
   onMoveCrewMember,
   openJobs,
   onOpenJob,
+  onPutAwayEmptyJobs,
   editingNote,
   onEditNote,
   onSaveNote,
@@ -329,6 +332,9 @@ export function ScheduleScreen({
     (row) => row.destination.kind === 'job' && !openJobs.has(row.key),
   );
 
+  /** Open cards with nobody on them (by who is really there, not a drag's preview). */
+  const emptyOpen = emptyOpenJobKeys(openJobs, view);
+
   /**
    * A folded Job's button: with someone in hand they are put on it (which
    * opens it and lets go of them); with nobody, it opens as an empty card so
@@ -363,26 +369,35 @@ export function ScheduleScreen({
               </div>
             ))}
           </div>
-          {foldedRows.length > 0 && (
+          {(foldedRows.length > 0 || emptyOpen.length > 0) && (
             <section className="folded-jobs" aria-labelledby="folded-jobs-heading">
-              <h2 id="folded-jobs-heading">{foldedHeading(view.date, scheduleDateOf(new Date()))}</h2>
-              <div className="folded-list">
-                {foldedRows.map((row) => {
-                  const { name: title } = cardTitle(roster, row);
-                  return (
-                    <button
-                      key={row.key}
-                      type="button"
-                      className={`button folded-job${inHand ? ' button-primary' : ''}`}
-                      aria-label={inHand ? `Put ${inHand.crewMember.name} on ${title}` : `Open ${title}`}
-                      onClick={() => tapFolded(row)}
-                      {...drag.dropProps(row.key)}
-                    >
-                      {inHand ? `Put ${firstName(inHand.crewMember)} on ${title}` : title}
-                    </button>
-                  );
-                })}
-              </div>
+              <header className="folded-jobs-head">
+                <h2 id="folded-jobs-heading">{foldedHeading(view.date, scheduleDateOf(new Date()))}</h2>
+                {emptyOpen.length > 0 && (
+                  <button type="button" className="button action" onClick={onPutAwayEmptyJobs}>
+                    Put away empty jobs
+                  </button>
+                )}
+              </header>
+              {foldedRows.length > 0 && (
+                <div className="folded-list">
+                  {foldedRows.map((row) => {
+                    const { name: title } = cardTitle(roster, row);
+                    return (
+                      <button
+                        key={row.key}
+                        type="button"
+                        className={`button folded-job${inHand ? ' button-primary' : ''}`}
+                        aria-label={inHand ? `Put ${inHand.crewMember.name} on ${title}` : `Open ${title}`}
+                        onClick={() => tapFolded(row)}
+                        {...drag.dropProps(row.key)}
+                      >
+                        {inHand ? `Put ${firstName(inHand.crewMember)} on ${title}` : title}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           )}
           <DayNotes

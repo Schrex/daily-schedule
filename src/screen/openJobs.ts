@@ -22,7 +22,12 @@ export type OpenJobsEvent =
    */
   | { kind: 'changed'; view: ScheduleView }
   /** The Scheduler tapped a folded Job's button. */
-  | { kind: 'open'; jobKey: string };
+  | { kind: 'open'; jobKey: string }
+  /**
+   * The Scheduler tapped "Put away empty jobs": every open Job with nobody on
+   * it folds now. Jobs with someone on them stay; their Tasks are untouched.
+   */
+  | { kind: 'put-away'; view: ScheduleView };
 
 /** The keys of the Job rows with at least one person on them. */
 const staffedJobKeys = (view: ScheduleView): string[] =>
@@ -42,8 +47,19 @@ export function nextOpenJobs(open: OpenJobs, event: OpenJobsEvent): OpenJobs {
       return withKeys(open, staffedJobKeys(event.view));
     case 'open':
       return withKeys(open, [event.jobKey]);
+    case 'put-away': {
+      const staffed = new Set(staffedJobKeys(event.view));
+      const kept = [...open].filter((key) => staffed.has(key));
+      return kept.length === open.size ? open : new Set(kept);
+    }
   }
 }
+
+/** The open Jobs with nobody on them: the cards "Put away empty jobs" would fold. */
+export const emptyOpenJobKeys = (open: OpenJobs, view: ScheduleView): string[] =>
+  view.rows
+    .filter((row) => row.destination.kind === 'job' && open.has(row.key) && row.who.length === 0)
+    .map((row) => row.key);
 
 function withKeys(open: OpenJobs, keys: string[]): OpenJobs {
   if (keys.every((key) => open.has(key))) return open;
