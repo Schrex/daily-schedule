@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { notePieces, type Roster } from '../schedule-rules';
 import { LineEditor } from './LineEditor';
 
 interface DayNotesProps {
-  roster: Roster;
   notes: string[];
   onAdd: (text: string) => void;
   /** A Day Note was changed; blank text takes it away. */
@@ -12,20 +10,16 @@ interface DayNotesProps {
 }
 
 /**
- * Notes for the day: remarks for everyone, under the Job cards. The Crew
- * Members a note names are marked in yellow and the Jobs in black. Tap a note
- * to change it, × to take it away, "Add a note" for another.
+ * Notes for the day: remarks for everyone, under the Job cards, one under the
+ * other. Tap a note to change it, × to take it away, "Add a note" for another.
  */
-export function DayNotes({ roster, notes, onAdd, onChange, onRemove }: DayNotesProps) {
+export function DayNotes({ notes, onAdd, onChange, onRemove }: DayNotesProps) {
   /** The note being changed by its place in the list, "new" for one being added, or null. */
   const [editing, setEditing] = useState<number | 'new' | null>(null);
 
   return (
     <section className="day-notes" aria-labelledby="day-notes-heading">
-      <header className="day-notes-head">
-        <h2 id="day-notes-heading">Notes for the day</h2>
-        <span className="day-notes-hint">Everyone sees these. Names and jobs are marked.</span>
-      </header>
+      <h2 id="day-notes-heading">Notes for the day</h2>
 
       {notes.map((note, index) =>
         editing === index ? (
@@ -48,15 +42,7 @@ export function DayNotes({ roster, notes, onAdd, onChange, onRemove }: DayNotesP
               aria-label={`Change note: ${note}`}
               onClick={() => setEditing(index)}
             >
-              {notePieces(roster, note).map((piece, at) =>
-                piece.kind === 'plain' ? (
-                  piece.text
-                ) : (
-                  <span key={at} className={`mark mark-${piece.kind}`}>
-                    {piece.text}
-                  </span>
-                ),
-              )}
+              {note}
             </button>
             <button
               type="button"

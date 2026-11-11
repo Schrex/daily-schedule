@@ -213,6 +213,21 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
   return { date: schedule.date, rows, notPlaced, dayNotes: dayNotesOf(schedule) };
 }
 
+/**
+ * A row's title as a card shows it: the name, and a Job's number on its own
+ * (shown small beside the count). A Job that has left the roster, or a
+ * Standing Row, is its label with no number.
+ */
+export function cardTitle(roster: Roster, row: ScheduleRow): { name: string; number?: string } {
+  const { destination } = row;
+  const job =
+    destination.kind === 'job'
+      ? roster.jobs.find((candidate) => candidate.id === destination.jobId)
+      : undefined;
+  if (!job) return { name: row.label };
+  return job.jobNumber ? { name: job.name, number: job.jobNumber } : { name: job.name };
+}
+
 // ---------------------------------------------------------------------------
 // Moving a Crew Member
 // ---------------------------------------------------------------------------
@@ -456,54 +471,6 @@ export function changeDayNote(schedule: DailySchedule, index: number, text: stri
 /** Removes one Day Note, by its place in the list. */
 export const removeDayNote = (schedule: DailySchedule, index: number): DailySchedule =>
   changeDayNote(schedule, index, '');
-
-/** One piece of a Day Note as it is drawn: plain words, or a Crew Member or Job it names. */
-export interface NotePiece {
-  text: string;
-  kind: 'plain' | 'crew-member' | 'job';
-}
-
-/**
- * A Day Note cut into pieces, so the Crew Members and Jobs it names can be
- * marked. A Crew Member is named by their full name or first name, a Job by
- * its name, its job number or both ("TIUNY", "J2601"); case does not matter,
- * but a name must be a whole word. Where two could match, the longer wins.
- */
-export function notePieces(roster: Roster, note: string): NotePiece[] {
-  const names: [string, NotePiece['kind']][] = [
-    ...roster.crewMembers.flatMap((crewMember): [string, NotePiece['kind']][] => [
-      [crewMember.name, 'crew-member'],
-      [crewMember.name.split(' ')[0] ?? '', 'crew-member'],
-    ]),
-    ...roster.jobs.flatMap((job): [string, NotePiece['kind']][] => [
-      [jobLabel(job), 'job'],
-      [job.name, 'job'],
-      [job.jobNumber ?? '', 'job'],
-    ]),
-  ].filter(([name]) => name.trim().length > 1);
-  if (names.length === 0) return note ? [{ text: note, kind: 'plain' }] : [];
-
-  const kindOf = new Map(names.map(([name, kind]) => [name.toLowerCase(), kind]));
-  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(
-    `(?<![\\p{L}\\p{N}])(${[...kindOf.keys()]
-      .sort((a, b) => b.length - a.length)
-      .map(escape)
-      .join('|')})(?![\\p{L}\\p{N}])`,
-    'giu',
-  );
-
-  const pieces: NotePiece[] = [];
-  let at = 0;
-  for (const match of note.matchAll(pattern)) {
-    const start = match.index ?? 0;
-    if (start > at) pieces.push({ text: note.slice(at, start), kind: 'plain' });
-    pieces.push({ text: match[0], kind: kindOf.get(match[0].toLowerCase()) ?? 'plain' });
-    at = start + match[0].length;
-  }
-  if (at < note.length) pieces.push({ text: note.slice(at), kind: 'plain' });
-  return pieces;
-}
 
 // ---------------------------------------------------------------------------
 // Dates
