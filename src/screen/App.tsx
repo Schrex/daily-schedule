@@ -121,7 +121,7 @@ export function App({
    */
   const edit = (scheduleEdit: ScheduleEdit) => {
     const before = latest.current;
-    const after = change((current) => applyEdit(current, scheduleEdit));
+    const after = change((current) => applyEdit(current, scheduleEdit, roster));
     if (after !== before) setHistory(remember(history.current, before));
     if (scheduleEdit.kind === 'move') deselect();
   };

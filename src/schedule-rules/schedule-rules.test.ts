@@ -9,6 +9,7 @@ import {
   moveCrewMember,
   NOT_PLACED,
   placeCrewMember,
+  placeCrewMemberAt,
   returnToNotPlaced,
   scheduleView,
   setNote,
@@ -309,6 +310,155 @@ describe('moving a Crew Member', () => {
   it('changes nothing when they are moved to where they already are', () => {
     expect(moveCrewMember(before, 'ann', onJob('tower'))).toBe(before);
     expect(moveCrewMember(before, 'cal', NOT_PLACED)).toBe(before);
+  });
+});
+
+describe('putting a Crew Member at a spot in a row', () => {
+  // Tower: Ann, Bob, Cal, in that order. Fay (a Foreman) is Not Placed.
+  const tower = schedule({
+    placements: [
+      placement('ann', onJob('tower'), 1),
+      placement('bob', onJob('tower'), 2),
+      placement('cal', onJob('tower'), 3, '1/2 Day'),
+    ],
+  });
+
+  it('moves a Crew Member within their row to just before the one named', () => {
+    const moved = placeCrewMemberAt(roster, tower, 'cal', onJob('tower'), 'ann');
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['cal', 'ann', 'bob']);
+  });
+
+  it('keeps their Note when they move within their row', () => {
+    const moved = placeCrewMemberAt(roster, tower, 'cal', onJob('tower'), 'bob');
+
+    const cal = scheduleView(roster, moved).rows[0]?.who[1];
+    expect(cal?.crewMember.id).toBe('cal');
+    expect(cal?.note).toBe('1/2 Day');
+  });
+
+  it('moves a Crew Member to the end of their row when no one is named', () => {
+    const moved = placeCrewMemberAt(roster, tower, 'ann', onJob('tower'), null);
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['bob', 'cal', 'ann']);
+  });
+
+  it('puts a Crew Member from another row at the spot, leaving their Note behind', () => {
+    const elsewhere = schedule({
+      placements: [...tower.placements, placement('bob', onJob('bridge'), 4, 'Late')].filter(
+        (p) => !(p.crewMemberId === 'bob' && p.destination.kind === 'job' && p.destination.jobId === 'tower'),
+      ),
+    });
+
+    const moved = placeCrewMemberAt(roster, elsewhere, 'bob', onJob('tower'), 'cal');
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['ann', 'bob', 'cal']);
+    expect(whoIsOn('Bridge', moved)).toEqual([]);
+    expect(scheduleView(roster, moved).rows[0]?.who[1]?.note).toBeUndefined();
+    expect(moved.placements.filter((p) => p.crewMemberId === 'bob')).toHaveLength(1);
+  });
+
+  it('puts someone Not Placed at the spot', () => {
+    const moved = placeCrewMemberAt(roster, tower, 'fay', onStandingRow('shop'), null);
+    const between = placeCrewMemberAt(roster, moved, 'ann', onStandingRow('shop'), 'fay');
+
+    expect(whoIsOn('Shop', between)).toEqual(['ann', 'fay']);
+    expect(notPlaced(between)).toEqual([]);
+  });
+
+  describe('with a Foreman on the Job', () => {
+    const roster2: Roster = {
+      ...roster,
+      crewMembers: [...roster.crewMembers, crew('gus', { foreman: true })],
+    };
+    // Listed Fay, Gus (Foremen), then Ann, Bob. Fay was placed last of all.
+    const led = schedule({
+      placements: [
+        placement('ann', onJob('tower'), 1),
+        placement('gus', onJob('tower'), 2),
+        placement('bob', onJob('tower'), 3),
+        placement('fay', onJob('tower'), 4),
+      ],
+    });
+    const listed = (daily: DailySchedule) => whoIsOn('J100 Tower', daily, roster2);
+
+    it('lands someone let go above a Foreman just below the last Foreman', () => {
+      expect(listed(led)).toEqual(['gus', 'fay', 'ann', 'bob']);
+
+      expect(listed(placeCrewMemberAt(roster2, led, 'bob', onJob('tower'), 'gus'))).toEqual([
+        'gus',
+        'fay',
+        'bob',
+        'ann',
+      ]);
+      expect(listed(placeCrewMemberAt(roster2, led, 'cal', onJob('tower'), 'fay'))).toEqual([
+        'gus',
+        'fay',
+        'cal',
+        'ann',
+        'bob',
+      ]);
+    });
+
+    it('lets the Foremen be reordered among themselves', () => {
+      expect(listed(placeCrewMemberAt(roster2, led, 'fay', onJob('tower'), 'gus'))).toEqual([
+        'fay',
+        'gus',
+        'ann',
+        'bob',
+      ]);
+    });
+
+    it('keeps a Foreman let go among the others with the Foremen, last of them', () => {
+      expect(listed(placeCrewMemberAt(roster2, led, 'gus', onJob('tower'), null))).toEqual([
+        'fay',
+        'gus',
+        'ann',
+        'bob',
+      ]);
+    });
+
+    it('changes nothing when someone is let go above a Foreman and already sits just below the last one', () => {
+      expect(placeCrewMemberAt(roster2, led, 'ann', onJob('tower'), 'gus')).toBe(led);
+    });
+
+    it('has no Foreman rule in a Standing Row: a Foreman can go anywhere there', () => {
+      const shop = schedule({
+        placements: [placement('ann', onStandingRow('shop'), 1), placement('fay', onStandingRow('shop'), 2)],
+      });
+
+      expect(whoIsOn('Shop', placeCrewMemberAt(roster2, shop, 'ann', onStandingRow('shop'), null), roster2)).toEqual([
+        'fay',
+        'ann',
+      ]);
+      expect(whoIsOn('Shop', placeCrewMemberAt(roster2, shop, 'gus', onStandingRow('shop'), null), roster2)).toEqual([
+        'ann',
+        'fay',
+        'gus',
+      ]);
+    });
+  });
+
+  it('leaves the Placement of someone since removed from the roster where it is', () => {
+    const withGone = schedule({ placements: [...tower.placements, placement('zed', onJob('tower'), 9)] });
+
+    const moved = placeCrewMemberAt(roster, withGone, 'cal', onJob('tower'), 'ann');
+
+    expect(moved.placements.find((p) => p.crewMemberId === 'zed')).toEqual(placement('zed', onJob('tower'), 9));
+  });
+
+  it('is the order the crew sees, and a reorder after a Send is a change to send again', () => {
+    const sent = markSent(tower, crewView(roster, tower), '2026-11-09T23:00:00.000Z');
+    const reordered = placeCrewMemberAt(roster, sent, 'cal', onJob('tower'), 'ann');
+
+    const crewSees = crewView(roster, reordered);
+    expect(crewSees.rows[0]?.who.map((placed) => placed.crewMember.id)).toEqual(['cal', 'ann', 'bob']);
+    expect(crewSees.updated).toBe(true);
+  });
+
+  it('changes nothing when let go at the spot they are already in', () => {
+    expect(placeCrewMemberAt(roster, tower, 'bob', onJob('tower'), 'cal')).toBe(tower);
+    expect(placeCrewMemberAt(roster, tower, 'cal', onJob('tower'), null)).toBe(tower);
   });
 });
 
@@ -1218,6 +1368,16 @@ describe('an edit from the screen', () => {
   // Each edit does exactly what its rule does.
   const cases: [ScheduleEdit, DailySchedule, DailySchedule][] = [
     [{ kind: 'move', crewMemberId: 'cal', to: onJob('tower') }, before, moveCrewMember(before, 'cal', onJob('tower'))],
+    [
+      { kind: 'move', crewMemberId: 'ann', to: onJob('bridge'), before: 'cal' },
+      before,
+      placeCrewMemberAt(roster, before, 'ann', onJob('bridge'), 'cal'),
+    ],
+    [
+      { kind: 'move', crewMemberId: 'ann', to: NOT_PLACED, before: 'cal' },
+      withTask,
+      withTask,
+    ],
     [{ kind: 'set-tasks', destination: onJob('tower'), text: 'Dig' }, before, setTasks(before, onJob('tower'), 'Dig')],
     [{ kind: 'set-note', crewMemberId: 'cal', text: '' }, before, setNote(before, 'cal', '')],
     [{ kind: 'add-person-task', crewMemberId: 'cal', text: 'Bring the laser' }, before, withTask],
@@ -1233,10 +1393,10 @@ describe('an edit from the screen', () => {
   ];
 
   it.each(cases)('%o', (edit, from, expected) => {
-    expect(applyEdit(from, edit)).toEqual(expected);
+    expect(applyEdit(from, edit, roster)).toEqual(expected);
   });
 
   it('returns the same Daily Schedule when the edit changes nothing', () => {
-    expect(applyEdit(before, { kind: 'set-note', crewMemberId: 'cal', text: '1/2 Day' })).toBe(before);
+    expect(applyEdit(before, { kind: 'set-note', crewMemberId: 'cal', text: '1/2 Day' }, roster)).toBe(before);
   });
 });
