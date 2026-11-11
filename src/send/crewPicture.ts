@@ -178,10 +178,6 @@ const NUMBER_GAP = 14;
 const TASK_LINE = 38;
 const YARD_TASK_LINE = 34;
 const TASKS_RULE_GAP = 14;
-/** The small round bullet before each Task, and the space after it. */
-const BULLET = 9;
-const BULLET_GAP = 16;
-const TEXT_INDENT = BULLET + BULLET_GAP;
 
 /** Who: one name to a line, every one the width of the card. */
 const NAME_HEIGHT = 70;
@@ -189,6 +185,14 @@ const NAME_GAP = 10;
 const NAME_PAD_X = 20;
 const DOT = 22;
 const DOT_GAP = 16;
+
+/**
+ * A Task lines up with the names under it: its bullet centred under their
+ * color dots, its text where their names start.
+ */
+const BULLET = 8;
+const BULLET_X = NAME_PAD_X + DOT / 2;
+const TEXT_INDENT = NAME_PAD_X + DOT + DOT_GAP;
 /** Person Tasks: bulleted lines under the name's line, in the same grey chip. */
 /** From the foot of the name's line to the first task: room under a black line, close under a grey one. */
 const SUBS_PAD_TOP = 8;
@@ -579,9 +583,9 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: 
 /** One line of a Task, centred on `middle`: a bullet before the first line of each. */
 function drawBulletLine(ctx: CanvasRenderingContext2D, line: BulletLine, middle: number) {
   if (line.first) {
-    ctx.fillStyle = PALETTE.inkSoft;
+    ctx.fillStyle = PALETTE.muted;
     ctx.beginPath();
-    ctx.arc(CARD_INNER_X + BULLET / 2, middle, BULLET / 2, 0, 2 * Math.PI);
+    ctx.arc(CARD_INNER_X + BULLET_X, middle, BULLET / 2, 0, 2 * Math.PI);
     ctx.fill();
   }
   ctx.fillStyle = PALETTE.ink;
