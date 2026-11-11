@@ -374,12 +374,12 @@ export function ScheduleScreen({
                       <button
                         key={row.key}
                         type="button"
-                        className="button folded-job"
+                        className={`button folded-job${inHand ? ' folded-job-target' : ''}`}
                         aria-label={inHand ? `Put ${inHand.crewMember.name} on ${title}` : `Open ${title}`}
                         onClick={() => tapFolded(row)}
                         {...drag.dropProps(row.key)}
                       >
-                        {inHand ? `Put ${firstName(inHand.crewMember)} on ${title}` : title}
+                        {title}
                       </button>
                     );
                   })}

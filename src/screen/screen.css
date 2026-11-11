@@ -754,8 +754,10 @@
 }
 
 /* --- Folded Jobs: a row of large buttons under the cards ------------------
-   A Job with nobody on it, by name; with someone in hand, "Put Mike on Pond",
-   still grey so nothing lights up. The buttons wrap, and so do long names. */
+   A Job with nobody on it, by name. With someone in hand (selected or being
+   dragged) the buttons grow into big drop targets that share the row, still
+   grey and still by name; tap or drop to put them there. The buttons wrap,
+   and so do long names. */
 
 .folded-jobs-head {
   display: flex;
@@ -782,6 +784,18 @@
   text-align: center;
   white-space: normal;
   overflow-wrap: anywhere;
+  transition:
+    min-height var(--ease),
+    background-color var(--ease),
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+
+.folded-job-target {
+  flex: 1 1 12rem;
+  min-height: 5.5rem;
+  border-style: dashed;
+  font-size: 1.125rem;
 }
 
 .folded-job[data-drop-over] {
