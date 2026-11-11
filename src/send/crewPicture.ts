@@ -3,21 +3,21 @@ import { CREW_DOTS, PALETTE } from '../palette';
 import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } from '../schedule-rules';
 
 /**
- * Draws the crew view as a picture (a PNG) of the Daily Schedule, made to be
- * read on a phone: the Schreiber logo and the date at the top, then the
- * cards of the Scheduler's board one under the other, in the same clean look.
+ * Draws the crew view as a square picture (a PNG) of the Daily Schedule, laid
+ * out as the Scheduler's board is: the Schreiber logo and the date at the
+ * top, the Job cards in columns (then the Notes for the day), and Shop,
+ * Trucking and Off Work in a column at the right. As many Job columns as make
+ * it closest to square; the rest of the square is the board's off-white.
  * A card is its place's name with the Job number and how many at the right,
- * the day's Tasks as plain lines ruled off from the names, then the names,
- * one to a line: a grey chip whose top line is a dot of the Crew Member's
- * color and the name (black for a Foreman), with their Person Tasks bulleted
- * under it, and a Note as a soft yellow strip at its foot. The Notes for the day, if any, are a
- * last card. It draws exactly what it is given and nothing else: no buttons
- * and no Not Placed list. No rule is applied here.
+ * the day's Tasks ruled off from the names, then the names, one to a line: a
+ * grey chip whose top line is a dot of the Crew Member's color and the name
+ * (black for a Foreman), with their Person Tasks bulleted under it, and a Note
+ * as a soft yellow strip at its foot. It draws exactly what it is given and
+ * nothing else: no buttons and no Not Placed list. No rule is applied here.
  *
  * Drawn by hand on a canvas rather than photographed from the screen, so it
- * is the same picture whatever the Scheduler's window looks like. It is
- * narrow with large text, to be readable in Slack on a phone, and drawn at
- * twice its size so it stays sharp.
+ * is the same picture whatever the Scheduler's window looks like, and drawn
+ * at twice its size so it stays sharp.
  *
  * The roster, when given, gives a Job's number as the screen shows it;
  * without it (or for a Job no longer on it) the card shows the label alone.
@@ -36,8 +36,8 @@ export async function renderCrewPicture(view: CrewView, roster?: Roster): Promis
   const layout = layOut(view, roster, measure, look);
 
   // Sizing the canvas resets its context, so size first, then draw.
-  canvas.width = WIDTH * SHARPNESS;
-  canvas.height = layout.height * SHARPNESS;
+  canvas.width = layout.size * SHARPNESS;
+  canvas.height = layout.size * SHARPNESS;
   const ctx = canvas.getContext('2d')!;
   ctx.scale(SHARPNESS, SHARPNESS);
   draw(ctx, view, layout, look, logo);
@@ -66,7 +66,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 // picture's own: it is looked at on a phone, at under half its width, so they
 // are large.
 
-const WIDTH = 780;
 const SHARPNESS = 2;
 const MARGIN = 28;
 
@@ -157,14 +156,20 @@ const UPDATED_GAP = 16;
 const UPDATED_PAD_X = 22;
 const DATE_HEIGHT = 84;
 
-/** A card: one Job or Standing Row, or the Notes for the day. */
-const CARD_X = MARGIN;
-const CARD_WIDTH = WIDTH - 2 * MARGIN;
+/**
+ * A card: one Job or Standing Row, or the Notes for the day. Cards stand in
+ * columns, as on the board: Jobs (then the Notes for the day) in as many
+ * columns as make the picture closest to square, and Shop, Trucking and Off
+ * Work in one column at the right.
+ */
+const CARD_WIDTH = 724;
 const CARD_GAP = 18;
+const COLUMN_GAP = 22;
 const CARD_EDGE = 2;
 const CARD_PAD = 26;
-const CARD_INNER_X = CARD_X + CARD_PAD;
 const CARD_INNER_WIDTH = CARD_WIDTH - 2 * CARD_PAD;
+/** The most columns of Jobs. */
+const MAX_JOB_COLUMNS = 3;
 /** The space between the parts of a card: the head, the Tasks, the names. */
 const PART_GAP = 14;
 
@@ -234,6 +239,8 @@ interface NameBox {
 
 interface CardLayout {
   isJob: boolean;
+  /** Where the card is, from the top left of the content. */
+  left: number;
   top: number;
   height: number;
   titleLines: string[];
@@ -255,6 +262,7 @@ interface BulletLine {
 }
 
 interface NotesLayout {
+  left: number;
   top: number;
   height: number;
   /** Each note's lines, and its top from the top of the card. */
@@ -265,7 +273,13 @@ interface Layout {
   dateTop: number;
   cards: CardLayout[];
   notes: NotesLayout | null;
+  /** How wide the content is (the cards in their columns, and the margins). */
+  width: number;
   height: number;
+  /** The side of the square picture, and where in it the content starts. */
+  size: number;
+  offsetX: number;
+  offsetY: number;
 }
 
 function layOut(
@@ -277,7 +291,6 @@ function layOut(
   const dateTop =
     MARGIN + LOGO_HEIGHT + LOGO_GAP + (view.updated ? UPDATED_HEIGHT + UPDATED_GAP : 0);
 
-  let top = dateTop + DATE_HEIGHT;
   const cards = view.rows.map((row): CardLayout => {
     const isJob = row.destination.kind === 'job';
     const { name, number } = roster ? cardTitle(roster, row) : { name: row.label, number: undefined };
@@ -306,7 +319,8 @@ function layOut(
     const height = namesTop + namesHeight + CARD_PAD;
     const card: CardLayout = {
       isJob,
-      top,
+      left: 0,
+      top: 0,
       height,
       titleLines,
       ...(number ? { number } : {}),
@@ -315,14 +329,71 @@ function layOut(
       namesTop,
       names,
     };
-    top += height + CARD_GAP;
     return card;
   });
 
-  const notes = layOutNotes(view.dayNotes ?? [], ctx, look, top);
-  if (notes) top += notes.height + CARD_GAP;
+  const notes = layOutNotes(view.dayNotes ?? [], ctx, look);
+  const cardsTop = dateTop + DATE_HEIGHT;
+  const jobs = cards.filter((card) => card.isJob);
+  const yard = cards.filter((card) => !card.isJob);
 
-  return { dateTop, cards, notes, height: top - CARD_GAP + MARGIN };
+  // Try each number of Job columns; keep the one closest to square.
+  let best: { jobColumns: number; width: number; height: number } | null = null;
+  for (let jobColumns = 1; jobColumns <= Math.max(1, Math.min(MAX_JOB_COLUMNS, jobs.length)); jobColumns++) {
+    const { width, height } = placeCards(jobs, notes, yard, jobColumns, cardsTop);
+    const off = Math.abs(Math.log(width / height));
+    if (!best || off < Math.abs(Math.log(best.width / best.height))) best = { jobColumns, width, height };
+  }
+  const { width, height } = placeCards(jobs, notes, yard, best!.jobColumns, cardsTop);
+  const size = Math.max(width, height);
+  return {
+    dateTop,
+    cards,
+    notes,
+    width,
+    height,
+    size,
+    offsetX: Math.round((size - width) / 2),
+    offsetY: Math.round((size - height) / 2),
+  };
+}
+
+/**
+ * Puts the cards in their columns, from `top`: each Job (and then the Notes
+ * for the day) in the shortest of `jobColumns` columns, and the Standing Rows
+ * one under the other in a column at the right. Returns the content's size.
+ */
+function placeCards(
+  jobs: CardLayout[],
+  notes: NotesLayout | null,
+  yard: CardLayout[],
+  jobColumns: number,
+  top: number,
+): { width: number; height: number } {
+  const columnLeft = (column: number) => MARGIN + column * (CARD_WIDTH + COLUMN_GAP);
+  const bottoms = Array.from({ length: jobColumns }, () => top);
+  const putInShortest = (card: { left: number; top: number; height: number }) => {
+    const column = bottoms.indexOf(Math.min(...bottoms));
+    card.left = columnLeft(column);
+    card.top = bottoms[column]!;
+    bottoms[column]! += card.height + CARD_GAP;
+  };
+  jobs.forEach(putInShortest);
+  if (notes) putInShortest(notes);
+
+  const columns = jobColumns + (yard.length > 0 ? 1 : 0);
+  let yardBottom = top;
+  for (const card of yard) {
+    card.left = columnLeft(jobColumns);
+    card.top = yardBottom;
+    yardBottom += card.height + CARD_GAP;
+  }
+
+  const lowest = Math.max(yardBottom, ...bottoms);
+  return {
+    width: 2 * MARGIN + columns * CARD_WIDTH + (columns - 1) * COLUMN_GAP,
+    height: lowest - CARD_GAP + MARGIN,
+  };
 }
 
 /** Names one under the other, each with its Person Tasks in its chip and its Note under it. */
@@ -361,12 +432,7 @@ function stackNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look)
 }
 
 /** The Notes for the day card, starting at `top`; null when there are none. */
-function layOutNotes(
-  dayNotes: string[],
-  ctx: CanvasRenderingContext2D,
-  look: Look,
-  top: number,
-): NotesLayout | null {
+function layOutNotes(dayNotes: string[], ctx: CanvasRenderingContext2D, look: Look): NotesLayout | null {
   if (dayNotes.length === 0) return null;
   setType(ctx, look.type.dayNote);
   let y = CARD_PAD + YARD_LINE + PART_GAP;
@@ -377,7 +443,7 @@ function layOutNotes(
     y += 2 * DAY_NOTE_PAD_Y + lines.length * DAY_NOTE_LINE;
     return laid;
   });
-  return { top, height: y + CARD_PAD, notes };
+  return { left: 0, top: 0, height: y + CARD_PAD, notes };
 }
 
 /** Breaks text into lines no wider than `width`, at spaces. */
@@ -406,15 +472,18 @@ function draw(
   look: Look,
   logo: HTMLImageElement,
 ) {
-  // The board's warm off-white, with the white cards on it, as on the screen.
+  // The board's warm off-white, with the white cards on it, as on the screen;
+  // the content in the middle of the square.
   ctx.fillStyle = PALETTE.canvas;
-  ctx.fillRect(0, 0, WIDTH, layout.height);
+  ctx.fillRect(0, 0, layout.size, layout.size);
+  ctx.translate(layout.offsetX, layout.offsetY);
   ctx.textBaseline = 'middle';
+  const contentWidth = layout.width - 2 * MARGIN;
 
   const logoWidth = (logo.naturalWidth / logo.naturalHeight) * LOGO_HEIGHT;
   ctx.drawImage(logo, MARGIN, MARGIN, logoWidth, LOGO_HEIGHT);
 
-  if (view.updated) drawUpdated(ctx, look);
+  if (view.updated) drawUpdated(ctx, look, contentWidth);
 
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, look.type.date);
@@ -422,7 +491,7 @@ function draw(
     fullDate(view.date).toUpperCase(),
     MARGIN + 2,
     layout.dateTop + DATE_HEIGHT / 2 - 6,
-    CARD_WIDTH - 4,
+    contentWidth - 4,
   );
 
   for (const card of layout.cards) drawCard(ctx, card, look);
@@ -430,12 +499,12 @@ function draw(
 }
 
 /** The UPDATED marker: a solid bar of the alert red under the logo. */
-function drawUpdated(ctx: CanvasRenderingContext2D, look: Look) {
+function drawUpdated(ctx: CanvasRenderingContext2D, look: Look, width: number) {
   const top = MARGIN + LOGO_HEIGHT + LOGO_GAP;
   const middle = top + UPDATED_HEIGHT / 2 + 2;
   ctx.fillStyle = PALETTE.alert;
   ctx.beginPath();
-  ctx.roundRect(MARGIN, top, CARD_WIDTH, UPDATED_HEIGHT, look.radius.card);
+  ctx.roundRect(MARGIN, top, width, UPDATED_HEIGHT, look.radius.card);
   ctx.fill();
 
   ctx.fillStyle = PALETTE.paper;
@@ -447,19 +516,19 @@ function drawUpdated(ctx: CanvasRenderingContext2D, look: Look) {
     'This replaces the earlier schedule',
     afterWord,
     middle,
-    MARGIN + CARD_WIDTH - UPDATED_PAD_X - afterWord,
+    MARGIN + width - UPDATED_PAD_X - afterWord,
   );
 }
 
 /** A white card with a fine edge drawn wholly inside it. */
-function drawCardGround(ctx: CanvasRenderingContext2D, top: number, height: number, look: Look) {
+function drawCardGround(ctx: CanvasRenderingContext2D, left: number, top: number, height: number, look: Look) {
   ctx.beginPath();
-  ctx.roundRect(CARD_X, top, CARD_WIDTH, height, look.radius.card);
+  ctx.roundRect(left, top, CARD_WIDTH, height, look.radius.card);
   ctx.fillStyle = PALETTE.paper;
   ctx.fill();
   ctx.beginPath();
   ctx.roundRect(
-    CARD_X + CARD_EDGE / 2,
+    left + CARD_EDGE / 2,
     top + CARD_EDGE / 2,
     CARD_WIDTH - CARD_EDGE,
     height - CARD_EDGE,
@@ -470,15 +539,16 @@ function drawCardGround(ctx: CanvasRenderingContext2D, top: number, height: numb
   ctx.stroke();
 }
 
-/** A hairline across the card, at `y`. */
-function drawRule(ctx: CanvasRenderingContext2D, y: number) {
+/** A hairline across the card whose inside starts at `x`, at `y`. */
+function drawRule(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fillStyle = PALETTE.line;
-  ctx.fillRect(CARD_INNER_X, y, CARD_INNER_WIDTH, CARD_EDGE);
+  ctx.fillRect(x, y, CARD_INNER_WIDTH, CARD_EDGE);
 }
 
 function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
   const { top, isJob } = card;
-  drawCardGround(ctx, top, card.height, look);
+  const inner = card.left + CARD_PAD;
+  drawCardGround(ctx, card.left, top, card.height, look);
 
   // The name in capitals with the Job number small after it, and the count at the right.
   const headTop = top + CARD_PAD;
@@ -486,10 +556,10 @@ function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, isJob ? look.type.job : look.type.yard);
   card.titleLines.forEach((title, index) =>
-    ctx.fillText(title, CARD_INNER_X, headTop + (index + 0.5) * line + 2, CARD_INNER_WIDTH),
+    ctx.fillText(title, inner, headTop + (index + 0.5) * line + 2, CARD_INNER_WIDTH),
   );
   const lastTitle = card.titleLines.at(-1) ?? '';
-  const titleEnd = CARD_INNER_X + ctx.measureText(lastTitle).width;
+  const titleEnd = inner + ctx.measureText(lastTitle).width;
   ctx.fillStyle = PALETTE.muted;
   setType(ctx, look.type.count);
   if (card.number) {
@@ -497,7 +567,7 @@ function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
     ctx.fillText(card.number, titleEnd + NUMBER_GAP, lastMiddle);
   }
   ctx.textAlign = 'right';
-  ctx.fillText(card.countText, CARD_INNER_X + CARD_INNER_WIDTH, headTop + line / 2 + 4);
+  ctx.fillText(card.countText, inner + CARD_INNER_WIDTH, headTop + line / 2 + 4);
   ctx.textAlign = 'left';
 
   // The Tasks: plain lines, then a rule above the names.
@@ -507,16 +577,15 @@ function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
     ctx.fillStyle = PALETTE.ink;
     setType(ctx, isJob ? look.type.task : look.type.yardTask);
     card.taskLines.forEach((task, index) =>
-      drawBulletLine(ctx, task, tasksTop + (index + 0.5) * taskLine + 1),
+      drawBulletLine(ctx, task, inner, tasksTop + (index + 0.5) * taskLine + 1),
     );
-    drawRule(ctx, tasksTop + card.taskLines.length * taskLine + TASKS_RULE_GAP - CARD_EDGE);
+    drawRule(ctx, inner, tasksTop + card.taskLines.length * taskLine + TASKS_RULE_GAP - CARD_EDGE);
   }
 
-  for (const box of card.names) drawName(ctx, box, top + card.namesTop + box.y, look);
+  for (const box of card.names) drawName(ctx, box, inner, top + card.namesTop + box.y, look);
 }
 
-function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: Look) {
-  const x = CARD_INNER_X;
+function drawName(ctx: CanvasRenderingContext2D, box: NameBox, x: number, y: number, look: Look) {
   const width = CARD_INNER_WIDTH;
   const r = look.radius.chip;
   const hasNote = box.noteLines.length > 0;
@@ -581,30 +650,31 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: 
 }
 
 /** One line of a Task, centred on `middle`: a bullet before the first line of each. */
-function drawBulletLine(ctx: CanvasRenderingContext2D, line: BulletLine, middle: number) {
+function drawBulletLine(ctx: CanvasRenderingContext2D, line: BulletLine, x: number, middle: number) {
   if (line.first) {
     ctx.fillStyle = PALETTE.muted;
     ctx.beginPath();
-    ctx.arc(CARD_INNER_X + BULLET_X, middle, BULLET / 2, 0, 2 * Math.PI);
+    ctx.arc(x + BULLET_X, middle, BULLET / 2, 0, 2 * Math.PI);
     ctx.fill();
   }
   ctx.fillStyle = PALETTE.ink;
-  ctx.fillText(line.text, CARD_INNER_X + TEXT_INDENT, middle, CARD_INNER_WIDTH - TEXT_INDENT);
+  ctx.fillText(line.text, x + TEXT_INDENT, middle, CARD_INNER_WIDTH - TEXT_INDENT);
 }
 
 /** The Notes for the day: a title, then each note on its own soft ground. */
 function drawNotes(ctx: CanvasRenderingContext2D, layout: NotesLayout, look: Look) {
-  drawCardGround(ctx, layout.top, layout.height, look);
+  const inner = layout.left + CARD_PAD;
+  drawCardGround(ctx, layout.left, layout.top, layout.height, look);
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, look.type.yard);
-  ctx.fillText('NOTES FOR THE DAY', CARD_INNER_X, layout.top + CARD_PAD + YARD_LINE / 2 + 2);
+  ctx.fillText('NOTES FOR THE DAY', inner, layout.top + CARD_PAD + YARD_LINE / 2 + 2);
 
   for (const note of layout.notes) {
     const noteTop = layout.top + note.top;
     ctx.fillStyle = PALETTE.canvas;
     ctx.beginPath();
     ctx.roundRect(
-      CARD_INNER_X,
+      inner,
       noteTop,
       CARD_INNER_WIDTH,
       2 * DAY_NOTE_PAD_Y + note.lines.length * DAY_NOTE_LINE,
@@ -616,7 +686,7 @@ function drawNotes(ctx: CanvasRenderingContext2D, layout: NotesLayout, look: Loo
     note.lines.forEach((line, at) =>
       ctx.fillText(
         line,
-        CARD_INNER_X + DAY_NOTE_PAD_X,
+        inner + DAY_NOTE_PAD_X,
         noteTop + DAY_NOTE_PAD_Y + (at + 0.5) * DAY_NOTE_LINE + 1,
         CARD_INNER_WIDTH - 2 * DAY_NOTE_PAD_X,
       ),
