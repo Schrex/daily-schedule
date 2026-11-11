@@ -4,8 +4,8 @@ import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } fro
 
 /**
  * Draws the crew view as a square picture (a PNG) of the Daily Schedule, laid
- * out as the Scheduler's board is: the Schreiber logo and the date at the
- * top, the Job cards in two columns (then the Notes for the day), and Shop,
+ * out as the Scheduler's board is: the Schreiber logo at the top left and the
+ * date in the middle of that row, the Job cards in two columns (then the Notes for the day), and Shop,
  * Trucking and Off Work in a third column at the right. Whatever is left of
  * the square is the board's off-white, with the content in the middle.
  * A card is its place's name with the Job number and how many at the right,
@@ -148,13 +148,13 @@ function setType(ctx: CanvasRenderingContext2D, { font, letterSpacing }: Type) {
   ctx.letterSpacing = letterSpacing;
 }
 
-/** The logo, as tall as this, left-aligned at the top. */
+/** The top row: the logo, as tall as this, at the left, and the date in the middle. */
 const LOGO_HEIGHT = 96;
-const LOGO_GAP = 14;
+/** Under the top row, before the UPDATED bar or the cards. */
+const HEADER_GAP = 22;
 const UPDATED_HEIGHT = 72;
-const UPDATED_GAP = 16;
+const UPDATED_GAP = 18;
 const UPDATED_PAD_X = 22;
-const DATE_HEIGHT = 84;
 
 /**
  * A card: one Job or Standing Row, or the Notes for the day. Cards stand in
@@ -269,7 +269,8 @@ interface NotesLayout {
 }
 
 interface Layout {
-  dateTop: number;
+  /** Where the cards start: under the top row, and the UPDATED bar if there is one. */
+  cardsTop: number;
   cards: CardLayout[];
   notes: NotesLayout | null;
   /** How wide the content is (the cards in their columns, and the margins). */
@@ -287,8 +288,8 @@ function layOut(
   ctx: CanvasRenderingContext2D,
   look: Look,
 ): Layout {
-  const dateTop =
-    MARGIN + LOGO_HEIGHT + LOGO_GAP + (view.updated ? UPDATED_HEIGHT + UPDATED_GAP : 0);
+  const cardsTop =
+    MARGIN + LOGO_HEIGHT + HEADER_GAP + (view.updated ? UPDATED_HEIGHT + UPDATED_GAP : 0);
 
   const cards = view.rows.map((row): CardLayout => {
     const isJob = row.destination.kind === 'job';
@@ -332,7 +333,6 @@ function layOut(
   });
 
   const notes = layOutNotes(view.dayNotes ?? [], ctx, look);
-  const cardsTop = dateTop + DATE_HEIGHT;
   const jobs = cards.filter((card) => card.isJob);
   const yard = cards.filter((card) => !card.isJob);
 
@@ -341,7 +341,7 @@ function layOut(
   const { width, height } = placeCards(jobs, notes, yard, jobColumns, cardsTop);
   const size = Math.max(width, height);
   return {
-    dateTop,
+    cardsTop,
     cards,
     notes,
     width,
@@ -477,24 +477,27 @@ function draw(
   const logoWidth = (logo.naturalWidth / logo.naturalHeight) * LOGO_HEIGHT;
   ctx.drawImage(logo, MARGIN, MARGIN, logoWidth, LOGO_HEIGHT);
 
-  if (view.updated) drawUpdated(ctx, look, contentWidth);
-
+  // The date in the middle of the top row, never over the logo.
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, look.type.date);
+  ctx.textAlign = 'center';
   ctx.fillText(
     fullDate(view.date).toUpperCase(),
-    MARGIN + 2,
-    layout.dateTop + DATE_HEIGHT / 2 - 6,
-    contentWidth - 4,
+    MARGIN + contentWidth / 2,
+    MARGIN + LOGO_HEIGHT / 2 + 2,
+    contentWidth - 2 * (logoWidth + 24),
   );
+  ctx.textAlign = 'left';
+
+  if (view.updated) drawUpdated(ctx, look, contentWidth);
 
   for (const card of layout.cards) drawCard(ctx, card, look);
   if (layout.notes) drawNotes(ctx, layout.notes, look);
 }
 
-/** The UPDATED marker: a solid bar of the alert red under the logo. */
+/** The UPDATED marker: a solid bar of the alert red under the top row. */
 function drawUpdated(ctx: CanvasRenderingContext2D, look: Look, width: number) {
-  const top = MARGIN + LOGO_HEIGHT + LOGO_GAP;
+  const top = MARGIN + LOGO_HEIGHT + HEADER_GAP;
   const middle = top + UPDATED_HEIGHT / 2 + 2;
   ctx.fillStyle = PALETTE.alert;
   ctx.beginPath();
