@@ -24,7 +24,7 @@ import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } fro
  *
  * Drawn by hand on a canvas rather than photographed from the screen, so it
  * is the same picture whatever the Scheduler's window looks like, and drawn
- * at twice its size so it stays sharp.
+ * at 4K (3840 pixels square) so it stays sharp when zoomed.
  *
  * The roster, when given, gives a Job's number as the screen shows it;
  * without it (or for a Job no longer on it) the card shows the label alone.
@@ -43,8 +43,8 @@ export async function renderCrewPicture(view: CrewView, roster?: Roster): Promis
   const { scale, layout } = fit(view, roster, measure, look);
 
   // Sizing the canvas resets its context, so size first, then draw.
-  canvas.width = PICTURE_SIZE * SHARPNESS;
-  canvas.height = PICTURE_SIZE * SHARPNESS;
+  canvas.width = PIXELS;
+  canvas.height = PIXELS;
   const ctx = canvas.getContext('2d')!;
   ctx.scale(SHARPNESS * scale, SHARPNESS * scale);
   draw(ctx, view, layout, look, logo);
@@ -73,7 +73,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 // picture's own: it is looked at on a phone, at under half its width, so they
 // are large.
 
-const SHARPNESS = 2;
+/** The picture's side in real pixels: 4K, so it stays sharp however far it is zoomed. */
+const PIXELS = 3840;
 const MARGIN = 30;
 
 /**
@@ -184,6 +185,8 @@ const UPDATED_PAD_X = 22;
  * a quiet one larger, never past these bounds.
  */
 const PICTURE_SIZE = 1210;
+/** How many real pixels to each of the picture's own. */
+const SHARPNESS = PIXELS / PICTURE_SIZE;
 const SMALLEST = 0.3;
 const LARGEST = 1.6;
 const SCALE_STEP = 0.025;

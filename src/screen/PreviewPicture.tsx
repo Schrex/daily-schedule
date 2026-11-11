@@ -8,8 +8,8 @@ type Shown = { kind: 'drawing' } | { kind: 'ready'; url: string } | { kind: 'fai
 /**
  * "Preview": the picture the crew would get if "Send to crew" were pressed
  * now, drawn exactly as Send draws it (the same crew view, UPDATED marker and
- * all), shown over the board. It records nothing and copies nothing: only
- * Send does that.
+ * all), shown large over the blurred board, with nothing else around it but
+ * a × to close it. It records nothing and copies nothing: only Send does that.
  */
 export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule: DailySchedule }) {
   const [shown, setShown] = useState<Shown | null>(null);
@@ -61,21 +61,15 @@ export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule:
             className="preview-panel"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="preview-title"
+            aria-label="What the crew will see. Nothing is sent or copied."
             onClick={(event) => event.stopPropagation()}
           >
-            <header className="preview-head">
-              <h2 id="preview-title">What the crew will see</h2>
-              <button type="button" className="button preview-close" autoFocus onClick={close}>
-                Close
-              </button>
-            </header>
-            <p className="preview-hint">Nothing is sent or copied. Press "Send to crew" when it looks right.</p>
-            <div className="preview-picture">
-              {shown.kind === 'drawing' && <p className="preview-status">Drawing the picture…</p>}
-              {shown.kind === 'failed' && <p className="preview-status">The picture could not be drawn.</p>}
-              {shown.kind === 'ready' && <img src={shown.url} alt="The Daily Schedule picture for the crew" />}
-            </div>
+            {shown.kind === 'drawing' && <p className="preview-status">Drawing the picture…</p>}
+            {shown.kind === 'failed' && <p className="preview-status">The picture could not be drawn.</p>}
+            {shown.kind === 'ready' && <img src={shown.url} alt="The Daily Schedule picture for the crew" />}
+            <button type="button" className="preview-close" aria-label="Close the preview" autoFocus onClick={close}>
+              ×
+            </button>
           </div>
         </div>
       )}
