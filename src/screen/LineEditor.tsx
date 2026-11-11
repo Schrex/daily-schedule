@@ -17,7 +17,12 @@ interface LineEditorProps {
   maxLength?: number;
   /** "note": the text in the red of a Note. */
   tone?: 'note';
-  /** Drawn after the button, on the same line: "Add note" beside "Add task". */
+  /**
+   * A second button after the first, handing the same text to another
+   * place: "Add note" beside "Add task".
+   */
+  second?: { text: string; onCommit: (text: string) => void };
+  /** Drawn after the buttons, on the same line: "Cancel". */
   children?: ReactNode;
 }
 
@@ -38,13 +43,14 @@ export function LineEditor({
   autoFocus = true,
   maxLength,
   tone,
+  second,
   children,
 }: LineEditorProps) {
   const [draft, setDraft] = useState(initial);
 
-  const commit = () => {
+  const commit = (to: (text: string) => void = onCommit) => {
     if (keepOpen && draft.trim() === '') return;
-    onCommit(draft);
+    to(draft);
     if (keepOpen) setDraft('');
   };
 
@@ -84,6 +90,11 @@ export function LineEditor({
       <button type="submit" className="button button-primary line-button">
         {buttonText}
       </button>
+      {second && (
+        <button type="button" className="button line-button" onClick={() => commit(second.onCommit)}>
+          {second.text}
+        </button>
+      )}
       {children}
     </form>
   );

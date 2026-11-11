@@ -27,7 +27,7 @@ import { useSend } from './useSend';
 
 /**
  * Holds the Daily Schedule being edited and which Crew Member is selected to
- * move or to have a Note typed. Everything that alters the schedule (a
+ * move or to give a Note or Person Task. Everything that alters the schedule (a
  * change, a Send being recorded) goes through `change`, which works on the
  * schedule as it stands at that instant and saves the result. The screen
  * below only draws and reports clicks. `opened` is what the store held when
@@ -52,8 +52,6 @@ export function App({
    */
   const latest = useRef(schedule);
   const [selectedCrewMemberId, setSelectedCrewMemberId] = useState<string | null>(null);
-  /** True while a Note is being typed for the selected Crew Member. */
-  const [editingNote, setEditingNote] = useState(false);
   /**
    * The Jobs drawn as cards this session (see openJobs.ts); every other Job
    * is folded. Built from who is on the Jobs when the board loads.
@@ -103,12 +101,9 @@ export function App({
   };
   const send = useSend({ roster, schedule, delivery, onDelivered: recordSend });
 
-  const select = (crewMemberId: string | null) => {
-    setSelectedCrewMemberId(crewMemberId);
-    setEditingNote(false);
-  };
+  const select = (crewMemberId: string | null) => setSelectedCrewMemberId(crewMemberId);
 
-  /** Lets go of the selected Crew Member: no move, and any Note being typed is dropped. */
+  /** Lets go of the selected Crew Member: no move. */
   const deselect = () => select(null);
 
   /** Applies one rule to the selected Crew Member (a Person Task, a Note) and keeps them selected. */
@@ -154,7 +149,6 @@ export function App({
       roster={roster}
       schedule={schedule}
       selectedCrewMemberId={selectedCrewMemberId}
-      editingNote={editingNote}
       onSelectCrewMember={select}
       onDeselect={deselect}
       onMoveCrewMember={move}
@@ -163,12 +157,7 @@ export function App({
       onPutAwayEmptyJobs={() =>
         openJobsAfter({ kind: 'put-away', view: scheduleView(roster, latest.current) })
       }
-      onEditNote={() => setEditingNote(true)}
-      onSaveNote={(text) => {
-        changeForSelected((current, crewMemberId) => setNote(current, crewMemberId, text));
-        setEditingNote(false);
-      }}
-      onCancelNote={() => setEditingNote(false)}
+      onSetNote={(text) => changeForSelected((current, crewMemberId) => setNote(current, crewMemberId, text))}
       onSetTasks={(destination, text) => change((current) => setTasks(current, destination, text))}
       onAddPersonTask={(text) => changeForSelected((current, id) => addPersonTask(current, id, text))}
       onChangePersonTask={(index, text) =>

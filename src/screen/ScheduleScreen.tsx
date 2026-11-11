@@ -19,7 +19,6 @@ import { dropTarget, viewWhileDragging } from './dropPreview';
 import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
-import { LineEditor } from './LineEditor';
 import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
 import { PersonTasks } from './PersonTasks';
 import { TasksCell } from './TasksCell';
@@ -27,10 +26,8 @@ import { TasksCell } from './TasksCell';
 interface ScheduleScreenProps {
   roster: Roster;
   schedule: DailySchedule;
-  /** The Crew Member picked up to move, or to have a Note typed, if any. */
+  /** The Crew Member picked up to move, or to give a Note or Person Task, if any. */
   selectedCrewMemberId: string | null;
-  /** True while a Note is being typed for the selected Crew Member (no move then). */
-  editingNote: boolean;
   onSelectCrewMember: (crewMemberId: string) => void;
   /** The selected name was clicked again, or "Cancel" on a Note: let go of them. */
   onDeselect: () => void;
@@ -46,12 +43,8 @@ interface ScheduleScreenProps {
   onOpenJob: (jobKey: string) => void;
   /** "Put away empty jobs": every open Job with nobody on it folds now. */
   onPutAwayEmptyJobs: () => void;
-  /** "Add note" / "Change note" was clicked for the selected Crew Member. */
-  onEditNote: () => void;
-  /** The Note typed for the selected Crew Member was saved (blank text takes it away). */
-  onSaveNote: (text: string) => void;
-  /** Typing a Note was given up: back to their tasks, still selected. */
-  onCancelNote: () => void;
+  /** The selected Crew Member's Note is now this text ("Add note", a change, or × with blank text). */
+  onSetNote: (text: string) => void;
   /** The Scheduler finished typing the Tasks of a Job, Shop or Trucking: the whole text, one Task per line. */
   onSetTasks: (destination: Destination, text: string) => void;
   /** A Person Task was typed for the selected Crew Member. */
@@ -91,8 +84,8 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * the browser takes for a small drag, is reported by `useNameDrag` instead.
  *
  * With no name selected, clicking a Job's Tasks lets him type them. A selected
- * Crew Member who has a Placement also offers "Add note", and at the foot of
- * their card their Person Tasks, to add, change or take away (`PersonTasks`).
+ * Crew Member who has a Placement gets, right under their name, their Note
+ * and Person Tasks, to add, change or take away (`PersonTasks`).
  * Under the Job cards are the Notes for the day (`DayNotes`).
  *
  * A name can also be dragged and dropped on one of those blocks (`useNameDrag`).
@@ -129,10 +122,7 @@ export function ScheduleScreen({
   openJobs,
   onOpenJob,
   onPutAwayEmptyJobs,
-  editingNote,
-  onEditNote,
-  onSaveNote,
-  onCancelNote,
+  onSetNote,
   onSetTasks,
   onAddPersonTask,
   onChangePersonTask,
@@ -153,13 +143,12 @@ export function ScheduleScreen({
   const selected =
     selectedPlaced?.crewMember ??
     view.notPlaced.find((crewMember) => crewMember.id === selectedCrewMemberId);
-  const typingNote = selected !== undefined && selectedPlaced !== undefined && editingNote;
-  const moving = selected !== undefined && !typingNote;
+  const moving = selected !== undefined;
 
-  // Dragging a name: no drag while a Note is being typed. A drop names the block by its key.
+  // Dragging a name. A drop names the block by its key.
   const [motion] = useState(createNameMotion);
   const drag = useNameDrag({
-    enabled: !typingNote,
+    enabled: true,
     onDrop: (crewMemberId, over) => {
       const to = dropTarget(view, over);
       if (to !== null) onMoveCrewMember(crewMemberId, to);
@@ -245,43 +234,22 @@ export function ScheduleScreen({
 
   /**
    * What is only about the selected Crew Member, drawn right under their name
-   * (edged in the blue of their ring): their Person Tasks and the field to add
-   * one, with Add note beside Add task; or the Note being typed. Clicks here
-   * are about them, not a move to this card. Gone the moment their name starts
-   * to be dragged, so it never travels with it.
+   * (edged in the blue of their ring): their Note and Person Tasks, and one
+   * field with Add task and Add note. Clicks here are about them, not a move
+   * to this card. Gone the moment their name starts to be dragged, so it
+   * never travels with it.
    */
   const personPanel = selectedPlaced && !drag.dragging && (
     <li className="person-panel" onClick={(event) => event.stopPropagation()}>
-      {typingNote ? (
-        <LineEditor
-          key={selectedPlaced.crewMember.id}
-          initial={selectedPlaced.note ?? ''}
-          label={`Note for ${selectedPlaced.crewMember.name}. Leave it empty to take the note away.`}
-          placeholder="Note, e.g. 1/2 Day"
-          buttonText="Save"
-          maxLength={40}
-          tone="note"
-          onCommit={onSaveNote}
-          onCancel={onCancelNote}
-        >
-          <button type="button" className="person-note-button" onClick={onCancelNote}>
-            Cancel
-          </button>
-        </LineEditor>
-      ) : (
-        <PersonTasks
-          crewMember={selectedPlaced.crewMember}
-          tasks={selectedPlaced.personTasks ?? []}
-          onAdd={onAddPersonTask}
-          onChange={onChangePersonTask}
-          onRemove={onRemovePersonTask}
-          beside={
-            <button type="button" className="person-note-button" onClick={onEditNote}>
-              {selectedPlaced.note ? 'Change note' : 'Add note'}
-            </button>
-          }
-        />
-      )}
+      <PersonTasks
+        crewMember={selectedPlaced.crewMember}
+        note={selectedPlaced.note}
+        tasks={selectedPlaced.personTasks ?? []}
+        onAdd={onAddPersonTask}
+        onChange={onChangePersonTask}
+        onRemove={onRemovePersonTask}
+        onSetNote={onSetNote}
+      />
     </li>
   );
 

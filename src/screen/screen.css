@@ -648,13 +648,17 @@
   cursor: auto;
 }
 
-/* The field, Add and Add note on one line, wrapping when the card is narrow. */
+/* The field on its own line; Add task and Add note side by side under it. */
 .person-tasks .line-editor {
   flex-wrap: wrap;
 }
 
 .person-tasks .line-input {
-  flex-basis: 6rem;
+  flex-basis: 100%;
+}
+
+.person-tasks .line-button {
+  flex: 1 1 0;
 }
 
 .person-tasks {
@@ -731,30 +735,10 @@
   }
 }
 
-/* Add note: a quiet text button beside Add. */
-.person-note-button {
-  flex: 0 0 auto;
-  min-height: max(2.75rem, var(--touch-target));
-  padding: 0 var(--space-1);
-  border: 0;
-  background: none;
-  color: var(--ink-soft);
-  font: inherit;
-  font-size: 0.875rem;
+/* Their Note: the same row, its text in the red of a Note. */
+.person-task-note .person-task-text {
+  color: var(--alert);
   font-weight: var(--weight-strong);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.person-note-button:hover {
-  color: var(--ink);
-}
-
-.person-note-button:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
 }
 
 /* --- Under the cards: No crew tomorrow, and Notes for the day -------------
