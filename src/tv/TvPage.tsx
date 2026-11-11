@@ -5,7 +5,7 @@ import {
   fullDate,
   onTheTv,
   scheduleDateOf,
-  type OnTheTv,
+  type CrewView,
   type Roster,
   type ScheduleRow,
 } from '../schedule-rules';
@@ -17,11 +17,11 @@ const LOOK_AGAIN_MS = 60_000;
 /** What the TV last read from the store. */
 interface Shown {
   roster: Roster;
-  tv: OnTheTv | null;
+  view: CrewView | null;
   today: string;
 }
 
-/** Reads what the TV should show today: the finished Daily Schedule (see `onTheTv`). */
+/** Reads what the TV should show: today's Daily Schedule (see `onTheTv`). */
 async function read(store: ScheduleStore): Promise<Shown> {
   const today = scheduleDateOf(new Date());
   const roster = (await store.loadRoster()) ?? { crewMembers: [], jobs: [] };
@@ -29,14 +29,14 @@ async function read(store: ScheduleStore): Promise<Shown> {
   const saved = (await Promise.all(dates.map((date) => store.loadSchedule(date)))).filter(
     (schedule) => schedule !== null,
   );
-  return { roster, tv: onTheTv(roster, saved, today), today };
+  return { roster, view: onTheTv(roster, saved, today), today };
 }
 
 /**
- * The finished Daily Schedule, made to be read from across the office: the
- * same cards the crew is sent, side by side in columns across a wide screen,
+ * Today's Daily Schedule, made to be read from across the office: the same
+ * cards the crew is sent, side by side in columns across a wide screen,
  * sized to fill it with nothing to scroll. It changes by itself when the
- * Scheduler Sends, and at midnight. Nothing on it is pressed, except that a
+ * Scheduler Sends or changes today's, and at midnight. Nothing on it is pressed, except that a
  * click anywhere puts it full screen (or back).
  */
 export function TvPage({ store }: { store: ScheduleStore }) {
@@ -64,24 +64,23 @@ export function TvPage({ store }: { store: ScheduleStore }) {
 
   return (
     <div className="tv" onClick={toggleFullScreen}>
-      {shown && (shown.tv ? <Board roster={shown.roster} tv={shown.tv} /> : <NothingSent today={shown.today} />)}
+      {shown && (shown.view ? <Board roster={shown.roster} view={shown.view} /> : <NothingYet today={shown.today} />)}
     </div>
   );
 }
 
-function NothingSent({ today }: { today: string }) {
+function NothingYet({ today }: { today: string }) {
   return (
     <div className="tv-empty">
       <img className="tv-logo" src={logoUrl} alt="Schreiber Excavating" />
       <p className="tv-empty-date">{fullDate(today)}</p>
-      <p className="tv-empty-text">The schedule shows here as soon as it is sent to the crew.</p>
+      <p className="tv-empty-text">Today's schedule shows here as soon as it is made.</p>
     </div>
   );
 }
 
-function Board({ roster, tv }: { roster: Roster; tv: OnTheTv }) {
-  const { view } = tv;
-  const fitRef = useFit([tv]);
+function Board({ roster, view }: { roster: Roster; view: CrewView }) {
+  const fitRef = useFit([view]);
 
   return (
     <div className="tv-fit" ref={fitRef}>
@@ -129,19 +128,19 @@ function Card({ roster, row }: { roster: Roster; row: ScheduleRow }) {
         </ul>
       )}
       <ul className="tv-names">
-        {row.who.map(({ crewMember, note, personTasks }) => (
-          <li key={crewMember.id} className={note ? 'tv-name-with-note' : undefined}>
-            <div className={`tv-chip${crewMember.foreman ? ' tv-chip-foreman' : ''}`}>
+        {row.who.map(({ crewMember, note, personTasks = [] }) => (
+          <li key={crewMember.id} className={`tv-name${crewMember.foreman ? ' tv-name-foreman' : ''}`}>
+            <div className="tv-name-head">
               <span className="tv-dot" style={{ background: `var(--dot-${crewMember.color})` }} />
-              <span className="tv-chip-text">
-                <span className="tv-chip-name">{crewMember.name}</span>
-                {personTasks?.map((task, index) => (
-                  <span key={index} className="tv-person-task">
-                    {task}
-                  </span>
-                ))}
-              </span>
+              <span className="tv-name-text">{crewMember.name}</span>
             </div>
+            {personTasks.length > 0 && (
+              <ul className="tv-name-subs">
+                {personTasks.map((task, index) => (
+                  <li key={index}>{task}</li>
+                ))}
+              </ul>
+            )}
             {note && <p className="tv-note">{note}</p>}
           </li>
         ))}

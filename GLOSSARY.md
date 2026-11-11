@@ -69,5 +69,5 @@ The Scheduler's act of delivering the finished Daily Schedule to the crew.
 _Avoid_: Publish, post, share
 
 **Office TV**:
-The page (tv.html) that shows the finished Daily Schedule full screen on the TV in the office: the last Send of the earliest Daily Schedule dated today or later. A Daily Schedule never Sent is never on it.
+The page (tv.html) that shows today's Daily Schedule full screen on the TV in the office: as it was last Sent, or as the board stands if it was never Sent. On a day with no Daily Schedule (a weekend), the next one Sent.
 _Avoid_: Display, dashboard, kiosk

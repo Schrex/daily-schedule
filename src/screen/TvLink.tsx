@@ -1,7 +1,7 @@
 /**
  * The TV button in the toolbar: opens the office TV page (tv.html) in a window
- * of its own, to drag onto the TV and put full screen. It shows the finished
- * Daily Schedule, the one last Sent, and changes by itself on the next Send.
+ * of its own, to drag onto the TV and put full screen. It shows today's Daily
+ * Schedule (as Sent, if it was) and changes by itself.
  */
 export function TvLink() {
   return (
@@ -10,7 +10,7 @@ export function TvLink() {
       href="tv.html"
       target="daily-schedule-tv"
       aria-label="Show on the office TV"
-      title="Show on the office TV: opens the sent schedule full screen"
+      title="Show on the office TV: today's schedule, full screen"
     >
       <svg
         className="toolbar-button-svg"

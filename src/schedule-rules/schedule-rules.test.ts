@@ -568,45 +568,44 @@ describe('marking a Daily Schedule as Sent', () => {
 describe('what the office TV shows', () => {
   const dated = (date: string) => schedule({ date, placements: [placement('ann', onJob('tower'), 1)] });
 
-  it('shows nothing when nothing has been Sent', () => {
-    expect(onTheTv(roster, [dated('2026-11-10')], '2026-11-10')).toBeNull();
+  it('shows nothing when there is no Daily Schedule for today or later', () => {
+    expect(onTheTv(roster, [dated('2026-11-09')], '2026-11-10')).toBeNull();
   });
 
-  it("shows today's Daily Schedule once it has been Sent, exactly as Sent", () => {
+  it("shows today's Daily Schedule as it was Sent, not as it was changed since", () => {
     const sent = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
     const changedSince = placeCrewMember(sent, 'bob', onJob('bridge'));
 
-    const tv = onTheTv(roster, [changedSince], '2026-11-10');
+    expect(onTheTv(roster, [changedSince], '2026-11-10')).toEqual(sent.sends[0]!.sent);
+  });
 
-    expect(tv?.sentAt).toBe('2026-11-09T23:05:00.000Z');
-    expect(tv?.view).toEqual(sent.sends[0]!.sent);
+  it("shows today's Daily Schedule as the board stands when it has not been Sent", () => {
+    const notSent = dated('2026-11-10');
+
+    expect(onTheTv(roster, [notSent], '2026-11-10')).toEqual(crewView(roster, notSent));
   });
 
   it("keeps showing today's while tomorrow's is Sent, and tomorrow's from midnight", () => {
     const today = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
     const tomorrow = send(dated('2026-11-11'), '2026-11-10T23:05:00.000Z');
 
-    expect(onTheTv(roster, [tomorrow, today], '2026-11-10')?.view.date).toBe('2026-11-10');
-    expect(onTheTv(roster, [tomorrow, today], '2026-11-11')?.view.date).toBe('2026-11-11');
+    expect(onTheTv(roster, [tomorrow, today], '2026-11-10')?.date).toBe('2026-11-10');
+    expect(onTheTv(roster, [tomorrow, today], '2026-11-11')?.date).toBe('2026-11-11');
   });
 
-  it('never shows a Daily Schedule from before today, or one not Sent yet', () => {
-    const yesterday = send(dated('2026-11-09'), '2026-11-08T23:05:00.000Z');
-    const notSent = dated('2026-11-10');
+  it('on a day with no Daily Schedule of its own, shows the next one Sent', () => {
+    const notSentYet = dated('2026-11-17');
     const monday = send(dated('2026-11-16'), '2026-11-13T23:05:00.000Z');
 
-    expect(onTheTv(roster, [yesterday, notSent], '2026-11-10')).toBeNull();
-    expect(onTheTv(roster, [yesterday, notSent, monday], '2026-11-14')?.view.date).toBe('2026-11-16');
+    expect(onTheTv(roster, [notSentYet, monday], '2026-11-14')?.date).toBe('2026-11-16');
+    expect(onTheTv(roster, [notSentYet], '2026-11-14')).toBeNull();
   });
 
   it('shows the latest Send when there were several', () => {
     const once = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
     const twice = send(placeCrewMember(once, 'bob', onJob('bridge')), '2026-11-09T23:40:00.000Z');
 
-    const tv = onTheTv(roster, [twice], '2026-11-10');
-
-    expect(tv?.sentAt).toBe('2026-11-09T23:40:00.000Z');
-    expect(tv?.view.updated).toBe(true);
+    expect(onTheTv(roster, [twice], '2026-11-10')).toEqual(twice.sends[1]!.sent);
   });
 });
 
