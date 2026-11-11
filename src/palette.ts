@@ -45,6 +45,8 @@ export const PALETTE = {
    */
   select: '#3b7dd8',
   selectWash: '#eef4fc',
+  /** The ground of a quiet card in the crew picture (Off Work): between the canvas and white. */
+  quietGround: '#fafaf8',
   /** The grey chip of a name; a Foreman's top line is ink. */
   chip: '#f1f1ee',
   /** A Send that worked. */
