@@ -5,9 +5,9 @@ import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } fro
 /**
  * Draws the crew view as a square picture (a PNG) of the Daily Schedule, laid
  * out as the Scheduler's board is: the Schreiber logo and the date at the
- * top, the Job cards in columns (then the Notes for the day), and Shop,
- * Trucking and Off Work in a column at the right. As many Job columns as make
- * it closest to square; the rest of the square is the board's off-white.
+ * top, the Job cards in two columns (then the Notes for the day), and Shop,
+ * Trucking and Off Work in a third column at the right. Whatever is left of
+ * the square is the board's off-white, with the content in the middle.
  * A card is its place's name with the Job number and how many at the right,
  * the day's Tasks ruled off from the names, then the names, one to a line: a
  * grey chip whose top line is a dot of the Crew Member's color and the name
@@ -158,9 +158,8 @@ const DATE_HEIGHT = 84;
 
 /**
  * A card: one Job or Standing Row, or the Notes for the day. Cards stand in
- * columns, as on the board: Jobs (then the Notes for the day) in as many
- * columns as make the picture closest to square, and Shop, Trucking and Off
- * Work in one column at the right.
+ * columns, as on the board: Jobs (then the Notes for the day) in two
+ * columns, and Shop, Trucking and Off Work in a third column at the right.
  */
 const CARD_WIDTH = 724;
 const CARD_GAP = 18;
@@ -168,8 +167,8 @@ const COLUMN_GAP = 22;
 const CARD_EDGE = 2;
 const CARD_PAD = 26;
 const CARD_INNER_WIDTH = CARD_WIDTH - 2 * CARD_PAD;
-/** The most columns of Jobs. */
-const MAX_JOB_COLUMNS = 3;
+/** The columns of Jobs. */
+const JOB_COLUMNS = 2;
 /** The space between the parts of a card: the head, the Tasks, the names. */
 const PART_GAP = 14;
 
@@ -337,14 +336,9 @@ function layOut(
   const jobs = cards.filter((card) => card.isJob);
   const yard = cards.filter((card) => !card.isJob);
 
-  // Try each number of Job columns; keep the one closest to square.
-  let best: { jobColumns: number; width: number; height: number } | null = null;
-  for (let jobColumns = 1; jobColumns <= Math.max(1, Math.min(MAX_JOB_COLUMNS, jobs.length)); jobColumns++) {
-    const { width, height } = placeCards(jobs, notes, yard, jobColumns, cardsTop);
-    const off = Math.abs(Math.log(width / height));
-    if (!best || off < Math.abs(Math.log(best.width / best.height))) best = { jobColumns, width, height };
-  }
-  const { width, height } = placeCards(jobs, notes, yard, best!.jobColumns, cardsTop);
+  // Two columns of Jobs (one if there is only one Job), then the Standing Rows.
+  const jobColumns = Math.max(1, Math.min(JOB_COLUMNS, jobs.length));
+  const { width, height } = placeCards(jobs, notes, yard, jobColumns, cardsTop);
   const size = Math.max(width, height);
   return {
     dateTop,
