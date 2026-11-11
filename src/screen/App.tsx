@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  addDayNote,
+  addPersonTask,
+  changeDayNote,
+  changePersonTask,
   clearNote,
+  removeDayNote,
+  removePersonTask,
   markSent,
   moveCrewMember,
   setNote,
@@ -97,6 +103,15 @@ export function App({
     deselect();
   };
 
+  /** Applies one rule to the selected Crew Member (a Person Task) and keeps them selected. */
+  const changeForSelected = (
+    rule: (schedule: DailySchedule, crewMemberId: string) => DailySchedule,
+  ) => {
+    if (selectedCrewMemberId === null) return;
+    const crewMemberId = selectedCrewMemberId;
+    change((current) => rule(current, crewMemberId));
+  };
+
   /**
    * Moves one Crew Member, selected or not, however the Scheduler did it (a
    * click-click move, a drop, a double-click), and lets go of anyone selected.
@@ -138,6 +153,16 @@ export function App({
       }
       onClearNote={() => changeSelected(clearNote)}
       onSetTasks={(destination, text) => change((current) => setTasks(current, destination, text))}
+      onAddPersonTask={(text) => changeForSelected((current, id) => addPersonTask(current, id, text))}
+      onChangePersonTask={(index, text) =>
+        changeForSelected((current, id) => changePersonTask(current, id, index, text))
+      }
+      onRemovePersonTask={(index) =>
+        changeForSelected((current, id) => removePersonTask(current, id, index))
+      }
+      onAddDayNote={(text) => change((current) => addDayNote(current, text))}
+      onChangeDayNote={(index, text) => change((current) => changeDayNote(current, index, text))}
+      onRemoveDayNote={(index) => change((current) => removeDayNote(current, index))}
       alertNotPlaced={send.status.kind === 'refused'}
       dateButtons={<SettingsLink />}
       toolbarButtons={
