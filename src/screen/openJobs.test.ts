@@ -8,7 +8,14 @@ import {
   type DailySchedule,
   type Roster,
 } from '../schedule-rules';
-import { emptyOpenJobKeys, foldedHeading, nextOpenJobs, type OpenJobs } from './openJobs';
+import {
+  emptyOpenJobKeys,
+  foldedHeading,
+  nextOpenJobs,
+  showNoCrewSection,
+  showPutAway,
+  type OpenJobs,
+} from './openJobs';
 
 const roster: Roster = {
   crewMembers: [
@@ -107,6 +114,47 @@ describe('the open set of Jobs', () => {
     const open = loaded(start);
     expect(changed(open, start)).toBe(open);
     expect(nextOpenJobs(open, { kind: 'open', jobKey: 'job:tower' })).toBe(open);
+  });
+});
+
+describe('when the No crew section and Put away empty jobs show', () => {
+  /** Everyone on a Job: Ann on Tower, Bob on Bridge, and Pond given Bob too. */
+  const allStaffed: DailySchedule = {
+    ...start,
+    placements: [
+      { crewMemberId: 'ann', destination: onJob('tower'), order: 1 },
+      { crewMemberId: 'bob', destination: onJob('bridge'), order: 2 },
+    ],
+  };
+  const twoJobs: Roster = { ...roster, jobs: roster.jobs.slice(0, 2) };
+  const viewOf = (schedule: DailySchedule) => scheduleView(twoJobs, schedule);
+
+  it('hides both when every Job is staffed and open', () => {
+    const open = nextOpenJobs(new Set(), { kind: 'rebuild', view: viewOf(allStaffed) });
+    expect(showNoCrewSection(open, viewOf(allStaffed))).toBe(false);
+    expect(showPutAway(open, viewOf(allStaffed))).toBe(false);
+  });
+
+  it('shows the section, without Put away, when a Job is folded and no open card is empty', () => {
+    const open = loaded(start);
+    expect(showNoCrewSection(open, view(start))).toBe(true);
+    expect(showPutAway(open, view(start))).toBe(false);
+  });
+
+  it('shows both when an open card has nobody on it, even with nothing folded', () => {
+    const open = nextOpenJobs(new Set(), { kind: 'rebuild', view: viewOf(allStaffed) });
+    const emptied = moveCrewMember(allStaffed, 'bob', NOT_PLACED);
+    expect(showNoCrewSection(open, viewOf(emptied))).toBe(true);
+    expect(showPutAway(open, viewOf(emptied))).toBe(true);
+  });
+
+  it('after Put away: the card folds, the button goes, the section stays for the folded Job', () => {
+    const open = nextOpenJobs(new Set(), { kind: 'rebuild', view: viewOf(allStaffed) });
+    const emptied = moveCrewMember(allStaffed, 'bob', NOT_PLACED);
+    const putAway = nextOpenJobs(open, { kind: 'put-away', view: viewOf(emptied) });
+    expect(putAway.has('job:bridge')).toBe(false);
+    expect(showPutAway(putAway, viewOf(emptied))).toBe(false);
+    expect(showNoCrewSection(putAway, viewOf(emptied))).toBe(true);
   });
 });
 

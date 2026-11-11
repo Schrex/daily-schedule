@@ -61,6 +61,22 @@ export const emptyOpenJobKeys = (open: OpenJobs, view: ScheduleView): string[] =
     .filter((row) => row.destination.kind === 'job' && open.has(row.key) && row.who.length === 0)
     .map((row) => row.key);
 
+/** The Jobs that are folded: every Job row not in the open set. */
+const foldedJobKeys = (open: OpenJobs, view: ScheduleView): string[] =>
+  view.rows.filter((row) => row.destination.kind === 'job' && !open.has(row.key)).map((row) => row.key);
+
+/**
+ * Whether the "No crew tomorrow" section is drawn at all: only when a Job is
+ * folded or an open card has nobody on it. Judged by who is really on the
+ * Jobs, never by a drag's preview.
+ */
+export const showNoCrewSection = (open: OpenJobs, view: ScheduleView): boolean =>
+  foldedJobKeys(open, view).length > 0 || emptyOpenJobKeys(open, view).length > 0;
+
+/** Whether "Put away empty jobs" is offered: only while an open card has nobody on it. */
+export const showPutAway = (open: OpenJobs, view: ScheduleView): boolean =>
+  emptyOpenJobKeys(open, view).length > 0;
+
 function withKeys(open: OpenJobs, keys: string[]): OpenJobs {
   if (keys.every((key) => open.has(key))) return open;
   return new Set([...open, ...keys]);
