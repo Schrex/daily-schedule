@@ -36,13 +36,18 @@ export const PALETTE = {
   accentInk: '#1a1a1a',
   /** The accent as an edge or ring, dark enough to show on white. */
   accentStrong: '#c99700',
-  /** Text in the accent's family: the Tasks label. */
-  accentDark: '#6b5200',
-  /** The pale yellow of the Tasks and the Settings gear. */
+  /** The pale yellow of the Settings gear and a field being typed in. */
   accentWash: '#fff8dc',
-  accentLine: '#f0dc8c',
-  /** The block the pointer would place them in. */
-  target: '#fff8dc',
+  /**
+   * The blue of a selected name, and of the cards it can be moved to: its
+   * ring, a card's edge, and the wash of the card under the pointer.
+   */
+  select: '#3b7dd8',
+  selectWash: '#eef4fc',
+  /** The grey chip of a name; a Foreman's is ink. */
+  chip: '#f1f1ee',
+  /** A Person Task under a Foreman's name, on the ink chip. */
+  chipInkSoft: '#d6d6d2',
   /** A Send that worked. */
   goDark: '#12603d',
   goWash: '#e8f5ee',
@@ -55,7 +60,19 @@ export const PALETTE = {
   backdrop: 'rgba(26, 26, 26, 0.5)',
 } as const;
 
-/** The fill of a Crew Member's name, by their color. */
+/**
+ * The dot beside a Crew Member's name on the board and in the picture, by
+ * their color: strong enough to tell apart on the grey chip.
+ */
+export const CREW_DOTS: Record<Color, string> = {
+  grey: '#1a1a1a',
+  blue: '#3b7dd8',
+  orange: '#f26b00',
+  yellow: '#f5b800',
+  red: '#e02020',
+};
+
+/** The fill of a Crew Member's name on the settings page, by their color. */
 export const CREW_COLORS: Record<Color, string> = {
   grey: '#1a1a1a',
   blue: '#dce9f8',
@@ -90,5 +107,6 @@ export function applyPalette(root: HTMLElement = document.documentElement): void
   for (const [color, value] of Object.entries(CREW_COLORS)) {
     root.style.setProperty(`--crew-${color}`, value);
     root.style.setProperty(`--crew-${color}-ink`, crewInk(color as Color));
+    root.style.setProperty(`--dot-${color}`, CREW_DOTS[color as Color]);
   }
 }

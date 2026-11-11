@@ -2,6 +2,7 @@ import { useState, type MouseEvent, type ReactNode } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
 import {
   canHaveTasks,
+  cardTitle,
   fullDate,
   NOT_PLACED,
   scheduleView,
@@ -67,20 +68,6 @@ interface ScheduleScreenProps {
 /** How many are on a Job or Standing Row, in plain words. */
 const headcount = (count: number): string => (count === 1 ? '1 person' : `${count} people`);
 
-/**
- * A Job card's title in two parts: the Job number, small, over the name,
- * large ("JOB" for a Job without one). A Job that has left the roster keeps
- * the label it was sent with.
- */
-function jobTitle(roster: Roster, row: ScheduleRow): { number: string; title: string } {
-  const { destination } = row;
-  const job =
-    destination.kind === 'job'
-      ? roster.jobs.find((candidate) => candidate.id === destination.jobId)
-      : undefined;
-  return job ? { number: job.jobNumber ?? 'JOB', title: job.name } : { number: 'JOB', title: row.label };
-}
-
 /** The first name, for the short button: "Take Brody off the board". */
 const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')[0] ?? crewMember.name;
 
@@ -111,15 +98,16 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * Every move is shown: a name that is somewhere else after a redraw travels
  * there from where it was (`MoveNames`), whatever moved it.
  *
- * It is a board: a header card (the Schreiber logo, the date, the hint,
- * Change date and Send); a grid of cards, one for each Job; and on the
+ * It is a board: a header card (the Schreiber logo, the date, the Settings
+ * gear, Change date and Send); a grid of cards, one for each Job; and on the
  * right the Not Placed list and under it the three Standing Rows (Shop,
- * Trucking, Off Work) as small cards. A Job card is its number over its name,
- * how many are on it at the top right, the day's Tasks in a pale yellow box,
- * and its names, one to a line. Shop and Trucking can have Tasks too, as a smaller note. While a name is being moved, every card they can go to is
- * highlighted in the accent; clicking or tapping one puts them there. The
- * picture sent to the crew (`crewPicture`) is these same cards, one under
- * the other, without what is only the Scheduler's.
+ * Trucking, Off Work). A card is its name with the Job number and how many at
+ * the right, the day's Tasks as plain lines, and its names, one to a line: a
+ * grey chip with a dot of the Crew Member's color (a Foreman's is black).
+ * While a name is selected it is ringed in blue, and every card it can go to
+ * is edged in blue; clicking or tapping one puts them there. The picture sent
+ * to the crew (`crewPicture`) is these same cards, one under the other,
+ * without what is only the Scheduler's.
  *
  * It is one screen: the header stays put, and so does the Not Placed list
  * (beside the board on a wide window, above it on a narrow one). Only the
@@ -188,35 +176,38 @@ export function ScheduleScreen({
   /** A destination was clicked while a Crew Member is selected: they go there. */
   const moveSelectedTo = (to: MoveTo) => (moving ? () => onMoveCrewMember(selected.id, to) : undefined);
 
-  /** A name, with that Crew Member's Person Tasks (if any) under it, inside the same chip. */
+  /**
+   * A name: a grey chip with a dot of the Crew Member's color (a Foreman's is
+   * black), with their Person Tasks, if any, under the name in the same chip.
+   */
   const name = (crewMember: CrewMember, personTasks: string[] = []) => (
     <button
       type="button"
-      className={`name color-${crewMember.color}${
+      className={`name${crewMember.foreman ? ' name-foreman' : ''}${
         crewMember.id === selected?.id ? ' name-selected' : ''
-      }${personTasks.length > 0 ? ' name-with-subs' : ''}`}
+      }`}
       aria-pressed={crewMember.id === selected?.id}
       onClick={(event) => onNameClick(crewMember, event)}
       {...drag.nameProps(crewMember.id)}
       onDoubleClick={() => onMoveCrewMember(crewMember.id, NOT_PLACED)}
     >
-      <span className="name-text">{crewMember.name}</span>
-      {personTasks.map((task, index) => (
-        <span key={index} className="name-sub">
-          {task}
-        </span>
-      ))}
+      <span className={`name-dot dot-${crewMember.color}`} aria-hidden="true" />
+      <span className="name-lines">
+        <span className="name-text">{crewMember.name}</span>
+        {personTasks.map((task, index) => (
+          <span key={index} className="name-sub">
+            {task}
+          </span>
+        ))}
+      </span>
     </button>
   );
-
-  /** The Job's Tasks are for everyone on it; a Crew Member's own are under their name. */
-  const tasksHeading = 'Work for the whole crew';
 
   /** One block: a Job card in the grid, or a small Standing Row card on the left. */
   const block = ({ destination, ...row }: ScheduleRow) => {
     const here = row.who.some((placed) => placed.crewMember.id === selected?.id);
     const isJob = destination.kind === 'job';
-    const { number, title } = jobTitle(roster, { destination, ...row });
+    const { number, name: title } = cardTitle(roster, { destination, ...row });
     return (
       <section
         key={row.key}
@@ -228,33 +219,23 @@ export function ScheduleScreen({
         onClick={moveSelectedTo(destination)}
         {...drag.dropProps(row.key)}
       >
-        {isJob ? (
-          <header className="block-head block-head-job">
-            <div className="block-title">
-              <span className="job-number">{number}</span>
-              <h2 className="job">{title}</h2>
-            </div>
-            <span className="count">{headcount(row.who.length)}</span>
-          </header>
-        ) : (
-          <header className="block-head block-head-yard">
-            <h2 className="job">{row.label}</h2>
-            <span className="count">{headcount(row.who.length)}</span>
-          </header>
-        )}
+        <header className="block-head">
+          <h2 className="job">{isJob ? title : row.label}</h2>
+          <span className="count" title={headcount(row.who.length)}>
+            {number ? `${number} · ` : ''}
+            {row.who.length}
+          </span>
+        </header>
         {canHaveTasks(destination) && (
           <TasksCell
             jobLabel={row.label}
-            heading={tasksHeading}
             compact={!isJob}
             tasks={row.tasks}
             canEdit={!moving}
             onCommit={(text) => onSetTasks(destination, text)}
           />
         )}
-        {row.who.length === 0 ? (
-          <p className="block-empty">Nobody here yet</p>
-        ) : (
+        {row.who.length > 0 && (
           <ul className="names">
             {row.who.map(({ crewMember, note, personTasks }) => (
               <li key={crewMember.id} className={note ? 'noted' : undefined}>
@@ -264,14 +245,35 @@ export function ScheduleScreen({
             ))}
           </ul>
         )}
-        {here && moving && selectedPlaced && (
-          <PersonTasks
-            crewMember={selectedPlaced.crewMember}
-            tasks={selectedPlaced.personTasks ?? []}
-            onAdd={onAddPersonTask}
-            onChange={onChangePersonTask}
-            onRemove={onRemovePersonTask}
-          />
+        {here && selectedPlaced && (
+          // Clicks here are about this Crew Member, not a move to this card.
+          <div className="person-panel" onClick={(event) => event.stopPropagation()}>
+            {typingNote ? (
+              <NoteEditor
+                key={selectedPlaced.crewMember.id}
+                crewMemberName={selectedPlaced.crewMember.name}
+                note={selectedPlaced.note}
+                onSave={onSaveNote}
+                onClear={onClearNote}
+                onCancel={onDeselect}
+              />
+            ) : (
+              <>
+                <PersonTasks
+                  crewMember={selectedPlaced.crewMember}
+                  tasks={selectedPlaced.personTasks ?? []}
+                  onAdd={onAddPersonTask}
+                  onChange={onChangePersonTask}
+                  onRemove={onRemovePersonTask}
+                />
+                <div className="person-panel-foot">
+                  <button type="button" className="button person-note-button" onClick={onEditNote}>
+                    {selectedPlaced.note ? 'Change note' : 'Add note'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </section>
     );
@@ -284,58 +286,9 @@ export function ScheduleScreen({
     <main className={`screen${moving ? ' moving' : ''}`}>
       <header className="toolbar">
         <img className="toolbar-logo" src={logoUrl} alt="Schreiber Excavating" />
-        <div className="toolbar-title">
-          <div className="toolbar-date">
-            <h1 className="date-heading">{fullDate(view.date)}</h1>
-            {dateButtons}
-          </div>
-
-          <div
-            className={`move-hint${moving ? ' move-hint-active' : ''}${typingNote ? ' move-hint-note' : ''}`}
-            role="status"
-          >
-            {typingNote ? (
-              <NoteEditor
-                key={selected.id}
-                crewMemberName={selected.name}
-                note={selectedPlaced.note}
-                onSave={onSaveNote}
-                onClear={onClearNote}
-                onCancel={onDeselect}
-              />
-            ) : moving ? (
-              <>
-                <span>
-                  {selectedPlaced ? (
-                    <>
-                      Add tasks for <strong>{selected.name}</strong> on their card, or{' '}
-                      <span className="on-wide">click</span>
-                      <span className="on-narrow">tap</span> a job to move them.
-                    </>
-                  ) : (
-                    <>
-                      <span className="on-wide">Now click the job for </span>
-                      <span className="on-narrow">Now tap the job for </span>
-                      <strong>{selected.name}</strong>.
-                    </>
-                  )}
-                  <span className="move-hint-cancel on-wide"> (Click the name again to let go.)</span>
-                </span>
-                {selectedPlaced && (
-                  <button type="button" className="button action" onClick={onEditNote}>
-                    {selectedPlaced.note ? 'Change note' : 'Add note'}
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
-                <span className="on-wide">
-                  Click a name for anything that is only about that person. Drag it to move it.
-                </span>
-                <span className="on-narrow">Tap a name for anything that is only about that person.</span>
-              </>
-            )}
-          </div>
+        <div className="toolbar-date">
+          <h1 className="date-heading">{fullDate(view.date)}</h1>
+          {dateButtons}
         </div>
 
         <div className="toolbar-actions">{toolbarButtons}</div>
@@ -347,7 +300,6 @@ export function ScheduleScreen({
           <div className="board">{jobRows.map(block)}</div>
           <DayNotes
             key={view.date}
-            roster={roster}
             notes={view.dayNotes}
             onAdd={onAddDayNote}
             onChange={onChangeDayNote}
@@ -356,7 +308,9 @@ export function ScheduleScreen({
         </div>
         <div className="side" data-motion-area>
           <aside
-            className={`not-placed destination${alertNotPlaced ? ' not-placed-alert' : ''}`}
+            className={`not-placed destination${shown.notPlaced.length === 0 ? ' not-placed-none' : ''}${
+              alertNotPlaced ? ' not-placed-alert' : ''
+            }`}
             aria-labelledby="not-placed-heading"
             onClick={moveSelectedTo(NOT_PLACED)}
             {...drag.dropProps(NOT_PLACED)}
@@ -365,9 +319,7 @@ export function ScheduleScreen({
               <h2 id="not-placed-heading">Not placed yet</h2>
               <span className="not-placed-count">{shown.notPlaced.length}</span>
             </header>
-            {shown.notPlaced.length === 0 ? (
-              <p className="not-placed-empty">Everyone has a place.</p>
-            ) : (
+            {shown.notPlaced.length > 0 && (
               <ul className="names">
                 {shown.notPlaced.map((crewMember) => (
                   <li key={crewMember.id}>{name(crewMember)}</li>

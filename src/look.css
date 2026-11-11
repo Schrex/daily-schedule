@@ -58,11 +58,11 @@
   --space-6: 2rem;
 
   /* Corners. */
-  --radius-chip: 0.625rem; /* a name: a cell of its color, the same width as its neighbours */
+  --radius-chip: 0.5rem; /* a name: a cell of its color, the same width as its neighbours */
   --radius-control: 0.75rem;
   --radius-note: 0.5rem; /* a small note: the Tasks of Shop and Trucking */
   --radius-pill: 999px; /* a count */
-  --radius-card: 1.125rem;
+  --radius-card: 0.875rem;
 
   /* Edges and elevation. */
   --hairline: 1px solid var(--line);
@@ -74,7 +74,7 @@
 
   /* Rings: what the keyboard is on, the name being moved, a name Send was refused for. */
   --focus-ring: 0 0 0 2px var(--paper), 0 0 0 5px var(--accent-strong);
-  --ring-selected: 0 0 0 2px var(--paper), 0 0 0 6px var(--accent-strong);
+  --ring-selected: 0 0 0 1px var(--paper), 0 0 0 4px var(--select);
   --ring-alert: 0 0 0 3px var(--paper), 0 0 0 6px var(--alert);
 
   /* Layers over the page: a name travelling to its place, and above it the one being dragged. */

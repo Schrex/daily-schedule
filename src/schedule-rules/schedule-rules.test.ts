@@ -32,7 +32,6 @@ import {
   addDayNote,
   changeDayNote,
   removeDayNote,
-  notePieces,
   type CrewMember,
   type DailySchedule,
   type Placement,
@@ -1165,36 +1164,5 @@ describe('Day Notes', () => {
     const sent = send(noted, '2026-11-09T23:05:00.000Z');
     expect(crewView(roster, sent).updated).toBe(false);
     expect(crewView(roster, changeDayNote(sent, 0, 'Bring gloves')).updated).toBe(true);
-  });
-});
-
-describe('the pieces of a Day Note', () => {
-  const people: Roster = {
-    crewMembers: [crew('brody', { name: 'Brody Wilson' }), crew('kris', { name: 'Kris Thomas' })],
-    jobs: [
-      { id: 'tiuny', name: 'TIUNY', jobNumber: 'J2601' },
-      { id: 'winter', name: 'Wintergarden' },
-    ],
-  };
-
-  it('marks Crew Members by first or full name and Jobs by name or number, whole words only', () => {
-    expect(notePieces(people, 'brody and Kris Thomas go to TIUNY after Wintergarden, not Brodyville')).toEqual([
-      { text: 'brody', kind: 'crew-member' },
-      { text: ' and ', kind: 'plain' },
-      { text: 'Kris Thomas', kind: 'crew-member' },
-      { text: ' go to ', kind: 'plain' },
-      { text: 'TIUNY', kind: 'job' },
-      { text: ' after ', kind: 'plain' },
-      { text: 'Wintergarden', kind: 'job' },
-      { text: ', not Brodyville', kind: 'plain' },
-    ]);
-  });
-
-  it('prefers the longer match: a Job written with its number is one piece', () => {
-    expect(notePieces(people, 'J2601 TIUNY')).toEqual([{ text: 'J2601 TIUNY', kind: 'job' }]);
-  });
-
-  it('is the whole note, plain, when it names nobody', () => {
-    expect(notePieces(people, 'Rain tomorrow')).toEqual([{ text: 'Rain tomorrow', kind: 'plain' }]);
   });
 });

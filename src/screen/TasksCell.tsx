@@ -4,12 +4,7 @@ import { tasksText } from '../schedule-rules';
 interface TasksCellProps {
   /** The Job as written on the Daily Schedule, for the field's spoken label. */
   jobLabel: string;
-  /** The small label over the Tasks: "Wednesday's work". */
-  heading: string;
-  /**
-   * Shop's and Trucking's Tasks: a smaller, plainer note, with no label,
-   * to fit their small cards.
-   */
+  /** Shop's and Trucking's Tasks: smaller, to fit their small cards. */
   compact?: boolean;
   tasks: string[];
   /** False while a Crew Member is being moved: the click then belongs to the move. */
@@ -19,16 +14,14 @@ interface TasksCellProps {
 }
 
 /**
- * The Tasks of a Job, in a pale yellow box under the Job: a small label, then
- * one Task to a line, each with a square bullet. Shop and Trucking have the
- * same, smaller and without the label (`compact`). Click to type, one Task
- * per line. The text being typed is kept
+ * The Tasks of a Job: plain lines under its name, one Task to a line, ruled
+ * off from the names below. Shop and Trucking have the same, smaller
+ * (`compact`). Click to type, one Task per line. The text being typed is kept
  * here and handed over once, when the Scheduler leaves the field, so one edit
  * is one change to the Daily Schedule, not one per key.
  */
 export function TasksCell({
   jobLabel,
-  heading,
   compact = false,
   tasks,
   canEdit,
@@ -37,17 +30,12 @@ export function TasksCell({
   /** The text being typed, or null when not typing. */
   const [draft, setDraft] = useState<string | null>(null);
 
-  const lines = (
-    <>
-      {!compact && <span className="tasks-heading">{heading}</span>}
-      {tasks.map((task, index) => (
-        <span key={index} className="task">
-          <span className="task-bullet" aria-hidden="true" />
-          <span>{task}</span>
-        </span>
-      ))}
-    </>
-  );
+  const lines = tasks.map((task, index) => (
+    <span key={index} className="task">
+      <span className="bullet" aria-hidden="true" />
+      <span>{task}</span>
+    </span>
+  ));
 
   const box = compact ? 'tasks-box tasks-compact' : 'tasks-box';
 

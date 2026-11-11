@@ -1,12 +1,12 @@
-/* The Scheduler's screen: a board in Schreiber's yard yellow. A header card
-   on top (the logo, the date, the hint, Change date and Send); a grid of
-   white cards, one for each Job; and on the right the Not Placed list and
-   under it Shop, Trucking and Off Work as small cards. The picture sent to the
-   crew (src/send/crewPicture.ts) is these same cards, one under the other.
-   Type, spacing, corners, the page, the buttons and the Crew Member colors
-   come from the shared look (src/look.css); colors are the palette in
-   src/palette.ts, handed over as custom properties. Sizes are in rem off one
-   root size so the whole screen can be scaled in one place. */
+/* The Scheduler's screen: a clean board. A header card on top (the logo, the
+   date, the Settings gear, Change date and Send); a grid of white cards, one
+   for each Job; and on the right the Not Placed list and under it Shop,
+   Trucking and Off Work. Cards are flat white with a hairline edge; names are
+   grey chips with a dot of their color (a Foreman's chip is black). The
+   picture sent to the crew (src/send/crewPicture.ts) is these same cards, one
+   under the other. Type, spacing, corners, the page and the buttons come from
+   the shared look (src/look.css); colors are the palette in src/palette.ts,
+   handed over as custom properties. Sizes are in rem off one root size. */
 
 @import '../look.css';
 
@@ -16,10 +16,9 @@
 }
 
 /* --- One screen ----------------------------------------------------------
-   The screen is exactly the window: the header on top, and under it the
-   board of Job cards and the right column, each scrolling by itself. Nothing he
-   needs ever scrolls away. On a window wider than the board reads well, it
-   sits in the middle. */
+   The screen is exactly the window: the header on top, and under it the board
+   of Job cards and the right column, each scrolling by itself. On a window
+   wider than the board reads well, it sits in the middle. */
 
 .screen {
   --side-width: 16.5rem;
@@ -49,7 +48,7 @@
   }
 }
 
-/* --- The header: the logo, the date and the hint; Change date and Send ----- */
+/* --- The header: the logo, the date and the gear; Change date and Send ---- */
 
 .toolbar {
   flex: 0 0 auto;
@@ -57,30 +56,23 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 1.25rem;
-  padding: var(--space-3) 1.375rem;
+  padding: 0.625rem 1.25rem;
   border: var(--hairline);
   border-radius: var(--radius-card);
   background: var(--paper);
-  box-shadow: var(--elevation-1);
 }
 
 .toolbar-logo {
   flex: 0 0 auto;
   display: block;
-  height: 4rem;
+  height: 3.5rem;
   width: auto;
 }
 
-.toolbar-title {
+/* The date and the gear: one line, the date giving way. */
+.toolbar-date {
   flex: 999 1 18.75rem;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-/* The date and the gear: always one line, the date giving way. */
-.toolbar-date {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -90,7 +82,7 @@
   min-width: 0;
   margin: 0;
   font-family: var(--font-display);
-  font-size: 2rem;
+  font-size: 1.875rem;
   font-weight: var(--weight-display);
   letter-spacing: var(--tracking-heading);
   line-height: 1.15;
@@ -110,6 +102,7 @@
   flex: 0 0 auto;
   min-height: max(3rem, var(--touch-target));
   padding: 0 1.125rem;
+  border-radius: var(--radius-chip);
   font-size: 1rem;
 }
 
@@ -142,30 +135,6 @@
   text-transform: uppercase;
 }
 
-/* The hint keeps one height whether it holds the hint, "Add note" or the
-   Note field, so the board below never jumps. */
-.move-hint {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  min-height: max(2.75rem, var(--touch-target));
-  color: var(--ink-soft);
-  font-size: 1rem;
-}
-
-.move-hint-active > span {
-  flex: 1 1 auto;
-}
-
-.move-hint-active strong {
-  color: var(--ink);
-  font-weight: var(--weight-bold);
-}
-
-.move-hint-cancel {
-  color: var(--muted);
-}
-
 /* What happened to the last Send: a strip across the foot of the header. */
 .send-message {
   flex: 1 0 100%;
@@ -186,7 +155,7 @@
 }
 
 /* Each scrolling area reaches a little past the cards on every side, so the
-   ring of a selected name and the shadow of a card are never cut off. */
+   ring of a selected name is never cut off. */
 .side,
 .schedule-scroll {
   --overhang: var(--space-2);
@@ -198,78 +167,70 @@
   overscroll-behavior: contain;
 }
 
+.schedule-scroll {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
 /* Right: Not Placed, then Shop, Trucking and Off Work. */
 .side {
   flex: 0 0 calc(var(--side-width) + 2 * var(--overhang));
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .yard {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
-.schedule-scroll {
-  flex: 1 1 auto;
-}
-
-/* --- The cards -------------------------------------------------------------- */
+/* --- The cards ------------------------------------------------------------ */
 
 .board {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(16.875rem, 100%), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(18.125rem, 100%), 1fr));
   align-items: start;
   gap: var(--space-4);
 }
 
-.block {
+.block,
+.not-placed,
+.day-notes {
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.375rem;
   min-width: 0;
-  padding: 1.125rem;
+  padding: var(--space-4);
   border: var(--hairline);
   border-radius: var(--radius-card);
   background: var(--paper);
-  box-shadow: var(--elevation-1);
   transition:
     background-color var(--ease),
     border-color var(--ease),
     box-shadow var(--ease);
 }
 
-/* A card's head: the place on the left, how many are on it at the top right. */
-.block-head {
+/* A card's head: the place on the left; the Job number and how many at the right. */
+.block-head,
+.not-placed-head {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
   min-width: 0;
 }
 
-/* A Job: its number, small, over its name. */
-.block-title {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+.job,
+.not-placed h2,
+.day-notes h2 {
   min-width: 0;
-}
-
-.job-number {
-  color: var(--muted);
-  font-size: 0.8125rem;
-  font-weight: var(--weight-strong);
-  letter-spacing: var(--tracking-small);
-  line-height: 1.4;
-}
-
-.job {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.75rem;
+  font-size: 1.125rem;
   font-weight: var(--weight-display);
   letter-spacing: var(--tracking-heading);
   line-height: 1.15;
@@ -277,31 +238,49 @@
   overflow-wrap: anywhere;
 }
 
-/* Shop, Trucking, Off Work: the count sits level with the name. */
-.block-head-yard {
-  align-items: baseline;
+.block-job .job {
+  font-size: 1.5rem;
 }
 
-.block-head-yard .job {
-  font-size: 1.375rem;
+.block-head + * {
+  margin-top: 0.25rem;
 }
 
-/* How many are on it: there to be checked, not to be noticed. On a Job it
-   sits level with the Job number. */
-.count {
+/* How many are on it, and a Job's number: there to be checked, not noticed. */
+.count,
+.not-placed-count {
   flex: 0 0 auto;
-  line-height: 1.4;
   color: var(--muted);
   font-size: 0.8125rem;
   font-weight: var(--weight-strong);
   white-space: nowrap;
 }
 
-/* Nobody on it yet. */
-.block-empty {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9375rem;
+/* An empty Standing Row (and Not Placed with nobody left): one short bar. */
+.block-standing-row:not(:has(.names, .tasks-box, .tasks-open)),
+.not-placed.not-placed-none {
+  justify-content: center;
+  min-height: 3rem;
+  padding-block: 0;
+}
+
+/* While a name is selected, every card it can go to is edged in blue (the
+   card it is on now stays plain). The edge is a shadow, so nothing moves. */
+.moving .destination {
+  cursor: pointer;
+}
+
+.block.block-target,
+.moving .not-placed {
+  border-color: var(--select);
+  box-shadow: 0 0 0 1px var(--select);
+}
+
+@media (hover: hover) {
+  .moving .block.block-target:hover,
+  .moving .not-placed:hover {
+    background: var(--select-wash);
+  }
 }
 
 /* --- Names: one to a line, all the same width ----------------------------- */
@@ -309,7 +288,7 @@
 .names {
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.375rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -320,53 +299,82 @@
   flex-direction: column;
 }
 
+/* A grey chip: a dot of the Crew Member's color, the name, and their Person
+   Tasks, if any, smaller under it. A Foreman's chip is black. */
 .name {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 0.625rem;
   width: 100%;
-  min-height: max(2.875rem, var(--touch-target));
-  padding: var(--space-1) 0.875rem;
+  min-height: max(2.75rem, var(--touch-target));
+  padding: 0.375rem 0.75rem;
   border: 0;
   border-radius: var(--radius-chip);
+  background: var(--chip);
+  color: var(--ink);
   font: inherit;
-  font-size: 1rem;
-  font-weight: var(--weight-strong);
-  letter-spacing: var(--tracking-name);
-  line-height: 1.15;
   text-align: left;
   overflow-wrap: anywhere;
   cursor: pointer;
   transition: box-shadow var(--ease);
 }
 
-/* A name can carry its Crew Member's Person Tasks, smaller, under it in the
-   same chip: the name on top, then one line each. */
-.name {
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0.125rem;
+.name-dot {
+  flex: 0 0 0.875rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
 }
 
-.name.name-with-subs {
-  padding: var(--space-2) 0.875rem;
+.dot-grey { background: var(--dot-grey); }
+.dot-blue { background: var(--dot-blue); }
+.dot-orange { background: var(--dot-orange); }
+.dot-yellow { background: var(--dot-yellow); }
+.dot-red { background: var(--dot-red); }
+
+.name-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.name-text {
+  font-size: 0.9375rem;
+  font-weight: var(--weight-strong);
+  line-height: 1.2;
 }
 
 .name-sub {
+  color: var(--ink-soft);
   font-size: 0.8125rem;
-  font-weight: var(--weight-strong);
   line-height: 1.25;
 }
 
-/* The ring under the pointer (only where there is a pointer to be under:
-   after a tap, a phone goes on saying the finger is still there). Kept weak
-   (`:where`) so the marks a drag puts on a name always win over it. */
+.name-foreman {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.name-foreman .name-dot {
+  background: var(--paper);
+}
+
+.name-foreman .name-sub {
+  color: var(--chip-ink-soft);
+}
+
+/* The ring under the pointer (only where there is a pointer to be under).
+   Kept weak (`:where`) so the marks a drag puts on a name always win over it. */
 @media (hover: hover) {
   :where(.name):hover {
     box-shadow:
-      0 0 0 2px var(--paper),
-      0 0 0 4px var(--line-strong);
+      0 0 0 1px var(--paper),
+      0 0 0 3px var(--line-strong);
+  }
+
+  .moving .name:not(.name-selected):hover {
+    box-shadow: none;
   }
 }
 
@@ -375,35 +383,11 @@
   box-shadow: var(--focus-ring);
 }
 
-/* The Crew Member being moved: ringed in gold, impossible to miss. */
+/* The Crew Member selected: ringed in blue. */
 .name.name-selected {
   position: relative;
   z-index: 1;
-  box-shadow: var(--ring-selected), var(--elevation-lifted);
-}
-
-/* While moving, every Job, Standing Row and the Not Placed list is one big target. */
-.moving .destination {
-  cursor: pointer;
-}
-
-/* While a name is selected, every card it can go to is ringed in gold (the
-   card it is on now stays plain). The ring is a shadow, so nothing moves. */
-.block.block-target {
-  border-color: var(--accent-strong);
-  box-shadow: 0 0 0 1px var(--accent-strong), var(--elevation-1);
-}
-
-@media (hover: hover) {
-  /* Only a card they can go to: their own card holds their Person Tasks. */
-  .moving .block.block-target:hover {
-    border-color: var(--accent-strong);
-    background: var(--target);
-  }
-
-  .moving .name:not(.name-selected):hover {
-    box-shadow: none;
-  }
+  box-shadow: var(--ring-selected);
 }
 
 /* A Note hangs under its name, in one red-tinted piece with it, so it cannot
@@ -414,206 +398,113 @@
 }
 
 .note {
-  padding: var(--space-2) 0.875rem;
+  padding: 0.375rem 0.75rem;
   color: var(--alert);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: var(--weight-strong);
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
-/* --- Not Placed: always in sight, at the top of the left column ------------
-   A dashed gold edge: names wait here for a place. */
+/* --- Not Placed: always in sight, at the top of the right column ---------- */
 
 .not-placed {
   flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-height: 13.75rem;
-  padding: 1.125rem;
-  border: 2px dashed var(--accent-strong);
-  border-radius: var(--radius-card);
-  background: var(--paper);
-  transition:
-    background-color var(--ease),
-    border-color var(--ease);
 }
 
-.not-placed-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* Someone is waiting for a place: a dashed gold edge and a yellow count. */
+.not-placed:not(.not-placed-none) {
   gap: var(--space-2);
+  border: 2px dashed var(--accent-strong);
 }
 
-.not-placed h2 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.375rem;
-  font-weight: var(--weight-display);
-  line-height: 1.15;
-  text-transform: uppercase;
-}
-
-/* How many are left: a yellow pill. */
-.not-placed-count {
-  padding: 0.125rem 0.625rem;
+.not-placed:not(.not-placed-none) .not-placed-count {
+  padding: 0 0.5rem;
   border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--accent-ink);
-  font-size: 0.9375rem;
-  font-weight: var(--weight-bold);
 }
 
-.not-placed-empty {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 1rem;
-}
-
-/* Nobody left to place: nothing waiting, so the gold goes quiet. */
-.not-placed:has(.not-placed-empty) {
-  min-height: 0;
-  border-color: var(--line-strong);
-}
-
-.not-placed:has(.not-placed-empty) .not-placed-count {
-  background: var(--wash);
-  color: var(--muted);
-}
-
-@media (hover: hover) {
-  .moving .not-placed.destination:hover {
-    background: var(--target);
-  }
+/* While a name is selected, Not Placed is a place it can go, like any card. */
+.moving .not-placed.destination {
+  border: 1px solid var(--select);
 }
 
 /* "Take ... off the board": the Not Placed list, as a button. */
 .off-board {
-  min-height: max(2.875rem, var(--touch-target));
+  min-height: max(2.75rem, var(--touch-target));
   border: 2px dashed var(--accent-strong);
   border-radius: var(--radius-chip);
   background: var(--accent-wash);
   color: var(--ink);
-  font-size: 1rem;
+  font-size: 0.9375rem;
 }
 
-.off-board:hover:not(:disabled) {
-  border-color: var(--accent-dark);
-  background: var(--accent-line);
-}
-
-/* --- Buttons that do something other than move a name -------------------- */
-
-.action {
-  min-height: max(2.5rem, var(--touch-target));
-  padding: var(--space-1) var(--space-4);
-  font-size: 1rem;
-}
-
-/* --- The Tasks: a pale yellow box under the Job ---------------------------
-   A small label ("Wednesday's work"), then one Task to a line, each with a
-   square black bullet. A Task too long for its line carries on beside the
-   bullet, so two Tasks never read as three. With no name moving, the box is
-   the thing to click to type them. Shop and Trucking have the same, smaller
-   and plainer (`.tasks-compact`). */
+/* --- The Tasks: plain lines under the name, ruled off from the names ---- */
 
 .tasks-box {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) 0.875rem;
-  border: 1px solid var(--accent-line);
-  border-radius: var(--radius-control);
-  background: var(--accent-wash);
+  gap: var(--space-1);
+  padding: 0 0 0.625rem;
+  margin-bottom: var(--space-1);
+  border: 0;
+  border-bottom: var(--hairline);
+  border-radius: 0;
+  background: none;
   color: var(--ink);
   text-align: left;
-}
-
-.tasks-heading {
-  color: var(--accent-dark);
-  font-size: 0.75rem;
-  font-weight: var(--weight-bold);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
 }
 
 .task {
   display: flex;
   align-items: flex-start;
-  gap: 0.625rem;
-  font-size: 1rem;
-  font-weight: var(--weight-strong);
-  line-height: 1.3;
+  gap: var(--space-2);
+  font-size: 0.9375rem;
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
-.task-bullet {
-  flex: 0 0 0.625rem;
-  width: 0.625rem;
-  height: 0.625rem;
-  margin-top: 0.375rem;
-  border-radius: 2px;
-  background: var(--ink);
+/* A small round bullet before each Task and each Day Note, level with the
+   first line, so a Task too long for its line still reads as one. */
+.bullet {
+  flex: 0 0 0.3125rem;
+  width: 0.3125rem;
+  height: 0.3125rem;
+  margin-top: 0.55em;
+  border-radius: 50%;
+  background: var(--ink-soft);
 }
 
-/* Shop's and Trucking's: no label, no edge, smaller type and bullets. */
-.tasks-box.tasks-compact {
-  gap: var(--space-1);
-  padding: 0.375rem 0.625rem;
-  border-color: transparent;
-  border-radius: var(--radius-note);
-}
-
+/* Shop's and Trucking's: smaller. */
 .tasks-compact .task {
-  gap: var(--space-2);
   font-size: 0.875rem;
-  line-height: 1.35;
-}
-
-.tasks-compact .task-bullet {
-  flex-basis: 0.375rem;
-  width: 0.375rem;
-  height: 0.375rem;
-  margin-top: 0.42rem;
-  border-radius: 1px;
 }
 
 .tasks-open {
   width: 100%;
   font: inherit;
   cursor: text;
-  transition:
-    background-color var(--ease),
-    border-color var(--ease),
-    box-shadow var(--ease);
 }
 
 /* No Tasks yet: a quiet dashed line to click. */
 .tasks-open-empty {
   display: flex;
   align-items: center;
-  min-height: max(2.5rem, var(--touch-target));
-  padding: var(--space-1) 0.875rem;
+  min-height: 2.25rem;
+  margin-bottom: var(--space-1);
+  padding: var(--space-1) 0.75rem;
   border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-chip);
   background: none;
   color: var(--muted);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   text-align: left;
 }
 
-.tasks-open-empty.tasks-compact {
-  min-height: 2rem;
-  padding: var(--space-1) 0.625rem;
-  border-radius: var(--radius-note);
-  font-size: 0.8125rem;
-}
-
 @media (hover: hover) {
-  .tasks-open:hover {
-    border-color: var(--accent-strong);
+  .tasks-box.tasks-open:hover {
+    border-bottom-color: var(--accent-strong);
   }
 
   .tasks-open-empty:hover {
@@ -630,17 +521,20 @@
 .tasks-input {
   display: block;
   width: 100%;
-  padding: var(--space-2) var(--space-2);
-  border: 2px solid var(--accent-strong);
-  border-radius: var(--radius-control);
+  padding: var(--space-2);
+  border: 1px solid var(--muted);
+  border-radius: var(--radius-chip);
   outline: none;
   background: var(--paper);
-  box-shadow: 0 0 0 4px var(--accent-wash);
   color: var(--ink);
   font: inherit;
-  font-size: max(1.15rem, 16px); /* a phone zooms in on a field with smaller text */
+  font-size: max(1rem, 16px); /* a phone zooms in on a field with smaller text */
   line-height: 1.4;
   resize: vertical;
+}
+
+.tasks-input:focus {
+  box-shadow: 0 0 0 3px var(--accent-wash);
 }
 
 .tasks-editing-foot {
@@ -649,60 +543,75 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-top: var(--space-2);
+  margin: var(--space-2) 0 var(--space-1);
   color: var(--muted);
-  font-size: 1rem;
+  font-size: 0.875rem;
 }
 
-/* --- One line being typed: a Person Task or a Day Note ---------------------
-   A plain field with a firm dark edge, and the yellow button beside it. */
+/* --- Buttons that do something other than move a name -------------------- */
+
+.action {
+  min-height: max(2.5rem, var(--touch-target));
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-chip);
+  font-size: 0.9375rem;
+}
+
+/* --- One line being typed: a Person Task or a Day Note -------------------- */
 
 .line-editor {
   display: flex;
   gap: var(--space-2);
 }
 
-.line-input {
+.line-input,
+.note-input {
   flex: 1 1 8.75rem;
   min-width: 0;
-  min-height: max(2.875rem, var(--touch-target));
+  min-height: max(2.75rem, var(--touch-target));
   padding: 0 var(--space-3);
-  border: 2px solid var(--ink);
+  border: 1px solid var(--muted);
   border-radius: var(--radius-chip);
   outline: none;
   background: var(--paper);
   color: var(--ink);
   font: inherit;
-  font-size: max(1rem, 16px);
+  font-size: max(0.9375rem, 16px);
 }
 
-.line-input:focus {
-  box-shadow: 0 0 0 4px var(--accent-wash);
+.line-input:focus,
+.note-input:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px var(--accent-wash);
 }
 
-.line-input::placeholder {
+.line-input::placeholder,
+.note-input::placeholder {
   color: var(--muted);
 }
 
 .line-button {
   flex: 0 0 auto;
-  min-height: max(2.875rem, var(--touch-target));
-  padding: 0 var(--space-4);
-  border: 0;
+  min-height: max(2.75rem, var(--touch-target));
+  padding: 0 0.875rem;
   border-radius: var(--radius-chip);
   font-size: 0.9375rem;
-  font-weight: var(--weight-bold);
-  white-space: nowrap;
 }
 
-/* --- Person Tasks: at the foot of the selected Crew Member's card --------- */
+/* --- The selected Crew Member's own things, at the foot of their card ----- */
+
+.person-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: 0.375rem;
+  cursor: auto;
+}
 
 .person-tasks {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-top: var(--space-1);
-  cursor: auto;
 }
 
 .person-task-list {
@@ -714,7 +623,8 @@
   list-style: none;
 }
 
-.person-task {
+.person-task,
+.day-note {
   display: flex;
   align-items: stretch;
   gap: var(--space-1);
@@ -725,6 +635,9 @@
   flex: 1 1 auto;
   min-width: 0;
   border: 1px solid transparent;
+  border-radius: var(--radius-chip);
+  background: none;
+  color: var(--ink);
   font: inherit;
   text-align: left;
   overflow-wrap: anywhere;
@@ -732,32 +645,29 @@
 }
 
 .person-task-text {
-  min-height: 2.5rem;
+  min-height: 2.25rem;
   padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-note);
   background: var(--canvas);
-  color: var(--ink);
-  font-size: 0.9375rem;
-  font-weight: var(--weight-strong);
+  font-size: 0.875rem;
 }
 
 .person-task-remove,
 .day-note-remove {
   flex: 0 0 auto;
-  width: max(2.5rem, var(--touch-target));
+  width: max(2.25rem, var(--touch-target));
   border: 1px solid var(--line);
-  border-radius: var(--radius-note);
+  border-radius: var(--radius-chip);
   background: var(--paper);
   color: var(--muted);
   font: inherit;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   line-height: 1;
 }
 
 @media (hover: hover) {
   .person-task-text:hover,
   .day-note-text:hover {
-    border-color: var(--accent-strong);
+    border-color: var(--line-strong);
   }
 
   .person-task-remove:hover,
@@ -768,79 +678,72 @@
   }
 }
 
-/* --- Notes for the day: under the Job cards -------------------------------
-   Remarks for everyone; the Crew Members they name in yellow, Jobs in black. */
-
-.day-notes {
+/* Add note, under the task field. */
+.person-panel-foot {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin-top: 1.25rem;
-  padding: 1.125rem;
-  border: var(--hairline);
-  border-radius: var(--radius-card);
-  background: var(--paper);
-  box-shadow: var(--elevation-1);
 }
 
-.day-notes-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.day-notes-head h2 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.375rem;
-  font-weight: var(--weight-display);
-  line-height: 1.15;
-  text-transform: uppercase;
-}
-
-.day-notes-hint {
-  color: var(--ink-soft);
+.person-note-button {
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-chip);
   font-size: 0.875rem;
 }
 
-.day-note {
+/* Typing a Note: the field across the panel, its buttons under it. */
+.note-editor {
   display: flex;
-  align-items: stretch;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
+.note-editor-label {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+}
+
+/* In the label's column, the field's flex basis would be its height: keep it one line. */
+.note-input {
+  flex: 0 0 auto;
+  color: var(--alert);
+  font-weight: var(--weight-strong);
+}
+
+/* --- Notes for the day: under the Job cards, one under the other ---------- */
+
+.day-notes {
+  gap: var(--space-2);
+}
+
+.day-notes h2 {
+  margin-bottom: var(--space-1);
+}
+
+.day-note + .day-note,
+.day-note + .line-editor,
+.line-editor + .day-note {
+  padding-top: var(--space-2);
+  border-top: var(--hairline);
+}
+
 .day-note-text {
-  padding: 0.625rem 0.875rem;
-  border-radius: var(--radius-chip);
-  background: var(--canvas);
-  color: var(--ink);
-  font-size: 1.0625rem;
-  line-height: 1.6;
-}
-
-.mark {
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.375rem;
-  font-weight: var(--weight-bold);
-}
-
-.mark-crew-member {
-  background: var(--crew-yellow);
-  color: var(--ink);
-}
-
-.mark-job {
-  background: var(--ink);
-  color: var(--paper);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 
 .day-notes-add {
   align-self: flex-start;
-  min-height: max(2.875rem, var(--touch-target));
-  padding: 0 1.125rem;
-  border: 1px dashed var(--muted);
+  min-height: max(2.75rem, var(--touch-target));
+  margin-top: var(--space-1);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-chip);
   background: var(--paper);
   color: var(--ink);
@@ -851,58 +754,15 @@
 
 @media (hover: hover) {
   .day-notes-add:hover {
-    border-color: var(--accent-strong);
-    background: var(--accent-wash);
+    background: var(--wash);
   }
-}
-
-/* --- Typing a Note ------------------------------------------------------- */
-
-.note-editor {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-}
-
-.note-editor-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  font-size: 1.15rem;
-}
-
-.note-input {
-  flex: 1 1 auto;
-  width: 16rem;
-  min-width: 0;
-  min-height: 2.4rem;
-  padding: var(--space-1) var(--space-3);
-  border: 2px solid var(--alert);
-  border-radius: var(--radius-control);
-  outline: none;
-  background: var(--paper);
-  color: var(--alert);
-  font: inherit;
-  font-size: max(1.15rem, 16px);
-  font-weight: var(--weight-strong);
-}
-
-.note-input:focus {
-  box-shadow: 0 0 0 4px var(--alert-wash-strong);
-}
-
-.note-input::placeholder {
-  color: var(--muted);
-  font-weight: var(--weight-body);
 }
 
 /* --- A window too narrow for the right column beside the board ------------
    One scrolling page of cards: the Not Placed list on top, where it stays
-   while the cards scroll under it (a strip, its names side by side, and still
-   the place to click or drop on), then the Jobs, then Shop, Trucking and Off
-   Work. */
+   while the cards scroll under it (its names side by side, and still the
+   place to click or drop on), then the Jobs and the Notes for the day, then
+   Shop, Trucking and Off Work. */
 
 @media (max-width: 860px) {
   .screen {
@@ -930,6 +790,7 @@
   .schedule-scroll {
     order: 1;
     flex: 0 0 auto;
+    gap: var(--space-3);
     max-height: none;
     margin: 0;
     padding: 0;
@@ -941,7 +802,6 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(16.875rem, 100%), 1fr));
     align-items: start;
-    gap: var(--space-3);
   }
 
   .not-placed {
@@ -949,44 +809,14 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    min-height: 0;
     max-height: 38vh;
     overflow-y: auto;
-    gap: var(--space-2);
-    padding: var(--space-3);
     box-shadow: var(--elevation-2);
-  }
-
-  .not-placed h2 {
-    font-size: 1.2rem;
   }
 
   .not-placed .names {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(10rem, 100%), 1fr));
-    gap: var(--space-2);
-  }
-
-  /* Typing a Note needs more than the hint's one line here. The hint keeps
-     its height, so nothing below jumps, and the field and its buttons open
-     over what is under it for as long as the Note is typed. */
-  .move-hint-note {
-    position: relative;
-    align-self: stretch;
-  }
-
-  .move-hint-note .note-editor {
-    position: absolute;
-    top: 0;
-    right: calc(-1 * var(--space-3));
-    left: calc(-1 * var(--space-3));
-    z-index: 5;
-    width: auto;
-    padding: var(--space-2) var(--space-3) var(--space-3);
-    border: 1px solid var(--alert-line);
-    border-radius: var(--radius-control);
-    background: var(--alert-wash);
-    box-shadow: var(--elevation-3);
   }
 }
 
@@ -1024,27 +854,9 @@
     padding: 0 var(--space-3);
   }
 
-  .move-hint {
-    gap: var(--space-2);
-  }
-
   .layout,
   .board {
     gap: var(--space-3);
-  }
-
-  .block {
-    padding: var(--space-4);
-  }
-
-  .note-editor,
-  .note-editor-label {
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .note-editor-label {
-    flex: 1 1 100%;
   }
 }
 
