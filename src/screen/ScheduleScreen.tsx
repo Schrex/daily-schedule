@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type MouseEvent, type ReactNode } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
 import {
   canHaveTasks,
@@ -243,9 +243,43 @@ export function ScheduleScreen({
     </button>
   );
 
+  /**
+   * What is only about the selected Crew Member, drawn right under their name
+   * (edged in the blue of their ring): their Person Tasks and the field to add
+   * one, with Add note beside Add task; or the Note being typed. Clicks here
+   * are about them, not a move to this card. Gone the moment their name starts
+   * to be dragged, so it never travels with it.
+   */
+  const personPanel = selectedPlaced && !drag.dragging && (
+    <li className="person-panel" onClick={(event) => event.stopPropagation()}>
+      {typingNote ? (
+        <NoteEditor
+          key={selectedPlaced.crewMember.id}
+          crewMemberName={selectedPlaced.crewMember.name}
+          note={selectedPlaced.note}
+          onSave={onSaveNote}
+          onClear={onClearNote}
+          onCancel={onDeselect}
+        />
+      ) : (
+        <PersonTasks
+          crewMember={selectedPlaced.crewMember}
+          tasks={selectedPlaced.personTasks ?? []}
+          onAdd={onAddPersonTask}
+          onChange={onChangePersonTask}
+          onRemove={onRemovePersonTask}
+          beside={
+            <button type="button" className="person-note-button" onClick={onEditNote}>
+              {selectedPlaced.note ? 'Change note' : 'Add note'}
+            </button>
+          }
+        />
+      )}
+    </li>
+  );
+
   /** One block: a Job card on the board, or a small Standing Row card at the right. */
   const block = ({ destination, ...row }: ScheduleRow) => {
-    const here = row.who.some((placed) => placed.crewMember.id === selected?.id);
     const isJob = destination.kind === 'job';
     const { number, name: title } = cardTitle(roster, { destination, ...row });
     return (
@@ -278,43 +312,15 @@ export function ScheduleScreen({
         {row.who.length > 0 && (
           <ul className="names">
             {row.who.map(({ crewMember, note, personTasks }) => (
-              <li key={crewMember.id} className={note ? 'noted' : undefined}>
-                {name(crewMember, personTasks)}
-                {note && <span className="note">{note}</span>}
-              </li>
+              <Fragment key={crewMember.id}>
+                <li className={note ? 'noted' : undefined}>
+                  {name(crewMember, personTasks)}
+                  {note && <span className="note">{note}</span>}
+                </li>
+                {crewMember.id === selectedPlaced?.crewMember.id && personPanel}
+              </Fragment>
             ))}
           </ul>
-        )}
-        {here && selectedPlaced && !drag.dragging && (
-          // Clicks here are about this Crew Member, not a move to this card.
-          // Gone the moment their name starts to be dragged, so it never travels with it.
-          <div className="person-panel" onClick={(event) => event.stopPropagation()}>
-            {typingNote ? (
-              <NoteEditor
-                key={selectedPlaced.crewMember.id}
-                crewMemberName={selectedPlaced.crewMember.name}
-                note={selectedPlaced.note}
-                onSave={onSaveNote}
-                onClear={onClearNote}
-                onCancel={onDeselect}
-              />
-            ) : (
-              <>
-                <PersonTasks
-                  crewMember={selectedPlaced.crewMember}
-                  tasks={selectedPlaced.personTasks ?? []}
-                  onAdd={onAddPersonTask}
-                  onChange={onChangePersonTask}
-                  onRemove={onRemovePersonTask}
-                />
-                <div className="person-panel-foot">
-                  <button type="button" className="button person-note-button" onClick={onEditNote}>
-                    {selectedPlaced.note ? 'Change note' : 'Add note'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
         )}
         {moveHere(row.key)}
       </section>
