@@ -749,8 +749,8 @@
 }
 
 /* --- Folded Jobs: a row of large buttons under the cards ------------------
-   A Job with nobody on it, by name; with someone in hand, "Put Mike on Pond"
-   in the yellow of an action. The buttons wrap, and so do long names. */
+   A Job with nobody on it, by name; with someone in hand, "Put Mike on Pond",
+   still grey so nothing lights up. The buttons wrap, and so do long names. */
 
 .folded-jobs {
   gap: var(--space-2);
@@ -781,17 +781,6 @@
   text-align: center;
   white-space: normal;
   overflow-wrap: anywhere;
-}
-
-/* The shared yellow action style is kept weak (`:where`), so restate it over the grey. */
-.folded-job.button-primary {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-
-.folded-job.button-primary:hover {
-  border-color: var(--accent-hover);
-  background: var(--accent-hover);
 }
 
 .folded-job[data-drop-over] {
