@@ -11,7 +11,7 @@ preview_urls = false
 # The channel the picture goes to when Settings names none.
 SLACK_CHANNEL = "C0CHSMJFFPS"
 # The address of the Scheduler's screen, e.g. "https://schedule.example.com". "*" allows any.
-ALLOWED_ORIGIN = "*"
+ALLOWED_ORIGIN = "https://daily-schedule.schrex.workers.dev"
 
 # Secrets, set once with `npx wrangler secret put <NAME>` (never written here):
 #   SLACK_BOT_TOKEN  the Slack app's Bot User OAuth Token (xoxb-…)
