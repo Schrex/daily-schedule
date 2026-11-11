@@ -5,7 +5,7 @@ import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } fro
 /**
  * Draws the crew view as a picture (a PNG) of the Daily Schedule, laid out as
  * the Scheduler's board is: the Schreiber logo at the top left with "SCHEDULE
- * FOR" and the date beside it, the Notes for the day across the top, then the
+ * FOR" and the date in the middle of that row, the Notes for the day across the top, then the
  * Job cards in two columns and Shop, Trucking and Off Work in a third (with
  * Jobs carrying on under them on a busy day).
  *
@@ -135,7 +135,7 @@ function readLook(): Look {
   return {
     type: {
       dateLabel: type(text, 'bold', 19, 'label'),
-      date: type(display, 'display', 56, 'heading'),
+      date: type(display, 'display', 48, 'heading'),
       updated: type(display, 'display', 38, 'button'),
       updatedNote: type(text, 'strong', 24),
       job: type(display, 'display', 42, 'heading'),
@@ -166,12 +166,13 @@ function setType(ctx: CanvasRenderingContext2D, { font, letterSpacing }: Type) {
   ctx.letterSpacing = letterSpacing;
 }
 
-/** The top row: the logo, as tall as this, at the left, and the date beside it. */
+/** The top row: the logo, as tall as this, at the left, and the date in the middle. */
 const LOGO_HEIGHT = 84;
+/** The date keeps at least this clear of the logo. */
 const DATE_GAP = 30;
-/** From the top of the row to the middle of "SCHEDULE FOR", and of the date under it. */
-const DATE_LABEL_MIDDLE = 14;
-const DATE_MIDDLE = 54;
+/** From the top of the row to the middle of "SCHEDULE FOR", and of the date a clear gap under it. */
+const DATE_LABEL_MIDDLE = 12;
+const DATE_MIDDLE = 58;
 /** Under the top row, before the UPDATED bar, the Notes for the day or the cards. */
 const HEADER_GAP = 22;
 const UPDATED_HEIGHT = 72;
@@ -566,17 +567,20 @@ function draw(
   const logoWidth = (logo.naturalWidth / logo.naturalHeight) * LOGO_HEIGHT;
   ctx.drawImage(logo, MARGIN, MARGIN, logoWidth, LOGO_HEIGHT);
 
-  // Beside the logo: "SCHEDULE FOR" small, and the day and date large (no year).
-  const dateX = MARGIN + logoWidth + DATE_GAP;
-  const dateWidth = MARGIN + contentWidth - dateX;
+  // In the middle of the top row, clear of the logo: "SCHEDULE FOR" small,
+  // and under it the day and date (no year).
+  const middle = MARGIN + contentWidth / 2;
+  const dateWidth = contentWidth - 2 * (logoWidth + DATE_GAP);
   const [weekday, monthDay] = fullDate(view.date).split(', ');
   const date = `${weekday}, ${monthDay}`.toUpperCase();
+  ctx.textAlign = 'center';
   ctx.fillStyle = PALETTE.muted;
   setType(ctx, fitType(ctx, look.type.dateLabel, 'SCHEDULE FOR', dateWidth));
-  ctx.fillText('SCHEDULE FOR', dateX + 2, MARGIN + DATE_LABEL_MIDDLE);
+  ctx.fillText('SCHEDULE FOR', middle, MARGIN + DATE_LABEL_MIDDLE);
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, fitType(ctx, look.type.date, date, dateWidth));
-  ctx.fillText(date, dateX, MARGIN + DATE_MIDDLE);
+  ctx.fillText(date, middle, MARGIN + DATE_MIDDLE);
+  ctx.textAlign = 'left';
 
   if (view.updated) drawUpdated(ctx, look, contentWidth);
   if (layout.notes) drawNotes(ctx, layout.notes, look);
