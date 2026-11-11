@@ -135,8 +135,8 @@ function readLook(): Look {
       task: type(text, 'body', 27),
       yardTask: type(text, 'body', 24),
       name: type(text, 'strong', 28, 'name'),
-      personTask: type(text, 'strong', 23),
-      note: type(text, 'body', 24),
+      personTask: type(text, 'body', 23),
+      note: type(text, 'medium', 23),
       dayNote: type(text, 'body', 27),
     },
     radius: { card: corner('card'), chip: corner('chip') },
@@ -192,14 +192,14 @@ const DOT_GAP = 16;
 /** Person Tasks: bulleted lines under the name's line, in the same grey chip. */
 /** From the foot of the name's line to the first task: room under a black line, close under a grey one. */
 const SUBS_PAD_TOP = 8;
-const SUBS_PAD_TOP_GREY = -12;
-const SUBS_PAD_BOTTOM = 14;
+const SUBS_PAD_TOP_GREY = -6;
+const SUBS_PAD_BOTTOM = 12;
 const SUB_LINE = 32;
-const SUB_BULLET = 8;
-const SUB_BULLET_GAP = 14;
+/** A task's bullet: a small grey dot centred under the color dot. */
+const SUB_BULLET = 6;
 /** A Note: a soft yellow strip at the foot of the chip, its text lined up with the name. */
 const NOTE_LINE = 32;
-const NOTE_PAD_Y = 10;
+const NOTE_PAD_Y = 8;
 
 
 /** The Notes for the day: one under the other, ruled apart. */
@@ -546,16 +546,18 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: 
   setType(ctx, look.type.name);
   ctx.fillText(box.name, textX, middle, textWidth);
 
-  // Their Person Tasks: bulleted lines under the name, lined up with it.
-  ctx.fillStyle = PALETTE.ink;
+  // Their Person Tasks: lines starting where the name starts, each with a
+  // small grey bullet centred under the color dot.
   setType(ctx, look.type.personTask);
   box.subLines.forEach((line, index) => {
     const lineMiddle = y + box.subsTop + (index + 0.5) * SUB_LINE;
     if (line.first) {
+      ctx.fillStyle = PALETTE.muted;
       ctx.beginPath();
-      ctx.arc(textX - SUB_BULLET_GAP - SUB_BULLET / 2, lineMiddle, SUB_BULLET / 2, 0, 2 * Math.PI);
+      ctx.arc(x + NAME_PAD_X + DOT / 2, lineMiddle, SUB_BULLET / 2, 0, 2 * Math.PI);
       ctx.fill();
     }
+    ctx.fillStyle = PALETTE.ink;
     ctx.fillText(line.text, textX, lineMiddle + 1, textWidth);
   });
 
