@@ -11,6 +11,7 @@ import {
 import type { CrewDelivery } from '../send';
 import { openDate, type Opened, type ScheduleStore } from '../storage';
 import { ChangeDate } from './ChangeDate';
+import { PreviewPicture } from './PreviewPicture';
 import { nextOpenJobs, type OpenJobs, type OpenJobsEvent } from './openJobs';
 import { SettingsLink } from './SettingsLink';
 import { ScheduleScreen } from './ScheduleScreen';
@@ -145,6 +146,7 @@ export function App({
       toolbarButtons={
         <>
           <ChangeDate date={schedule.date} onChangeDate={changeDate} />
+          <PreviewPicture roster={roster} schedule={schedule} />
           <SendButton send={send} />
         </>
       }
