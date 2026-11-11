@@ -376,6 +376,7 @@
 .dot-orange { background: var(--dot-orange); }
 .dot-yellow { background: var(--dot-yellow); }
 .dot-red { background: var(--dot-red); }
+.dot-gunmetal { background: var(--dot-gunmetal); }
 
 .name-head {
   display: flex;
