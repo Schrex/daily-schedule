@@ -36,7 +36,12 @@ export function TasksCell({ jobLabel, tasks, canEdit, onCommit }: TasksCellProps
         aria-label={`Tasks for ${jobLabel}. Click to type.`}
         onClick={() => setDraft(tasksText(tasks))}
       >
-        {tasks.length > 0 ? lines : <span className="tasks-empty">Click here to type tasks</span>}
+        {tasks.length > 0 ? lines : (
+          <span className="tasks-empty">
+            <span className="on-wide">Click here to type tasks</span>
+            <span className="on-narrow">Tap to type tasks</span>
+          </span>
+        )}
       </button>
     );
   }

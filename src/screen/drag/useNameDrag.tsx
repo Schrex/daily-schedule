@@ -25,7 +25,8 @@ import './drag.css';
 /**
  * Dragging a Crew Member's name with the mouse, built on pointer events (not
  * the browser's own drag and drop, which gives no say over what is drawn under
- * the pointer). It knows names and destinations only by the marks put on them
+ * the pointer). A finger never drags a name: on a touch screen a finger that
+ * moves is scrolling the page, and names are moved by tapping. It knows names and destinations only by the marks put on them
  * (`nameProps`, `dropProps`) and applies no schedule rule: on a drop it reports
  * who was let go over which destination, and that is all.
  *
@@ -205,6 +206,8 @@ export function useNameDrag({
 
   const onPointerDown = (crewMemberId: string, event: ReactPointerEvent<HTMLElement>) => {
     if (!enabled || event.button !== 0 || !event.isPrimary || drag.current.kind !== 'idle') return;
+    // A finger scrolls; it does not pick names up.
+    if (event.pointerType === 'touch') return;
 
     const source = event.currentTarget;
     const pointerId = event.pointerId;

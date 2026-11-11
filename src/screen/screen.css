@@ -1,31 +1,62 @@
-/* The Scheduler's screen: every Job and Standing Row a block of its own, its
-   Crew Members one to a line under it as on the sheet he knows, in large text. Type, spacing, corners, shadows, the page, the
-   buttons and the Crew Member colors come from the shared look (src/look.css);
-   colors are the palette in src/palette.ts, handed over as custom properties.
-   Sizes are in rem off one root size so the whole screen can be scaled in one
-   place. */
+/* The Scheduler's screen: the sheet the crew gets, made to be worked on. The
+   date on top, then one stack of blocks, one for each Job and Standing Row:
+   where on the left (the Job and its Tasks), who on the right (one name to a
+   line, all the same width). It is the same view on a computer and on a phone,
+   and the picture sent to the crew (src/send/crewPicture.ts) is that view
+   again. Type, spacing, corners, shadows, the page, the buttons and the Crew
+   Member colors come from the shared look (src/look.css); colors are the
+   palette in src/palette.ts, handed over as custom properties. Sizes are in
+   rem off one root size so the whole screen can be scaled in one place. */
 
 @import '../look.css';
 
 :root {
-  /* The one knob for "bigger / smaller". Never below 22px; on a window larger
-     than 1920 x 1080 the whole screen grows with it instead of leaving the
-     same small schedule in a corner of a big monitor. */
-  font-size: clamp(22px, min(1.146vw, 2.037vh), 48px);
+  /* The one knob for "bigger / smaller" (see the look). */
+  font-size: var(--size-screen);
 }
 
 /* --- One screen ----------------------------------------------------------
    The screen is exactly the window: the toolbar on top, the Send bar at the
-   bottom, and between them the blocks (which scroll by themselves when there
-   are too many) beside the Not Placed list. Nothing he needs ever scrolls away. */
+   bottom, and between them the stack of blocks (which scrolls by itself) and
+   the Not Placed list. Nothing he needs ever scrolls away.
+
+   The schedule is one column, as wide as reads well and no wider, with the
+   Not Placed list beside it; on a window wider than the two, they sit in the
+   middle of it, under a toolbar and over a Send bar of the same width. */
 
 .screen {
-  --gutter: var(--space-4);
+  /* Who: the width of the column of names, the same in every block. */
+  --names-width: 16rem;
+  /* Where: the most room the Job and its Tasks are given beside the names. */
+  --where-width: 20rem;
+  --not-placed-width: calc(var(--names-width) + 2 * var(--space-4));
+  --page-width: calc(
+    var(--where-width) + var(--names-width) + 3 * var(--space-4) + var(--not-placed-width) +
+      var(--space-5)
+  );
+  --gutter: max(var(--space-4), calc((100vw - var(--page-width)) / 2));
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   height: 100vh;
+  height: 100dvh; /* on a phone: what is left of the window between the browser's own bars */
   padding: var(--space-3) var(--gutter) 0;
+}
+
+/* Words for a wide window and a mouse, and shorter ones for a phone or a
+   finger: one of the two is shown. */
+.on-narrow {
+  display: none;
+}
+
+@media (pointer: coarse), (max-width: 700px) {
+  .on-wide {
+    display: none;
+  }
+
+  .on-narrow {
+    display: inline;
+  }
 }
 
 /* --- The toolbar: the date, Undo, Change date, and under them the hint ---- */
@@ -49,14 +80,14 @@
 
 .toolbar-button {
   flex: 0 0 auto;
-  min-height: 2.7rem;
+  min-height: max(2.7rem, var(--touch-target));
   padding: var(--space-1) var(--space-5);
   font-size: 1.35rem;
 }
 
 /* A button that is its icon alone: square, the same height as its neighbours. */
 .toolbar-button-icon-only {
-  min-width: 2.7rem;
+  min-width: max(2.7rem, var(--touch-target));
   padding: var(--space-1);
 }
 
@@ -73,7 +104,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  min-height: 3rem;
+  min-height: max(3rem, calc(var(--touch-target) + 2 * var(--space-1) + 2px));
   padding: var(--space-1) var(--space-4);
   border: var(--hairline);
   border-radius: var(--radius-control);
@@ -129,14 +160,14 @@
   color: var(--ink);
 }
 
-/* --- The blocks and the Not Placed list, side by side ---------------------- */
+/* --- The stack and the Not Placed list, side by side ----------------------- */
 
 .layout {
   flex: 1 1 auto;
-  min-height: 0; /* lets the blocks scroll inside instead of stretching the screen */
+  min-height: 0; /* lets the stack scroll inside instead of stretching the screen */
   display: flex;
   align-items: flex-start;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 /* The scrolling area reaches a little past the blocks on every side, so the
@@ -144,30 +175,32 @@
 .schedule-scroll {
   --overhang: var(--space-2);
   flex: 1 1 auto;
+  min-width: 0;
   max-height: calc(100% + 2 * var(--overhang));
   margin: calc(-1 * var(--overhang));
   padding: var(--overhang);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-/* --- The schedule: a block for each Job and Standing Row -------------------
-   As many blocks side by side as fit, all the same width; a row of blocks is
-   as tall as its tallest. What sets the hierarchy inside a block is size and
-   place: the Job on top and largest, its Tasks under it in plain text, then
-   the names, each a cell of its color and all exactly alike. */
+/* --- The schedule: one stack, a block for each Job and Standing Row --------
+   A block is the sheet the crew knows. What sets the hierarchy inside it is
+   size and place: the Job at the top left and largest, its Tasks under it in
+   plain text, and to the right the names, each a cell of its color and all
+   exactly alike, in one column that runs down the whole stack. */
 
-.board {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14.4rem, 1fr));
+.stack {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
 }
 
 .block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-  padding: var(--space-3);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--names-width));
+  align-items: start;
+  column-gap: var(--space-4);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
   border: var(--frame);
   border-radius: var(--radius-card);
   background: var(--paper);
@@ -180,13 +213,25 @@
   background: var(--standing);
 }
 
+/* Where: the Job, then its Tasks. The Job's first line sits level with the
+   first name beside it. */
+.where {
+  --name-height: 2.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 /* The Job, and after it how many are on it. Where the two do not fit on one
    line, the count goes under: the Job is never broken to make room for it. */
 .block-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
+  align-content: center;
   column-gap: var(--space-3);
+  min-height: var(--name-height);
 }
 
 .job {
@@ -216,12 +261,13 @@
   overflow-wrap: anywhere;
 }
 
-/* Nobody on it yet: an empty place the size of a name, waiting for one. */
+/* Nobody on it yet: an empty place the size of a name, in the column of
+   names, waiting for one. */
 .block-empty {
   display: flex;
   align-items: center;
   min-height: 2.2rem;
-  margin: var(--space-1) 0 0;
+  margin: 0;
   padding: var(--space-1) var(--space-3);
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius-chip);
@@ -235,7 +281,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1); /* close together: one crew, one group */
-  margin: var(--space-1) 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -265,30 +311,20 @@
   transition: box-shadow var(--ease);
 }
 
-/* A Foreman: a star at the end of the name, in the name's own ink. (Drawn
-   before the text and ordered after it: the layer after a name belongs to the
-   shadow it casts while it is off the page.) */
-.name-foreman::before {
-  content: '';
-  order: 1;
-  flex: 0 0 auto;
-  width: 0.85em;
-  height: 0.85em;
-  margin-left: auto;
-  background: currentColor;
-  clip-path: var(--shape-star);
-}
-
 /* The fine edge of a name, and the ring under the pointer. Kept weak
    (`:where`) so the marks a drag puts on a name always win over them. */
 :where(.name) {
   box-shadow: inset 0 0 0 1px var(--name-border);
 }
 
-:where(.name):hover {
-  box-shadow:
-    inset 0 0 0 1px var(--name-border),
-    0 0 0 3px var(--ink);
+/* (Only where there is a pointer to be under: after a tap, a phone goes on
+   saying the finger is still there.) */
+@media (hover: hover) {
+  :where(.name):hover {
+    box-shadow:
+      inset 0 0 0 1px var(--name-border),
+      0 0 0 3px var(--ink);
+  }
 }
 
 .name:focus-visible {
@@ -308,12 +344,14 @@
   cursor: pointer;
 }
 
-.moving .destination:hover {
-  background: var(--target);
-}
+@media (hover: hover) {
+  .moving .destination:hover {
+    background: var(--target);
+  }
 
-.moving .name:not(.name-selected):hover {
-  box-shadow: inset 0 0 0 1px var(--name-border);
+  .moving .name:not(.name-selected):hover {
+    box-shadow: inset 0 0 0 1px var(--name-border);
+  }
 }
 
 /* A Note hangs under its name, in one red-tinted piece with it, so it cannot
@@ -332,12 +370,14 @@
   overflow-wrap: anywhere;
 }
 
-/* --- Not Placed: always in sight; a long list scrolls inside its own box --- */
+/* --- Not Placed: always in sight; a long list scrolls inside its own box ---
+   Beside the stack, its names the same width as the names in the blocks. */
 
 .not-placed {
-  flex: 0 0 13rem;
+  flex: 0 0 var(--not-placed-width);
   max-height: 100%;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--alert-line);
   border-radius: var(--radius-card);
   background: var(--alert-wash);
@@ -375,7 +415,7 @@
 /* --- Buttons that do something other than move a name -------------------- */
 
 .action {
-  min-height: 2.4rem;
+  min-height: max(2.4rem, var(--touch-target));
   padding: var(--space-1) var(--space-4);
   font-size: 1.1rem;
 }
@@ -383,9 +423,9 @@
 /* --- Typing Tasks -------------------------------------------------------- */
 
 /* A Job's Tasks are the thing to click: a button the whole width of the
-   block, reaching a little past the text on each side so the text itself
-   stays in line with the Job above and the names below. The Tasks shown while
-   a name is being moved, and the field, keep that same line. */
+   block's left side, reaching a little past the text on each side so the text
+   itself stays in line with the Job above. The Tasks shown while a name is
+   being moved, and the field, keep that same line. */
 .tasks-open,
 .tasks-shown,
 .tasks-editing {
@@ -415,9 +455,11 @@
     box-shadow var(--ease);
 }
 
-.tasks-open:hover {
-  background: var(--wash);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+@media (hover: hover) {
+  .tasks-open:hover {
+    background: var(--wash);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
 }
 
 .tasks-open:focus-visible {
@@ -441,7 +483,7 @@
   box-shadow: 0 0 0 4px var(--accent-wash);
   color: var(--ink);
   font: inherit;
-  font-size: 1.15rem;
+  font-size: max(1.15rem, 16px); /* a phone zooms in on a field with smaller text */
   line-height: 1.4;
   resize: vertical;
 }
@@ -475,7 +517,9 @@
 }
 
 .note-input {
+  flex: 1 1 auto;
   width: 16rem;
+  min-width: 0;
   min-height: 2.4rem;
   padding: var(--space-1) var(--space-3);
   border: 2px solid var(--alert);
@@ -484,7 +528,7 @@
   background: var(--paper);
   color: var(--alert);
   font: inherit;
-  font-size: 1.15rem;
+  font-size: max(1.15rem, 16px);
   font-weight: var(--weight-strong);
 }
 
@@ -495,4 +539,189 @@
 .note-input::placeholder {
   color: var(--muted);
   font-weight: var(--weight-body);
+}
+
+/* --- A window too narrow for the list beside the stack: a tablet, a phone ---
+   The same view, filling the width as the picture does. The Not Placed list
+   goes above the stack, where it stays while the stack scrolls under it: a
+   strip, its names side by side, and still the place to click or drop on. */
+
+@media (max-width: 1079px) {
+  .screen {
+    /* Who gets a little under half of a block, as on the picture. */
+    --names-width: min(16rem, 47%);
+  }
+
+  .layout {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .schedule-scroll {
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .not-placed {
+    order: -1;
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-3);
+    max-height: 38%;
+    padding: var(--space-2) var(--space-3) var(--space-3);
+  }
+
+  .not-placed h2 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  .not-placed .names {
+    flex: 1 0 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(11.25rem, 100%), 1fr));
+    gap: var(--space-2);
+  }
+
+  .not-placed:has(.not-placed-empty) {
+    padding-bottom: var(--space-2);
+  }
+
+  /* Typing a Note needs more than the hint's one line here. The hint keeps
+     its height, so nothing below jumps, and the field and its buttons open
+     over what is under it for as long as the Note is typed. */
+  .move-hint-note {
+    position: relative;
+    align-self: stretch;
+  }
+
+  .move-hint-note .note-editor {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    left: -1px;
+    z-index: 5;
+    width: auto;
+    padding: var(--space-2) var(--space-4) var(--space-3);
+    border: 1px solid var(--alert-line);
+    border-radius: var(--radius-control);
+    background: var(--alert-wash);
+    box-shadow: var(--elevation-3);
+  }
+}
+
+/* --- A phone ---------------------------------------------------------------
+   The date and the buttons each get a line; everything pressed keeps the
+   height of a fingertip; the Send bar is the button and, under it, what
+   happened. */
+
+@media (max-width: 700px) {
+  .screen {
+    --gutter: var(--space-3);
+    gap: var(--space-2);
+    padding-top: var(--space-2);
+  }
+
+  .toolbar {
+    gap: var(--space-2);
+  }
+
+  .date-heading {
+    flex-basis: 100%;
+    font-size: 1.65rem;
+  }
+
+  .toolbar-button {
+    flex: 1 1 auto;
+    padding: var(--space-1) var(--space-3);
+  }
+
+  .toolbar-button-icon-only {
+    flex: 0 0 auto;
+  }
+
+  .move-hint {
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+  }
+
+  .move-hint-active strong {
+    font-size: 1.15rem;
+  }
+
+  .layout,
+  .stack {
+    gap: var(--space-2);
+  }
+
+  .block {
+    column-gap: var(--space-3);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  }
+
+  /* A name a finger can land on. */
+  .where {
+    --name-height: 2.5rem;
+  }
+
+  .name,
+  .block-empty {
+    min-height: 2.5rem;
+  }
+
+  .name {
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .note {
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .tasks-open,
+  .tasks-shown {
+    min-height: 2.5rem;
+  }
+
+  .note-editor,
+  .note-editor-label {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .move-hint-note .note-editor {
+    padding: var(--space-2) var(--space-3) var(--space-3);
+  }
+
+  .note-editor-label {
+    flex: 1 1 100%;
+  }
+}
+
+/* --- A window too short to keep both bars in sight (a phone on its side) ---
+   The page scrolls as a whole; only the Send bar stays. */
+
+@media (max-height: 480px) {
+  .screen {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .layout {
+    flex: 1 0 auto;
+  }
+
+  .schedule-scroll {
+    flex: 0 0 auto;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .not-placed {
+    max-height: none;
+  }
 }
