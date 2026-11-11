@@ -242,11 +242,14 @@ const SUB_BULLET = 6;
 const NOTE_LINE = 30;
 const NOTE_PAD_Y = 8;
 
-/** The Notes for the day: each note on a soft ground of its own, one under the other. */
+/** The Notes: a heading on the page, then the notes one under the other in a white card. */
 const DAY_NOTE_LINE = 34;
-const DAY_NOTE_GAP = 10;
-const DAY_NOTE_PAD_X = 20;
-const DAY_NOTE_PAD_Y = 10;
+/** The heading "NOTES", on the page above the card, and the space under it. */
+const NOTES_HEADING = 40;
+const NOTES_HEADING_GAP = 8;
+/** Inside the card: the space around the notes, and between two of them (with a hairline). */
+const NOTES_PAD_Y = 14;
+const DAY_NOTE_GAP = 18;
 
 // --- Working out where everything goes --------------------------------------
 
@@ -485,15 +488,15 @@ function layOutNotes(
 ): NotesLayout | null {
   if (dayNotes.length === 0) return null;
   setType(ctx, look.type.dayNote);
-  let y = CARD_PAD + YARD_LINE + PART_GAP;
+  let y = NOTES_HEADING + NOTES_HEADING_GAP + NOTES_PAD_Y;
   const notes = dayNotes.map((note, index) => {
     if (index > 0) y += DAY_NOTE_GAP;
-    const lines = wrap(ctx, note, width - 2 * CARD_PAD - 2 * DAY_NOTE_PAD_X);
+    const lines = wrap(ctx, note, width - 2 * CARD_PAD);
     const laid = { top: y, lines };
-    y += 2 * DAY_NOTE_PAD_Y + lines.length * DAY_NOTE_LINE;
+    y += lines.length * DAY_NOTE_LINE;
     return laid;
   });
-  return { left: 0, top: 0, width, height: y + CARD_PAD, notes };
+  return { left: 0, top: 0, width, height: y + NOTES_PAD_Y, notes };
 }
 
 /** A Task's lines: the first gets the bullet; the rest line up with its text. */
@@ -739,25 +742,29 @@ function drawBulletLine(ctx: CanvasRenderingContext2D, line: BulletLine, x: numb
   ctx.fillText(line.text, x + TEXT_INDENT, middle);
 }
 
-/** The Notes for the day, across the top: a title, then each note on its own soft ground. */
+/**
+ * The Notes, across the top: "NOTES" on the page, as the board heads its
+ * sections, then the notes in a white card, one under the other, a hairline
+ * between two of them. No bullets.
+ */
 function drawNotes(ctx: CanvasRenderingContext2D, layout: NotesLayout, look: Look) {
-  const inner = layout.left + CARD_PAD;
-  const innerWidth = layout.width - 2 * CARD_PAD;
-  drawCardGround(ctx, layout, look);
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, look.type.yard);
-  ctx.fillText('NOTES', inner, layout.top + CARD_PAD + YARD_LINE / 2 + 2);
+  ctx.fillText('NOTES', layout.left + 2, layout.top + NOTES_HEADING / 2 + 2);
 
-  for (const note of layout.notes) {
+  const cardTop = layout.top + NOTES_HEADING + NOTES_HEADING_GAP;
+  drawCardGround(ctx, { left: layout.left, top: cardTop, width: layout.width, height: layout.height - (cardTop - layout.top) }, look);
+
+  const inner = layout.left + CARD_PAD;
+  const innerWidth = layout.width - 2 * CARD_PAD;
+  layout.notes.forEach((note, index) => {
     const noteTop = layout.top + note.top;
-    ctx.fillStyle = PALETTE.canvas;
-    ctx.beginPath();
-    ctx.roundRect(inner, noteTop, innerWidth, 2 * DAY_NOTE_PAD_Y + note.lines.length * DAY_NOTE_LINE, look.radius.chip);
-    ctx.fill();
+    if (index > 0) {
+      ctx.fillStyle = PALETTE.line;
+      ctx.fillRect(inner, noteTop - DAY_NOTE_GAP / 2 - CARD_EDGE / 2, innerWidth, CARD_EDGE);
+    }
     ctx.fillStyle = PALETTE.ink;
     setType(ctx, look.type.dayNote);
-    note.lines.forEach((line, at) =>
-      ctx.fillText(line, inner + DAY_NOTE_PAD_X, noteTop + DAY_NOTE_PAD_Y + (at + 0.5) * DAY_NOTE_LINE + 1),
-    );
-  }
+    note.lines.forEach((line, at) => ctx.fillText(line, inner, noteTop + (at + 0.5) * DAY_NOTE_LINE + 1));
+  });
 }
