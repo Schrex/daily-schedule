@@ -746,7 +746,7 @@ function drawNotes(ctx: CanvasRenderingContext2D, layout: NotesLayout, look: Loo
   drawCardGround(ctx, layout, look);
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, look.type.yard);
-  ctx.fillText('NOTES FOR THE DAY', inner, layout.top + CARD_PAD + YARD_LINE / 2 + 2);
+  ctx.fillText('NOTES', inner, layout.top + CARD_PAD + YARD_LINE / 2 + 2);
 
   for (const note of layout.notes) {
     const noteTop = layout.top + note.top;
