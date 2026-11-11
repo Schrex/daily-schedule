@@ -497,21 +497,11 @@ const destinationKey = (destination: Destination): string =>
 // Send
 // ---------------------------------------------------------------------------
 
-/** Whether the Daily Schedule may be sent, and who stands in the way. */
-export interface SendCheck {
-  /** True only when nobody is Not Placed. */
-  allowed: boolean;
-  /** The Crew Members who are Not Placed, in roster order. */
-  notPlaced: CrewMember[];
-}
-
-/** Send is refused while anyone is Not Placed. */
-export function sendCheck(roster: Roster, schedule: DailySchedule): SendCheck {
-  const { notPlaced } = scheduleView(roster, schedule);
-  return { allowed: notPlaced.length === 0, notPlaced };
-}
-
-/** What the crew is sent: the rows of the picture. No Not Placed list, no controls. */
+/**
+ * What the crew is sent: the rows of the picture. No Not Placed list, no
+ * controls. A Daily Schedule can be sent at any time: anyone still Not Placed
+ * is simply not in it.
+ */
 export interface CrewView {
   date: ScheduleDate;
   /** True when the picture replaces a different one sent earlier for this date. */

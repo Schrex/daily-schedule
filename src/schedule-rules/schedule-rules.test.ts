@@ -18,7 +18,6 @@ import {
   crewView,
   lastSentAt,
   markSent,
-  sendCheck,
   addCrewMember,
   addJob,
   changeCrewMember,
@@ -514,16 +513,12 @@ const everyonePlaced = (overrides: Partial<DailySchedule> = {}): DailySchedule =
     ...overrides,
   });
 
-describe('whether Send is allowed', () => {
-  it('is refused while anyone is Not Placed, naming them in roster order', () => {
-    const check = sendCheck(roster, schedule({ placements: [placement('bob', onJob('tower'), 1)] }));
+describe('sending with Crew Members Not Placed', () => {
+  it('sends the places that have someone, leaving out whoever is Not Placed', () => {
+    const view = crewView(roster, schedule({ placements: [placement('bob', onJob('tower'), 1)] }));
 
-    expect(check.allowed).toBe(false);
-    expect(check.notPlaced.map((crewMember) => crewMember.name)).toEqual(['ann', 'fay', 'cal']);
-  });
-
-  it('is allowed once every Crew Member has a Placement, Off Work included', () => {
-    expect(sendCheck(roster, everyonePlaced())).toEqual({ allowed: true, notPlaced: [] });
+    expect(view.rows.map((row) => row.label)).toEqual(['J100 Tower']);
+    expect(view.rows.flatMap((row) => row.who.map((placed) => placed.crewMember.id))).toEqual(['bob']);
   });
 });
 

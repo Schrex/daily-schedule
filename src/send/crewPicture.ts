@@ -171,6 +171,8 @@ const PART_GAP = 14;
 /** The head: the place's name, with the Job number and count at the right. */
 const JOB_LINE = 52;
 const YARD_LINE = 44;
+/** The space between a Job's name and its number. */
+const NUMBER_GAP = 14;
 
 /** The Tasks: plain lines, then a rule. */
 const TASK_LINE = 38;
@@ -220,7 +222,9 @@ interface CardLayout {
   top: number;
   height: number;
   titleLines: string[];
-  /** The Job number and count at the right: "J2601 · 5", or "5". */
+  /** The Job number, drawn small after the name, if it has one. */
+  number?: string;
+  /** How many are on it, alone at the right. */
   countText: string;
   /** Each line of the Tasks (the first of each Task gets the bullet); empty when there are none. */
   taskLines: BulletLine[];
@@ -262,12 +266,14 @@ function layOut(
   const cards = view.rows.map((row): CardLayout => {
     const isJob = row.destination.kind === 'job';
     const { name, number } = roster ? cardTitle(roster, row) : { name: row.label, number: undefined };
-    const countText = number ? `${number} · ${row.who.length}` : `${row.who.length}`;
+    const countText = `${row.who.length}`;
     setType(ctx, look.type.count);
     const countWidth = Math.ceil(ctx.measureText(countText).width);
+    // Room for the Job number after the name, so it never runs into the count.
+    const numberWidth = number ? Math.ceil(ctx.measureText(number).width) + NUMBER_GAP : 0;
 
     setType(ctx, isJob ? look.type.job : look.type.yard);
-    const titleLines = wrap(ctx, name.toUpperCase(), CARD_INNER_WIDTH - countWidth - 16);
+    const titleLines = wrap(ctx, name.toUpperCase(), CARD_INNER_WIDTH - countWidth - numberWidth - 16);
     const headHeight = titleLines.length * (isJob ? JOB_LINE : YARD_LINE);
 
     setType(ctx, isJob ? look.type.task : look.type.yardTask);
@@ -283,7 +289,17 @@ function layOut(
     const { names, height: namesHeight } = stackNames(ctx, row, look);
 
     const height = namesTop + namesHeight + CARD_PAD;
-    const card: CardLayout = { isJob, top, height, titleLines, countText, taskLines, namesTop, names };
+    const card: CardLayout = {
+      isJob,
+      top,
+      height,
+      titleLines,
+      ...(number ? { number } : {}),
+      countText,
+      taskLines,
+      namesTop,
+      names,
+    };
     top += height + CARD_GAP;
     return card;
   });
@@ -451,7 +467,7 @@ function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
   const { top, isJob } = card;
   drawCardGround(ctx, top, card.height, look);
 
-  // The name in capitals, and the Job number and count at the right, level with its first line.
+  // The name in capitals with the Job number small after it, and the count at the right.
   const headTop = top + CARD_PAD;
   const line = isJob ? JOB_LINE : YARD_LINE;
   ctx.fillStyle = PALETTE.ink;
@@ -459,8 +475,14 @@ function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
   card.titleLines.forEach((title, index) =>
     ctx.fillText(title, CARD_INNER_X, headTop + (index + 0.5) * line + 2, CARD_INNER_WIDTH),
   );
+  const lastTitle = card.titleLines.at(-1) ?? '';
+  const titleEnd = CARD_INNER_X + ctx.measureText(lastTitle).width;
   ctx.fillStyle = PALETTE.muted;
   setType(ctx, look.type.count);
+  if (card.number) {
+    const lastMiddle = headTop + (card.titleLines.length - 0.5) * line + 4;
+    ctx.fillText(card.number, titleEnd + NUMBER_GAP, lastMiddle);
+  }
   ctx.textAlign = 'right';
   ctx.fillText(card.countText, CARD_INNER_X + CARD_INNER_WIDTH, headTop + line / 2 + 4);
   ctx.textAlign = 'left';

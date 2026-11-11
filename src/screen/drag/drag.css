@@ -75,8 +75,4 @@ body[data-name-dragging] * {
 }
 
 /* The Job, Standing Row or Not Placed list the name would land on if let go
-   now: filled, with a heavy edge all round, so it cannot be missed. */
-[data-drop][data-drop-over] {
-  background: var(--select-wash);
-  box-shadow: inset 0 0 0 3px var(--select);
-}
+   now: it says "Move Mike here" (screen.css), on its faint tint. */
