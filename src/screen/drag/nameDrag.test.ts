@@ -6,6 +6,7 @@ import {
   moveTo,
   press,
   release,
+  spotAt,
 } from './nameDrag';
 
 const at = (x: number, y: number) => ({ x, y });
@@ -26,6 +27,7 @@ describe('dragging a name', () => {
       kind: 'dragging',
       crewMemberId: 'bob',
       over: null,
+      before: null,
     });
     expect(moveTo(pressed, at(104, 105), null).kind).toBe('dragging');
   });
@@ -37,6 +39,7 @@ describe('dragging a name', () => {
       kind: 'dragging',
       crewMemberId: 'bob',
       over: 'job:2',
+      before: null,
     });
   });
 
@@ -45,7 +48,7 @@ describe('dragging a name', () => {
     drag = moveTo(drag, at(200, 200), 'job:1');
     drag = moveTo(drag, at(400, 300), 'not-placed');
 
-    expect(release(drag)).toEqual({ crewMemberId: 'bob', over: 'not-placed' });
+    expect(release(drag)).toEqual({ crewMemberId: 'bob', over: 'not-placed', before: null });
   });
 
   it('drops nothing when released outside any destination', () => {
@@ -63,5 +66,55 @@ describe('dragging a name', () => {
     expect(cancelled).toBe(idle);
     expect(moveTo(cancelled, at(300, 300), 'job:2')).toBe(idle);
     expect(release(cancelled)).toBeNull();
+  });
+});
+
+describe('the spot in a row a name is held at', () => {
+  it('drops the Crew Member just before the name the pointer was let go above', () => {
+    let drag = press('bob', at(100, 100));
+    drag = moveTo(drag, at(200, 200), 'job:1', null);
+    drag = moveTo(drag, at(200, 180), 'job:1', 'ann');
+
+    expect(drag).toEqual({ kind: 'dragging', crewMemberId: 'bob', over: 'job:1', before: 'ann' });
+    expect(release(drag)).toEqual({ crewMemberId: 'bob', over: 'job:1', before: 'ann' });
+  });
+
+  it('is the same drag, not a new one, while neither the destination nor the spot changes', () => {
+    const drag = moveTo(press('bob', at(100, 100)), at(200, 200), 'job:1', 'ann');
+
+    expect(moveTo(drag, at(210, 202), 'job:1', 'ann')).toBe(drag);
+  });
+
+  // Three names one under another, 30px tall: Ann 0-30, Bob 30-60, Cal 60-90.
+  const names = [
+    { crewMemberId: 'ann', top: 0, bottom: 30 },
+    { crewMemberId: 'bob', top: 30, bottom: 60 },
+    { crewMemberId: 'cal', top: 60, bottom: 90 },
+  ];
+
+  it('is just before the first name whose middle is below the pointer', () => {
+    expect(spotAt(-20, names, 'zed')).toBe('ann');
+    expect(spotAt(14, names, 'zed')).toBe('ann');
+    expect(spotAt(16, names, 'zed')).toBe('bob');
+    expect(spotAt(74, names, 'zed')).toBe('cal');
+  });
+
+  it('is the end of the row below the middle of the last name', () => {
+    expect(spotAt(76, names, 'zed')).toBeNull();
+    expect(spotAt(500, names, 'zed')).toBeNull();
+    expect(spotAt(10, [], 'zed')).toBeNull();
+  });
+
+  it("ignores the dragged name's own chip", () => {
+    expect(spotAt(40, names, 'bob')).toBe('cal');
+    expect(spotAt(80, names, 'cal')).toBeNull();
+  });
+
+  it('stays put when the names make room under a pointer that has not moved', () => {
+    // Held at y=40 between Ann and Cal: before Cal. Bob (the dragged name) is
+    // then drawn there and pushes Cal down; the spot is still before Cal.
+    expect(spotAt(40, [names[0]!, { crewMemberId: 'cal', top: 30, bottom: 60 }], 'bob')).toBe('cal');
+    const madeRoom = [names[0]!, { crewMemberId: 'bob', top: 30, bottom: 60 }, { crewMemberId: 'cal', top: 60, bottom: 90 }];
+    expect(spotAt(40, madeRoom, 'bob')).toBe('cal');
   });
 });

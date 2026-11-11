@@ -81,6 +81,32 @@ describe('the schedule drawn while a name is dragged', () => {
     );
   });
 
+  it('shows a name held at a spot in its own row there, the others making room', () => {
+    const toEnd = viewWhileDragging(roster, schedule, { crewMemberId: 'ann', over: 'job:tower', before: null });
+    expect(whoIsOn(toEnd, 'job:tower')).toEqual(['bob', 'ann']);
+
+    const toTop = viewWhileDragging(roster, schedule, { crewMemberId: 'bob', over: 'job:tower', before: 'ann' });
+    expect(whoIsOn(toTop, 'job:tower')).toEqual(['bob', 'ann']);
+  });
+
+  it('shows a name held at a spot in another row there, but never above a Foreman on a Job', () => {
+    const onShop = viewWhileDragging(roster, schedule, {
+      crewMemberId: 'ann',
+      over: 'standing-row:shop',
+      before: 'cal',
+    });
+    expect(whoIsOn(onShop, 'standing-row:shop')).toEqual(['ann', 'cal']);
+
+    const led = viewWhileDragging(roster, schedule, { crewMemberId: 'fay', over: 'job:tower', before: null });
+    const aboveForeman = viewWhileDragging(roster, { ...schedule, placements: [...schedule.placements, { crewMemberId: 'fay', destination: onJob('tower'), order: 4 }] }, {
+      crewMemberId: 'cal',
+      over: 'job:tower',
+      before: 'fay',
+    });
+    expect(whoIsOn(led, 'job:tower')).toEqual(['fay', 'ann', 'bob']);
+    expect(whoIsOn(aboveForeman, 'job:tower')).toEqual(['fay', 'cal', 'ann', 'bob']);
+  });
+
   it('leaves a name held over the row it is already on where it is, Note and all', () => {
     const shown = viewWhileDragging(roster, schedule, { crewMemberId: 'ann', over: 'job:tower' });
 

@@ -152,27 +152,10 @@ export interface ScheduleView {
  */
 export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleView {
   const sentRows = lastSend(schedule)?.sent?.rows ?? [];
+  const crewMembersById = crewMembersOf(roster, schedule);
 
-  const crewMembersById = new Map(
-    [...sentRows.flatMap((row) => row.who.map((placed) => placed.crewMember)), ...roster.crewMembers].map(
-      (crewMember) => [crewMember.id, crewMember],
-    ),
-  );
-
-  // Foreman first applies within a Job only; a Standing Row is plain placement order.
   const whoIsOn = (destination: Destination): PlacedCrewMember[] =>
-    schedule.placements
-      .filter((placement) => destinationKey(placement.destination) === destinationKey(destination))
-      .flatMap((placement) => {
-        const crewMember = crewMembersById.get(placement.crewMemberId);
-        return crewMember ? [{ placement, crewMember }] : [];
-      })
-      .sort(
-        (a, b) =>
-          (destination.kind === 'job'
-            ? Number(b.crewMember.foreman) - Number(a.crewMember.foreman)
-            : 0) || a.placement.order - b.placement.order,
-      )
+    listedOn(crewMembersById, schedule.placements, destination)
       .map(({ placement, crewMember }) => ({
         crewMember,
         ...(placement.note ? { note: placement.note } : {}),
@@ -211,6 +194,42 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
   const notPlaced = roster.crewMembers.filter((crewMember) => !placed.has(crewMember.id));
 
   return { date: schedule.date, rows, notPlaced, dayNotes: dayNotesOf(schedule) };
+}
+
+/**
+ * Every Crew Member a Placement can name, by id: the roster's, and on a
+ * Daily Schedule that has been sent, those since removed as they were last sent.
+ */
+function crewMembersOf(roster: Roster, schedule: DailySchedule): Map<string, CrewMember> {
+  const sentRows = lastSend(schedule)?.sent?.rows ?? [];
+  return new Map(
+    [...sentRows.flatMap((row) => row.who.map((placed) => placed.crewMember)), ...roster.crewMembers].map(
+      (crewMember) => [crewMember.id, crewMember],
+    ),
+  );
+}
+
+/**
+ * The Placements on one Job or Standing Row in the order they are listed:
+ * on a Job, Foremen first, then placement order; on a Standing Row, plain
+ * placement order. A Placement naming no known Crew Member is left out.
+ */
+function listedOn(
+  crewMembersById: Map<string, CrewMember>,
+  placements: Placement[],
+  destination: Destination,
+): { placement: Placement; crewMember: CrewMember }[] {
+  return placements
+    .filter((placement) => destinationKey(placement.destination) === destinationKey(destination))
+    .flatMap((placement) => {
+      const crewMember = crewMembersById.get(placement.crewMemberId);
+      return crewMember ? [{ placement, crewMember }] : [];
+    })
+    .sort(
+      (a, b) =>
+        (destination.kind === 'job' ? Number(b.crewMember.foreman) - Number(a.crewMember.foreman) : 0) ||
+        a.placement.order - b.placement.order,
+    );
 }
 
 /**
@@ -258,6 +277,62 @@ export function placeCrewMember(
   return {
     ...schedule,
     placements: [...withoutCrewMember(schedule, crewMemberId), placement],
+  };
+}
+
+/**
+ * Puts a Crew Member at a spot in a Job or Standing Row: just before the
+ * Crew Member named by `before`, or at the end of the row when it is null (or
+ * names nobody there). This is a drop at the spot where the name was let go;
+ * a tap still places last (`placeCrewMember`).
+ *
+ * Moving within their own row keeps their Note; coming from elsewhere, the
+ * Placement is new, as with `placeCrewMember`. The whole row is renumbered so
+ * its placement order is the order it is listed in.
+ */
+export function placeCrewMemberAt(
+  roster: Roster,
+  schedule: DailySchedule,
+  crewMemberId: string,
+  destination: Destination,
+  before: string | null,
+): DailySchedule {
+  const key = destinationKey(destination);
+  const crewMembersById = crewMembersOf(roster, schedule);
+  const current = schedule.placements.find((placement) => placement.crewMemberId === crewMemberId);
+  const sameRow = current !== undefined && destinationKey(current.destination) === key;
+
+  const moved: Placement = sameRow
+    ? current
+    : current?.personTasks?.length
+      ? { crewMemberId, destination, order: 0, personTasks: current.personTasks }
+      : { crewMemberId, destination, order: 0 };
+
+  // The row as it is listed now, with the moved Crew Member put in at the spot.
+  const listedNow = listedOn(crewMembersById, schedule.placements, destination).map(({ placement }) => placement);
+  const others = listedNow.filter((placement) => placement.crewMemberId !== crewMemberId);
+  const at = others.findIndex((placement) => placement.crewMemberId === before);
+  const spliced = [...others];
+  spliced.splice(at === -1 ? spliced.length : at, 0, moved);
+
+  // On a Job the Foremen stay first: someone let go among them lands just
+  // below the last one, a Foreman let go among the others just after them.
+  const isForeman = (placement: Placement) =>
+    destination.kind === 'job' && crewMembersById.get(placement.crewMemberId)?.foreman === true;
+  const row = [...spliced.filter(isForeman), ...spliced.filter((placement) => !isForeman(placement))];
+
+  // Let go at the spot they are already in: nothing changes.
+  if (sameRow && listedNow.every((placement, index) => placement === row[index])) return schedule;
+
+  // The row renumbered in the order it is listed; everyone else as they were.
+  return {
+    ...schedule,
+    placements: [
+      ...schedule.placements.filter(
+        (placement) => placement.crewMemberId !== crewMemberId && !listedNow.includes(placement),
+      ),
+      ...row.map((placement, index) => ({ ...placement, order: index + 1 })),
+    ],
   };
 }
 
@@ -471,7 +546,11 @@ export const removeDayNote = (schedule: DailySchedule, index: number): DailySche
 
 /** One change the Scheduler made, as the screen reports it. */
 export type ScheduleEdit =
-  | { kind: 'move'; crewMemberId: string; to: MoveTo }
+  /**
+   * A move. A drop says where in the row it was let go (`before`: just before
+   * that Crew Member, or null for the end); a tap says nothing, and lands last.
+   */
+  | { kind: 'move'; crewMemberId: string; to: MoveTo; before?: string | null }
   | { kind: 'set-tasks'; destination: Destination; text: string }
   | { kind: 'set-note'; crewMemberId: string; text: string }
   | { kind: 'add-person-task'; crewMemberId: string; text: string }
@@ -483,12 +562,15 @@ export type ScheduleEdit =
 
 /**
  * The Daily Schedule after one edit, by the rule for it. Returns the same
- * Daily Schedule when the edit changes nothing.
+ * Daily Schedule when the edit changes nothing. The roster says who is a
+ * Foreman, for a drop at a spot on a Job.
  */
-export function applyEdit(schedule: DailySchedule, edit: ScheduleEdit): DailySchedule {
+export function applyEdit(schedule: DailySchedule, edit: ScheduleEdit, roster: Roster): DailySchedule {
   switch (edit.kind) {
     case 'move':
-      return moveCrewMember(schedule, edit.crewMemberId, edit.to);
+      return edit.before === undefined || edit.to === NOT_PLACED
+        ? moveCrewMember(schedule, edit.crewMemberId, edit.to)
+        : placeCrewMemberAt(roster, schedule, edit.crewMemberId, edit.to, edit.before);
     case 'set-tasks':
       return setTasks(schedule, edit.destination, edit.text);
     case 'set-note':
