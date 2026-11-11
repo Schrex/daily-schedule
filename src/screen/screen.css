@@ -259,20 +259,6 @@
   font-size: 1rem;
 }
 
-/* Room to drop a name on; while one is moving, "Put ... here" fills it. */
-.block-foot {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  min-height: 4rem;
-}
-
-.place-here {
-  min-height: max(3rem, var(--touch-target));
-  border: 0;
-  font-size: 1.0625rem;
-}
-
 /* --- Names: one to a line, all the same width ----------------------------- */
 
 .names {
@@ -335,6 +321,13 @@
 /* While moving, every Job, Standing Row and the Not Placed list is one big target. */
 .moving .destination {
   cursor: pointer;
+}
+
+/* While a name is selected, every card it can go to is ringed in the accent
+   (the card it is on now stays plain). The ring is a shadow, so nothing moves. */
+.block.block-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 @media (hover: hover) {
@@ -715,10 +708,6 @@
 
   .block {
     padding: var(--space-4);
-  }
-
-  .block-foot {
-    min-height: 0;
   }
 
   .note-editor,

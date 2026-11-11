@@ -75,7 +75,7 @@ function blockTitle(roster: Roster, row: ScheduleRow): { over: string; title: st
   return job ? { over: job.jobNumber ?? 'Job', title: job.name } : { over: 'Job', title: row.label };
 }
 
-/** The first name, for the short buttons: "Put Brody here". */
+/** The first name, for the short button: "Take Brody off the board". */
 const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')[0] ?? crewMember.name;
 
 /**
@@ -107,7 +107,8 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * Send), the Not Placed list on the left, and a grid of cards, one for each
  * Job and Standing Row. A card is the Job (its number small over its name),
  * how many are on it, the day's Tasks in a tinted box, and its names, one to
- * a line. While a name is being moved each card offers "Put ... here". The
+ * a line. While a name is being moved, every card they can go to is
+ * highlighted in the accent; clicking or tapping one puts them there. The
  * picture sent to the crew (`crewPicture`) is these same cards, one under
  * the other, without what is only the Scheduler's.
  *
@@ -279,7 +280,9 @@ export function ScheduleScreen({
               return (
                 <section
                   key={row.key}
-                  className={`block block-${destination.kind} destination`}
+                  className={`block block-${destination.kind} destination${
+                    moving && !here ? ' block-target' : ''
+                  }`}
                   aria-label={row.label}
                   data-row={row.key}
                   onClick={moveSelectedTo(destination)}
@@ -313,15 +316,6 @@ export function ScheduleScreen({
                       ))}
                     </ul>
                   )}
-                  {/* Room to drop a name on, and while one is moving, the button that puts them here. */}
-                  <div className="block-foot">
-                    {moving && !here && (
-                      // The click carries on to the card around it: the destination.
-                      <button type="button" className="button button-primary place-here">
-                        Put {firstName(selected)} here
-                      </button>
-                    )}
-                  </div>
                 </section>
               );
             })}
