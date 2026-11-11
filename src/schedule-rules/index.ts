@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 /** The fixed palette. Color carries no meaning in the rules. */
-export const COLORS = ['grey', 'blue', 'orange', 'yellow', 'red'] as const;
+export const COLORS = ['grey', 'blue', 'orange', 'yellow', 'red', 'gunmetal'] as const;
 export type Color = (typeof COLORS)[number];
 
 export interface CrewMember {
