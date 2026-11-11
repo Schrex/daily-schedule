@@ -32,7 +32,8 @@ export function TasksCell({
 
   const lines = tasks.map((task, index) => (
     <span key={index} className="task">
-      {task}
+      <span className="bullet" aria-hidden="true" />
+      <span>{task}</span>
     </span>
   ));
 

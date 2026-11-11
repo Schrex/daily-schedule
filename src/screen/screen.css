@@ -320,9 +320,9 @@
 }
 
 .name-dot {
-  flex: 0 0 0.625rem;
-  width: 0.625rem;
-  height: 0.625rem;
+  flex: 0 0 0.875rem;
+  width: 0.875rem;
+  height: 0.875rem;
   border-radius: 50%;
 }
 
@@ -457,9 +457,23 @@
 }
 
 .task {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   font-size: 0.9375rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+/* A small round bullet before each Task and each Day Note, level with the
+   first line, so a Task too long for its line still reads as one. */
+.bullet {
+  flex: 0 0 0.3125rem;
+  width: 0.3125rem;
+  height: 0.3125rem;
+  margin-top: 0.55em;
+  border-radius: 50%;
+  background: var(--ink-soft);
 }
 
 /* Shop's and Trucking's: smaller. */
@@ -664,15 +678,9 @@
   }
 }
 
-/* "Or Brody can go to another job." and Add note, under the task field. */
+/* Add note, under the task field. */
 .person-panel-foot {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  color: var(--muted);
-  font-size: 0.8125rem;
 }
 
 .person-note-button {
@@ -720,6 +728,9 @@
 }
 
 .day-note-text {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   padding: var(--space-1) 0;
   font-size: 0.9375rem;
   line-height: 1.5;

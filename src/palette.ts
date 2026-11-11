@@ -67,9 +67,9 @@ export const PALETTE = {
 export const CREW_DOTS: Record<Color, string> = {
   grey: '#1a1a1a',
   blue: '#3b7dd8',
-  orange: '#d9742b',
-  yellow: '#8a6a00',
-  red: '#b8322a',
+  orange: '#f26b00',
+  yellow: '#f5b800',
+  red: '#e02020',
 };
 
 /** The fill of a Crew Member's name on the settings page, by their color. */

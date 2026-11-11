@@ -176,12 +176,16 @@ const YARD_LINE = 44;
 const TASK_LINE = 38;
 const YARD_TASK_LINE = 34;
 const TASKS_RULE_GAP = 14;
+/** The small round bullet before each Task and Day Note, and the space after it. */
+const BULLET = 9;
+const BULLET_GAP = 16;
+const TEXT_INDENT = BULLET + BULLET_GAP;
 
 /** Who: one name to a line, every one the width of the card. */
 const NAME_HEIGHT = 70;
 const NAME_GAP = 10;
 const NAME_PAD_X = 20;
-const DOT = 16;
+const DOT = 22;
 const DOT_GAP = 16;
 /** A name with Person Tasks: the name on a shorter line, then one line each. */
 const SUBS_PAD_Y = 12;
@@ -218,18 +222,24 @@ interface CardLayout {
   titleLines: string[];
   /** The Job number and count at the right: "J2601 · 5", or "5". */
   countText: string;
-  /** Each line of the Tasks; empty when there are none. */
-  taskLines: string[];
+  /** Each line of the Tasks (the first of each Task gets the bullet); empty when there are none. */
+  taskLines: BulletLine[];
   /** From the top of the card. */
   namesTop: number;
   names: NameBox[];
+}
+
+/** One line of a Task or Day Note: the first line of it, which has the bullet, or the rest. */
+interface BulletLine {
+  text: string;
+  first: boolean;
 }
 
 interface NotesLayout {
   top: number;
   height: number;
   /** Each note's lines, and its top from the top of the card. */
-  notes: { top: number; lines: string[] }[];
+  notes: { top: number; lines: BulletLine[] }[];
 }
 
 interface Layout {
@@ -261,7 +271,9 @@ function layOut(
     const headHeight = titleLines.length * (isJob ? JOB_LINE : YARD_LINE);
 
     setType(ctx, isJob ? look.type.task : look.type.yardTask);
-    const taskLines = row.tasks.flatMap((task) => wrap(ctx, task, CARD_INNER_WIDTH));
+    const taskLines = row.tasks.flatMap((task) =>
+      wrap(ctx, task, CARD_INNER_WIDTH - TEXT_INDENT).map((text, index) => ({ text, first: index === 0 })),
+    );
     const tasksHeight =
       taskLines.length > 0
         ? taskLines.length * (isJob ? TASK_LINE : YARD_TASK_LINE) + TASKS_RULE_GAP + PART_GAP
@@ -328,7 +340,10 @@ function layOutNotes(
   let y = CARD_PAD + YARD_LINE + PART_GAP;
   const notes = dayNotes.map((note, index) => {
     if (index > 0) y += 2 * DAY_NOTE_GAP;
-    const lines = wrap(ctx, note, CARD_INNER_WIDTH);
+    const lines = wrap(ctx, note, CARD_INNER_WIDTH - TEXT_INDENT).map((text, at) => ({
+      text,
+      first: at === 0,
+    }));
     const laid = { top: y, lines };
     y += lines.length * DAY_NOTE_LINE;
     return laid;
@@ -457,7 +472,7 @@ function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
     ctx.fillStyle = PALETTE.ink;
     setType(ctx, isJob ? look.type.task : look.type.yardTask);
     card.taskLines.forEach((task, index) =>
-      ctx.fillText(task, CARD_INNER_X, tasksTop + (index + 0.5) * taskLine + 1, CARD_INNER_WIDTH),
+      drawBulletLine(ctx, task, tasksTop + (index + 0.5) * taskLine + 1),
     );
     drawRule(ctx, tasksTop + card.taskLines.length * taskLine + TASKS_RULE_GAP - CARD_EDGE);
   }
@@ -512,6 +527,18 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: 
   );
 }
 
+/** One line of a Task or Day Note, centred on `middle`: a bullet before the first line of each. */
+function drawBulletLine(ctx: CanvasRenderingContext2D, line: BulletLine, middle: number) {
+  if (line.first) {
+    ctx.fillStyle = PALETTE.inkSoft;
+    ctx.beginPath();
+    ctx.arc(CARD_INNER_X + BULLET / 2, middle, BULLET / 2, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillText(line.text, CARD_INNER_X + TEXT_INDENT, middle, CARD_INNER_WIDTH - TEXT_INDENT);
+}
+
 /** The Notes for the day: a title, then each note, ruled apart. */
 function drawNotes(ctx: CanvasRenderingContext2D, layout: NotesLayout, look: Look) {
   drawCardGround(ctx, layout.top, layout.height, look);
@@ -522,10 +549,9 @@ function drawNotes(ctx: CanvasRenderingContext2D, layout: NotesLayout, look: Loo
   layout.notes.forEach((note, index) => {
     const noteTop = layout.top + note.top;
     if (index > 0) drawRule(ctx, noteTop - DAY_NOTE_GAP - CARD_EDGE / 2);
-    ctx.fillStyle = PALETTE.ink;
     setType(ctx, look.type.dayNote);
     note.lines.forEach((line, at) =>
-      ctx.fillText(line, CARD_INNER_X, noteTop + (at + 0.5) * DAY_NOTE_LINE + 1, CARD_INNER_WIDTH),
+      drawBulletLine(ctx, line, noteTop + (at + 0.5) * DAY_NOTE_LINE + 1),
     );
   });
 }

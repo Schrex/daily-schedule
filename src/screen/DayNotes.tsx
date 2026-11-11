@@ -42,7 +42,8 @@ export function DayNotes({ notes, onAdd, onChange, onRemove }: DayNotesProps) {
               aria-label={`Change note: ${note}`}
               onClick={() => setEditing(index)}
             >
-              {note}
+              <span className="bullet" aria-hidden="true" />
+              <span>{note}</span>
             </button>
             <button
               type="button"

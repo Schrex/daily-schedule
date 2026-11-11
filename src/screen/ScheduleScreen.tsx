@@ -267,7 +267,6 @@ export function ScheduleScreen({
                   onRemove={onRemovePersonTask}
                 />
                 <div className="person-panel-foot">
-                  <span>Or {firstName(selectedPlaced.crewMember)} can go to another job.</span>
                   <button type="button" className="button person-note-button" onClick={onEditNote}>
                     {selectedPlaced.note ? 'Change note' : 'Add note'}
                   </button>
