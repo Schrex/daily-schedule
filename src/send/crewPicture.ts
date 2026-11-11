@@ -174,7 +174,7 @@ function setType(ctx: CanvasRenderingContext2D, { font, letterSpacing }: Type) {
  * "Schreiber Excavating Schedule"), and the date in the middle of the row.
  */
 const LOGO_HEIGHT = 66;
-const SCHEDULE_LINE = 28;
+const SCHEDULE_LINE = 34;
 const HEADER_HEIGHT = LOGO_HEIGHT + SCHEDULE_LINE;
 /** The date keeps at least this clear of the logo. */
 const DATE_GAP = 30;
@@ -572,10 +572,19 @@ function draw(
   const logoWidth = (logo.naturalWidth / logo.naturalHeight) * LOGO_HEIGHT;
   ctx.drawImage(logo, MARGIN, MARGIN, logoWidth, LOGO_HEIGHT);
 
-  // "SCHEDULE" under the logo, as wide as it, so the two read as one name.
+  // "SCHEDULE" under the logo, spaced out to exactly its width, so the two
+  // read as one name: "Schreiber Excavating Schedule".
   ctx.fillStyle = PALETTE.inkSoft;
-  setType(ctx, fitType(ctx, look.type.schedule, 'SCHEDULE', logoWidth));
-  ctx.fillText('SCHEDULE', MARGIN + 4, MARGIN + LOGO_HEIGHT + SCHEDULE_LINE / 2);
+  const schedule = 'SCHEDULE';
+  const scheduleWidth = logoWidth - 4;
+  // Larger first (up to 1.4 times), then the rest made up with letter spacing.
+  setType(ctx, look.type.schedule);
+  const grown = scaled(look.type.schedule, Math.min(1.4, scheduleWidth / ctx.measureText(schedule).width));
+  setType(ctx, fitType(ctx, grown, schedule, scheduleWidth));
+  const spare = scheduleWidth - ctx.measureText(schedule).width;
+  // Canvas adds the letter spacing after every letter, the last one too.
+  ctx.letterSpacing = `${parseFloat(ctx.letterSpacing) + spare / (schedule.length - 1)}px`;
+  ctx.fillText(schedule, MARGIN + 4, MARGIN + LOGO_HEIGHT + SCHEDULE_LINE / 2);
 
   // The day and date (no year) in the middle of the row, clear of the logo.
   const dateWidth = contentWidth - 2 * (logoWidth + DATE_GAP);
