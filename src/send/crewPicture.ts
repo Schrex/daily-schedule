@@ -10,7 +10,7 @@ import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } fro
  * the day's Tasks as plain lines ruled off from the names, then the names,
  * one to a line: a grey chip with a dot of the Crew Member's color (a
  * Foreman's chip is black), with their Person Tasks smaller under the name.
- * A Note hangs under its name in red. The Notes for the day, if any, are a
+ * A Note hangs under its name on a soft yellow. The Notes for the day, if any, are a
  * last card. It draws exactly what it is given and nothing else: no buttons
  * and no Not Placed list. No rule is applied here.
  *
@@ -506,13 +506,13 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: 
   const x = CARD_INNER_X;
   const width = CARD_INNER_WIDTH;
 
-  // A Note hangs under its name, in one red-tinted piece with it.
+  // A Note hangs under its name, in one soft yellow piece with it.
   if (box.noteLines.length > 0) {
-    ctx.fillStyle = PALETTE.alertWashStrong;
+    ctx.fillStyle = PALETTE.noteWash;
     ctx.beginPath();
     ctx.roundRect(x, y, width, box.height, look.radius.chip);
     ctx.fill();
-    ctx.fillStyle = PALETTE.alert;
+    ctx.fillStyle = PALETTE.noteInk;
     setType(ctx, look.type.note);
     const notesTop = y + box.chipHeight + NOTE_PAD_TOP;
     box.noteLines.forEach((line, index) =>

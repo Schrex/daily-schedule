@@ -74,9 +74,10 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * The Scheduler's screen. Thin: it asks the schedule rules for the view, draws
  * it, and reports clicks. It applies no rule (ordering, Not Placed, ...) itself.
  *
- * Moving is click-click: click a name to select it, then click a Job, a
- * Standing Row or the Not Placed list. While a name is selected, a click
- * anywhere in one of those blocks (even on another name) is the destination.
+ * Someone Not Placed moves click-click: click their name to select it, then
+ * click a Job or a Standing Row. Selecting someone already placed opens their
+ * panel (Add task, Add note) instead: nothing is tinted as a place to go, and
+ * a click on a card lets go of them. Anyone can be dragged.
  *
  * Double-clicking a name moves that Crew Member to Not Placed. The browser
  * reports a double-click as two clicks and then the double-click, so the name
@@ -143,7 +144,14 @@ export function ScheduleScreen({
   const selected =
     selectedPlaced?.crewMember ??
     view.notPlaced.find((crewMember) => crewMember.id === selectedCrewMemberId);
-  const moving = selected !== undefined;
+  /**
+   * A selected Crew Member with a Placement has their panel open (Add task,
+   * Add note): then nothing is a place to move them by clicking, and a click
+   * on any card just lets go of them. They can still be dragged. Someone Not
+   * Placed has no panel, so selecting them is picking them up to move.
+   */
+  const panelOpen = selectedPlaced !== undefined;
+  const moving = selected !== undefined && !panelOpen;
 
   // Dragging a name. A drop names the block by its key.
   const [motion] = useState(createNameMotion);
@@ -192,7 +200,10 @@ export function ScheduleScreen({
 
 
   const onNameClick = (crewMember: CrewMember, event: MouseEvent) => {
-    if (!moving) {
+    if (panelOpen && crewMember.id === selected?.id) {
+      event.stopPropagation();
+      onDeselect();
+    } else if (!moving) {
       event.stopPropagation();
       onSelectCrewMember(crewMember.id);
     } else if (crewMember.id === selected?.id) {
@@ -202,8 +213,12 @@ export function ScheduleScreen({
     // Otherwise the click carries on to the block the name sits in: the destination.
   };
 
-  /** A destination was clicked while a Crew Member is selected: they go there. */
-  const moveSelectedTo = (to: MoveTo) => (moving ? () => onMoveCrewMember(selected.id, to) : undefined);
+  /**
+   * A destination was clicked: with a Crew Member picked up to move, they go
+   * there; with someone's panel open, it is closed.
+   */
+  const moveSelectedTo = (to: MoveTo) =>
+    moving ? () => onMoveCrewMember(selected.id, to) : panelOpen ? onDeselect : undefined;
 
   /**
    * A name: a grey chip with a dot of the Crew Member's color (a Foreman's is
