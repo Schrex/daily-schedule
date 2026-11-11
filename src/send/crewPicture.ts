@@ -215,21 +215,21 @@ const YARD_SHARE = 0.75;
 const PART_GAP = 12;
 
 /** The head: the place's name, with the Job number and count at the right. */
-const JOB_LINE = 50;
-const YARD_LINE = 42;
+const JOB_LINE = 46;
+const YARD_LINE = 39;
 /** The space between a Job's name and its number. */
 const NUMBER_GAP = 14;
 /** Text made smaller to fit its room never goes under this much of its size. */
 const MIN_FIT = 0.6;
 
 /** The Tasks: plain lines, then a rule. */
-const TASK_LINE = 33;
-const YARD_TASK_LINE = 31;
+const TASK_LINE = 30;
+const YARD_TASK_LINE = 28;
 const TASKS_RULE_GAP = 14;
 
 /** Who: one name to a line, every one the width of the card. */
-const NAME_HEIGHT = 58;
-const NAME_GAP = 9;
+const NAME_HEIGHT = 48;
+const NAME_GAP = 5;
 const NAME_PAD_X = 16;
 const DOT = 15;
 const DOT_GAP = 13;
@@ -244,9 +244,9 @@ const TEXT_INDENT = NAME_PAD_X + DOT + DOT_GAP;
 /** Person Tasks: bulleted lines under the name's line, in the same grey chip. From
  * the foot of the name's line to the first task: room under a black line, close under a grey one. */
 const SUBS_PAD_TOP = 8;
-const SUBS_PAD_TOP_GREY = -6;
+const SUBS_PAD_TOP_GREY = -3;
 const SUBS_PAD_BOTTOM = 12;
-const SUB_LINE = 30;
+const SUB_LINE = 28;
 /** A task's bullet: a small grey dot centred under the color dot. */
 const SUB_BULLET = 6;
 /** A Note: a soft yellow strip at the foot of the chip, its text lined up with the name. */
