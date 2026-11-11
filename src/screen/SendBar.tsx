@@ -40,21 +40,6 @@ function message(status: SendStatus): ReactNode {
     case 'not-sent':
     case 'sending':
       return null;
-    case 'refused': {
-      // The names are not repeated here: they are ringed in red in the Not Placed list.
-      const count = status.notPlaced.length;
-      return (
-        <div className="send-refused">
-          <p className="send-headline">
-            Not sent. {count === 1 ? '1 person is' : `${count} people are`} not placed yet.
-          </p>
-          <p>
-            Give everyone under "Not placed yet" a place (Off Work counts). Then press "Send to crew"
-            again.
-          </p>
-        </div>
-      );
-    }
     case 'failed':
       return (
         <div className="send-failed">

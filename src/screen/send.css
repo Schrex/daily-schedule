@@ -13,7 +13,6 @@
 }
 
 .send-sent,
-.send-refused,
 .send-failed {
   display: flex;
   flex-wrap: wrap;
@@ -34,47 +33,18 @@
   color: var(--go-dark);
 }
 
-.send-refused,
 .send-failed {
   border-color: var(--alert-line);
   background: var(--alert-wash);
 }
 
-.send-refused .send-headline,
 .send-failed .send-headline {
   color: var(--alert);
 }
 
 @media (max-width: 700px) {
   .send-sent,
-  .send-refused,
   .send-failed {
     padding: var(--space-2) var(--space-3);
   }
-}
-
-/* The Not Placed list while Send is refused: red, with a red ring on each name. */
-.not-placed.not-placed-alert {
-  border-color: var(--alert);
-  border-style: solid;
-  background: var(--alert-wash);
-  box-shadow: 0 0 0 3px var(--alert-line);
-}
-
-.not-placed.not-placed-alert h2 {
-  color: var(--alert);
-}
-
-.not-placed.not-placed-alert .not-placed-count {
-  background: var(--alert);
-  color: var(--paper);
-}
-
-.not-placed-alert .name:not(.name-selected) {
-  box-shadow: var(--ring-alert);
-}
-
-.not-placed.not-placed-alert .names {
-  gap: var(--space-4);
-  padding: var(--space-1);
 }

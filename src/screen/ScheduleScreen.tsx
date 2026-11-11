@@ -55,8 +55,6 @@ interface ScheduleScreenProps {
   /** A Day Note was changed (blank: taken away). */
   onChangeDayNote: (index: number, text: string) => void;
   onRemoveDayNote: (index: number) => void;
-  /** Send was just refused: make the Not Placed list and its names stand out. */
-  alertNotPlaced?: boolean;
   /** Drawn right beside the date: the Settings gear. */
   dateButtons?: ReactNode;
   /** Drawn at the right end of the header: Change date and Send. */
@@ -131,7 +129,6 @@ export function ScheduleScreen({
   onAddDayNote,
   onChangeDayNote,
   onRemoveDayNote,
-  alertNotPlaced = false,
   dateButtons,
   toolbarButtons,
   sendMessage,
@@ -308,9 +305,7 @@ export function ScheduleScreen({
         </div>
         <div className="side" data-motion-area>
           <aside
-            className={`not-placed destination${shown.notPlaced.length === 0 ? ' not-placed-none' : ''}${
-              alertNotPlaced ? ' not-placed-alert' : ''
-            }`}
+            className={`not-placed destination${shown.notPlaced.length === 0 ? ' not-placed-none' : ''}`}
             aria-labelledby="not-placed-heading"
             onClick={moveSelectedTo(NOT_PLACED)}
             {...drag.dropProps(NOT_PLACED)}

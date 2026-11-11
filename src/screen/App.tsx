@@ -163,7 +163,6 @@ export function App({
       onAddDayNote={(text) => change((current) => addDayNote(current, text))}
       onChangeDayNote={(index, text) => change((current) => changeDayNote(current, index, text))}
       onRemoveDayNote={(index) => change((current) => removeDayNote(current, index))}
-      alertNotPlaced={send.status.kind === 'refused'}
       dateButtons={<SettingsLink />}
       toolbarButtons={
         <>

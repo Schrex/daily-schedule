@@ -20,7 +20,7 @@ export const PALETTE = {
   wash: '#efefea',
   /** Text that is read once found: the hint, counts, the Send message. */
   inkSoft: '#55554f',
-  /** The one alert red: Notes, a refused Send, UPDATED. */
+  /** The one alert red: Notes, a failed Send, UPDATED. */
   alert: '#c5221f',
   alertWash: '#fef4f3',
   alertWashStrong: '#fde3e0',

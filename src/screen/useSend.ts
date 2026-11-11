@@ -2,8 +2,6 @@ import { useRef, useState } from 'react';
 import {
   crewView,
   lastSentAt,
-  sendCheck,
-  type CrewMember,
   type CrewView,
   type DailySchedule,
   type Roster,
@@ -17,8 +15,6 @@ export type SendStatus =
   | { kind: 'not-sent' }
   /** The picture is being drawn and delivered. */
   | { kind: 'sending' }
-  /** Send was refused for this Daily Schedule: the Crew Members who are Not Placed. */
-  | { kind: 'refused'; notPlaced: CrewMember[] }
   /** The last Send could not be delivered: what to tell the Scheduler. */
   | { kind: 'failed'; message: string }
   /** It has been sent: when (from its send record), and what he does next. */
@@ -33,18 +29,18 @@ export interface SendState {
 
 /** What the last press of "Send to crew" came to, and the Daily Schedule it was about. */
 interface Outcome {
-  kind: 'refused' | 'failed' | 'sent';
+  kind: 'failed' | 'sent';
   schedule: DailySchedule;
 }
 
 /**
- * Send, start to finish: ask the schedule rules whether Send is allowed, draw
- * the crew view as a picture, hand it to the delivery, and only when that
+ * Send, start to finish: draw the crew view as a picture (anyone Not Placed
+ * is left out of it), hand it to the delivery, and only when that
  * worked report the crew view that was delivered through `onDelivered`, for
  * the send record.
  *
  * What a press came to is remembered only for the Daily Schedule it was
- * about: as soon as the schedule changes, the refusal or the "paste it"
+ * about: as soon as the schedule changes, the failure or the "paste it"
  * instruction goes away. The "Sent" time itself comes from the send record,
  * so it is still there after a reload.
  */
@@ -67,14 +63,9 @@ export function useSend({
   /** True from press to delivery, so a second press in between does nothing. */
   const inFlight = useRef(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
-  const check = sendCheck(roster, schedule);
 
   const send = async () => {
     if (inFlight.current) return;
-    if (!check.allowed) {
-      setOutcome({ kind: 'refused', schedule });
-      return;
-    }
 
     const view = crewView(roster, schedule);
     inFlight.current = true;
@@ -97,22 +88,20 @@ export function useSend({
   const sentAt = lastSentAt(schedule);
 
   const status: SendStatus =
-    pressed === 'refused'
-      ? { kind: 'refused', notPlaced: check.notPlaced }
-      : pressed === 'failed'
-        ? { kind: 'failed', message: delivery.failureMessage }
-        : sending
-          ? { kind: 'sending' }
-          : sentAt === undefined
-            ? { kind: 'not-sent' }
-            : {
-                kind: 'sent',
-                sentAt,
-                nextStep:
-                  pressed === 'sent'
-                    ? delivery.nextStep
-                    : 'If you change something, press "Send to crew" again.',
-              };
+    pressed === 'failed'
+      ? { kind: 'failed', message: delivery.failureMessage }
+      : sending
+        ? { kind: 'sending' }
+        : sentAt === undefined
+          ? { kind: 'not-sent' }
+          : {
+              kind: 'sent',
+              sentAt,
+              nextStep:
+                pressed === 'sent'
+                  ? delivery.nextStep
+                  : 'If you change something, press "Send to crew" again.',
+            };
 
   return { status, send: () => void send() };
 }

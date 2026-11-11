@@ -72,10 +72,9 @@
   /* Under a name that is off the page: selected, dragged, or travelling. */
   --elevation-lifted: 0 10px 22px 6px var(--shadow-strong);
 
-  /* Rings: what the keyboard is on, the name being moved, a name Send was refused for. */
+  /* Rings: what the keyboard is on, and the name selected. */
   --focus-ring: 0 0 0 2px var(--paper), 0 0 0 5px var(--accent-strong);
   --ring-selected: 0 0 0 1px var(--paper), 0 0 0 4px var(--select);
-  --ring-alert: 0 0 0 3px var(--paper), 0 0 0 6px var(--alert);
 
   /* Layers over the page: a name travelling to its place, and above it the one being dragged. */
   --z-flying: 900;
