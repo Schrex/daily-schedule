@@ -20,7 +20,7 @@ import { openDate, type Opened, type ScheduleStore } from '../storage';
 import { ChangeDate } from './ChangeDate';
 import { SettingsLink } from './SettingsLink';
 import { ScheduleScreen } from './ScheduleScreen';
-import { SendBar } from './SendBar';
+import { SendButton, SendMessage } from './SendBar';
 import { UndoButton } from './UndoButton';
 import { useSend } from './useSend';
 
@@ -156,14 +156,15 @@ export function App({
       onClearNote={() => changeSelected(clearNote)}
       onSetTasks={(jobId, text) => change((current) => setTasks(current, jobId, text))}
       alertNotPlaced={send.status.kind === 'refused'}
+      dateButtons={<SettingsLink />}
       toolbarButtons={
         <>
           <UndoButton canUndo={canUndo(editing)} onUndo={undoLastChange} />
           <ChangeDate date={schedule.date} onChangeDate={changeDate} />
-          <SettingsLink />
+          <SendButton send={send} />
         </>
       }
-      footer={<SendBar send={send} />}
+      sendMessage={<SendMessage send={send} />}
     />
   );
 }

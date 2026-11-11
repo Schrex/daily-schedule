@@ -8,59 +8,68 @@
 import type { Color } from './schedule-rules';
 
 export const PALETTE = {
-  ink: '#141922',
+  ink: '#14181d',
   paper: '#ffffff',
-  /** Behind everything: the calm surface the white cards sit on. */
-  canvas: '#f2f4f7',
-  /** Hairlines: the rules between rows, the edge of a card. */
-  line: '#e3e6ec',
+  /** Behind everything: the calm grey the white cards sit on. */
+  canvas: '#e9ecef',
+  /** Hairlines: the edge of a card, the rules between rows. */
+  line: '#d5dae0',
   /** The edge of something to click or type in. */
-  lineStrong: '#c9ced8',
-  /** The edge of a block of the schedule: a Job or a Standing Row. */
-  frameLine: '#8f98a8',
-  /** The Standing Rows. */
-  standing: '#eceff3',
-  /** Quiet backgrounds: a hovered plain button, the Tasks under the pointer. */
-  wash: '#eceff4',
-  /** The one alert red: Notes, Not Placed, a refused Send, UPDATED. */
+  lineStrong: '#9aa3ae',
+  /** Quiet backgrounds: a hovered plain button, the count of people on a Job. */
+  wash: '#e9ecef',
+  /** Text that is read once found: the hint, the Send message. */
+  inkSoft: '#3a424c',
+  /** The one alert red: Notes, a refused Send, UPDATED. */
   alert: '#c5221f',
   alertWash: '#fef4f3',
   alertWashStrong: '#fde3e0',
   alertLine: '#f0b4ae',
   /**
-   * The one accent: the name being moved, where it would land, and the main
-   * action. No Crew Member has it.
+   * The one accent, burnt orange: the main action, the name being moved,
+   * where it would land, Not Placed and the Tasks. No Crew Member has it.
    */
-  accent: '#4f46e5',
-  accentHover: '#4038c7',
-  accentWash: '#eef0fe',
+  accent: '#c2410c',
+  accentHover: '#9a3412',
+  /** Text and edges in the accent's family: the Not Placed heading, the Tasks label. */
+  accentDark: '#9a3412',
+  accentWash: '#fff4ec',
+  accentLine: '#f3c9a8',
   /** The block the pointer would place them in. */
-  target: '#e4e7fd',
+  target: '#fff4ec',
   /** A Send that worked. */
   goDark: '#12603d',
   goWash: '#e8f5ee',
-  muted: '#566070',
+  muted: '#5b6470',
   disabled: '#9aa1ad',
   /** Soft shadows: a resting card, and something lifted above the screen. */
-  shadow: 'rgba(20, 25, 34, 0.07)',
-  shadowStrong: 'rgba(20, 25, 34, 0.18)',
-  /** The outline of a name. */
-  nameBorder: 'rgba(20, 25, 34, 0.14)',
+  shadow: 'rgba(20, 24, 29, 0.07)',
+  shadowStrong: 'rgba(20, 24, 29, 0.2)',
   /** Behind the Change date panel. */
-  backdrop: 'rgba(20, 25, 34, 0.5)',
+  backdrop: 'rgba(20, 24, 29, 0.5)',
 } as const;
 
 /** The fill of a Crew Member's name, by their color. */
 export const CREW_COLORS: Record<Color, string> = {
-  grey: '#c9ced6',
-  blue: '#8cc4fb',
-  orange: '#ffab66',
-  yellow: '#ffd84a',
-  red: '#d42f2f',
+  grey: '#1b2026',
+  blue: '#cfe0f5',
+  orange: '#f3b67c',
+  yellow: '#f4dc7c',
+  red: '#b8322a',
 };
 
-/** The text on a name: white on red, ink on the lighter colors. */
-export const crewInk = (color: Color): string => (color === 'red' ? PALETTE.paper : PALETTE.ink);
+/** What a color is called where the Scheduler picks one: "grey" is drawn near-black. */
+export const COLOR_NAMES: Record<Color, string> = {
+  grey: 'Black',
+  blue: 'Blue',
+  orange: 'Orange',
+  yellow: 'Yellow',
+  red: 'Red',
+};
+
+/** The text on a name: white on the dark colors (black, red), ink on the lighter ones. */
+export const crewInk = (color: Color): string =>
+  color === 'red' || color === 'grey' ? PALETTE.paper : PALETTE.ink;
 
 /**
  * Hands the palette to the style sheets: `--ink`, `--alert-wash`, ... and the

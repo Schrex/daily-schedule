@@ -14,6 +14,7 @@ import {
   type Job,
   type Roster,
 } from '../schedule-rules';
+import { COLOR_NAMES } from '../palette';
 import type { ScheduleStore } from '../storage';
 
 /** What is open over the page: one Crew Member, one Job, or a new one of either. */
@@ -243,7 +244,7 @@ function ColorPicker({ value, onPick }: { value: Color; onPick: (color: Color) =
               checked={color === value}
               onChange={() => onPick(color)}
             />
-            {color}
+            {COLOR_NAMES[color]}
           </label>
         ))}
       </span>

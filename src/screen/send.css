@@ -1,56 +1,29 @@
-/* The Send bar: one large button and a plain message. It is the bottom of the
-   screen, edge to edge, and never scrolls, so the button is always in sight.
-   The message is short enough to keep the bar the same few lines whatever it
-   says. */
-
-.send-bar {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-  min-height: 5.3rem; /* holds two lines of message, so it never changes height at full width */
-  margin: 0 calc(-1 * var(--gutter));
-  padding: var(--space-3) var(--gutter);
-  border-top: var(--hairline);
-  background: var(--paper);
-  box-shadow: 0 -4px 16px var(--shadow);
-}
-
-.send-button {
-  flex: 0 0 auto;
-  min-height: 3.6rem;
-  padding: var(--space-2) var(--space-6);
-  border-radius: var(--radius-card);
-  box-shadow: var(--elevation-2);
-  font-size: 1.7rem;
-  font-weight: var(--weight-strong);
-  letter-spacing: var(--tracking-name);
-}
-
-.send-message {
-  flex: 1 1 auto;
-  color: var(--muted);
-  font-size: 1.1rem;
-}
+/* What happened to the last Send: a strip across the foot of the header, in
+   a soft box of its own color (green for sent, red for not). Nothing is shown
+   until "Send to crew" has been pressed. The button itself is the shared
+   primary button, sized with the header's other buttons (screen.css). */
 
 .send-message p {
   margin: 0;
 }
 
 .send-headline {
-  font-size: 1.4rem;
-  font-weight: var(--weight-strong);
-  letter-spacing: var(--tracking-name);
+  font-size: 1.125rem;
+  font-weight: var(--weight-bold);
 }
 
-/* What happened, in a soft box of its own color: green for sent, red for not. */
 .send-sent,
 .send-refused,
 .send-failed {
-  padding: var(--space-1) var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-4);
   border: 1px solid transparent;
   border-radius: var(--radius-control);
-  color: var(--ink);
+  color: var(--ink-soft);
+  font-size: 1rem;
 }
 
 .send-sent {
@@ -72,52 +45,25 @@
   color: var(--alert);
 }
 
-/* On a phone: the button the whole width, and under it what happened. */
 @media (max-width: 700px) {
-  .send-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-2);
-    min-height: 0;
-    padding-top: var(--space-2);
-    padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
-  }
-
-  .send-button {
-    min-height: 3.4rem;
-    font-size: 1.5rem;
-  }
-
-  .send-message {
-    font-size: 1.05rem;
-  }
-
-  .send-headline {
-    font-size: 1.2rem;
-  }
-
   .send-sent,
   .send-refused,
   .send-failed {
-    padding: var(--space-1) var(--space-3);
+    padding: var(--space-2) var(--space-3);
   }
 }
 
-@media (max-height: 480px) {
-  .send-bar {
-    position: sticky;
-    bottom: 0;
-    min-height: 0;
-  }
-}
-
-/* The Not Placed list while Send is refused: a red ring on each name. */
+/* The Not Placed list while Send is refused: red, with a red ring on each name. */
 .not-placed.not-placed-alert {
   border-color: var(--alert);
-  background: var(--alert-wash-strong);
-  box-shadow:
-    0 0 0 3px var(--alert),
-    var(--elevation-2);
+  border-style: solid;
+  background: var(--alert-wash);
+  box-shadow: 0 0 0 3px var(--alert-line);
+}
+
+.not-placed.not-placed-alert h2,
+.not-placed.not-placed-alert .not-placed-count {
+  color: var(--alert);
 }
 
 .not-placed-alert .name:not(.name-selected) {
