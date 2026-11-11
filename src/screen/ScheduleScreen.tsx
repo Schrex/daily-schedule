@@ -227,12 +227,27 @@ export function ScheduleScreen({
     // Otherwise the click carries on to the block the name sits in: the destination.
   };
 
+  /** A destination was clicked with a Crew Member picked up to move: they go there. */
+  const moveSelectedTo = (to: MoveTo) => (moving ? () => onMoveCrewMember(selected.id, to) : undefined);
+
   /**
-   * A destination was clicked: with a Crew Member picked up to move, they go
-   * there; with someone's panel open, it is closed.
+   * While someone's panel is open, a click anywhere outside their chip and
+   * the field under it closes it: a card, the header, the empty page. A click
+   * on another name is left to select that name instead.
    */
-  const moveSelectedTo = (to: MoveTo) =>
-    moving ? () => onMoveCrewMember(selected.id, to) : panelOpen ? onDeselect : undefined;
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onClick = (event: globalThis.MouseEvent) => {
+      // The path as it was when clicked: a × or a task tapped to change it may be gone by now.
+      const inside = event
+        .composedPath()
+        .some((at) => at instanceof Element && at.matches('.person-open, .person-panel, .name'));
+      if (inside) return;
+      onDeselect();
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, [panelOpen, onDeselect]);
 
   /**
    * A name: a grey chip whose top line is a dot of the Crew Member's color and
