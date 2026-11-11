@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { CrewMember } from '../schedule-rules';
 import { LineEditor } from './LineEditor';
 
@@ -9,14 +9,16 @@ interface PersonTasksProps {
   /** A line was changed; blank text takes it away. */
   onChange: (index: number, text: string) => void;
   onRemove: (index: number) => void;
+  /** Drawn on the same line as "Add task": "Add note". */
+  beside?: ReactNode;
 }
 
 /**
- * What is only about the selected Crew Member, at the foot of their card:
+ * What is only about the selected Crew Member, right under their name:
  * their Person Tasks, each one to tap and change or to take away with ×, and
  * a field to add another ("Task for Rob").
  */
-export function PersonTasks({ crewMember, tasks, onAdd, onChange, onRemove }: PersonTasksProps) {
+export function PersonTasks({ crewMember, tasks, onAdd, onChange, onRemove, beside }: PersonTasksProps) {
   /** The Person Task being changed, by its place in the list. */
   const [editing, setEditing] = useState<number | null>(null);
   const first = crewMember.name.split(' ')[0] ?? crewMember.name;
@@ -67,11 +69,13 @@ export function PersonTasks({ crewMember, tasks, onAdd, onChange, onRemove }: Pe
         initial=""
         label={`Task for ${crewMember.name}`}
         placeholder={`Task for ${first}`}
-        buttonText="Add task"
+        buttonText="Add"
         keepOpen
         autoFocus={false}
         onCommit={onAdd}
-      />
+      >
+        {beside}
+      </LineEditor>
     </div>
   );
 }

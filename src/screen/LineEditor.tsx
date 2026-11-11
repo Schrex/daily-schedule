@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 interface LineEditorProps {
   /** The text to start from: the line being changed, or empty for a new one. */
@@ -14,6 +14,8 @@ interface LineEditorProps {
   /** A new line keeps the field open and empty after each one, for the next. */
   keepOpen?: boolean;
   autoFocus?: boolean;
+  /** Drawn after the button, on the same line: "Add note" beside "Add task". */
+  children?: ReactNode;
 }
 
 /**
@@ -31,6 +33,7 @@ export function LineEditor({
   onCancel,
   keepOpen = false,
   autoFocus = true,
+  children,
 }: LineEditorProps) {
   const [draft, setDraft] = useState(initial);
 
@@ -74,6 +77,7 @@ export function LineEditor({
       <button type="submit" className="button button-primary line-button">
         {buttonText}
       </button>
+      {children}
     </form>
   );
 }

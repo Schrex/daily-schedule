@@ -629,14 +629,26 @@
   font-size: 0.9375rem;
 }
 
-/* --- The selected Crew Member's own things, at the foot of their card ----- */
+/* --- The selected Crew Member's own things, right under their name -------
+   Edged on the left in the blue of their ring, so it reads as theirs. */
 
-.person-panel {
+.names li.person-panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-top: 0.375rem;
+  margin: 0.125rem 0 0.25rem 0.375rem;
+  padding-left: 0.625rem;
+  border-left: 3px solid var(--select);
   cursor: auto;
+}
+
+/* The field, Add and Add note on one line, wrapping when the card is narrow. */
+.person-tasks .line-editor {
+  flex-wrap: wrap;
+}
+
+.person-tasks .line-input {
+  flex-basis: 6rem;
 }
 
 .person-tasks {
@@ -707,16 +719,30 @@
   }
 }
 
-/* Add note, under the task field. */
-.person-panel-foot {
-  display: flex;
+/* Add note: a quiet text button beside Add. */
+.person-note-button {
+  flex: 0 0 auto;
+  min-height: max(2.75rem, var(--touch-target));
+  padding: 0 var(--space-1);
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: var(--weight-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-.person-note-button {
-  min-height: 2.25rem;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-chip);
-  font-size: 0.875rem;
+.person-note-button:hover {
+  color: var(--ink);
+}
+
+.person-note-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* Typing a Note: the field across the panel, its buttons under it. */
@@ -754,8 +780,10 @@
 }
 
 /* --- Folded Jobs: a row of large buttons under the cards ------------------
-   A Job with nobody on it, by name; with someone in hand, "Put Mike on Pond",
-   still grey so nothing lights up. The buttons wrap, and so do long names. */
+   A Job with nobody on it, by name. With someone in hand (selected or being
+   dragged) the buttons grow into big drop targets that share the row, still
+   grey and still by name; tap or drop to put them there. The buttons wrap,
+   and so do long names. */
 
 .folded-jobs-head {
   display: flex;
@@ -782,6 +810,18 @@
   text-align: center;
   white-space: normal;
   overflow-wrap: anywhere;
+  transition:
+    min-height var(--ease),
+    background-color var(--ease),
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+
+.folded-job-target {
+  flex: 1 1 12rem;
+  min-height: 5.5rem;
+  border-style: dashed;
+  font-size: 1.125rem;
 }
 
 .folded-job[data-drop-over] {
