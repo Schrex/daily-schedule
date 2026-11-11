@@ -48,6 +48,8 @@ interface Lifted {
   text: string;
   /** The Person Tasks under the name. */
   subs: string[];
+  /** The class of its dot, for its color. */
+  dot: string;
   width: number;
   height: number;
 }
@@ -239,6 +241,7 @@ export function useNameDrag({
           className: source.className,
           // The name, and any Person Tasks under it, as they are drawn.
           text: source.querySelector('.name-text')?.textContent ?? source.textContent ?? '',
+          dot: source.querySelector('.name-dot')?.className ?? 'name-dot',
           subs: [...source.querySelectorAll('.name-sub')].map((sub) => sub.textContent ?? ''),
           width: box.width,
           height: box.height,
@@ -335,12 +338,19 @@ export function useNameDrag({
             style={{ width: lifted.width, height: lifted.height }}
             aria-hidden="true"
           >
-            <span className="name-text">{lifted.text}</span>
-            {lifted.subs.map((sub, index) => (
-              <span key={index} className="name-sub">
-                {sub}
+            <span className="name-head">
+              <span className={lifted.dot} />
+              <span className="name-text">{lifted.text}</span>
+            </span>
+            {lifted.subs.length > 0 && (
+              <span className="name-subs">
+                {lifted.subs.map((sub, index) => (
+                  <span key={index} className="name-sub">
+                    {sub}
+                  </span>
+                ))}
               </span>
-            ))}
+            )}
           </div>,
           document.body,
         )

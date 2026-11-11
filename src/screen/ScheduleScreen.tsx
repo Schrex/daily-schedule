@@ -221,8 +221,9 @@ export function ScheduleScreen({
     moving ? () => onMoveCrewMember(selected.id, to) : panelOpen ? onDeselect : undefined;
 
   /**
-   * A name: a grey chip with a dot of the Crew Member's color (a Foreman's is
-   * black), with their Person Tasks, if any, under the name in the same chip.
+   * A name: a grey chip whose top line is a dot of the Crew Member's color and
+   * the name (black for a Foreman), with their Person Tasks, if any, as
+   * bulleted lines under it in the same chip.
    */
   const name = (crewMember: CrewMember, personTasks: string[] = []) => (
     <button
@@ -235,15 +236,19 @@ export function ScheduleScreen({
       {...drag.nameProps(crewMember.id)}
       onDoubleClick={() => onMoveCrewMember(crewMember.id, NOT_PLACED)}
     >
-      <span className={`name-dot dot-${crewMember.color}`} aria-hidden="true" />
-      <span className="name-lines">
+      <span className="name-head">
+        <span className={`name-dot dot-${crewMember.color}`} aria-hidden="true" />
         <span className="name-text">{crewMember.name}</span>
-        {personTasks.map((task, index) => (
-          <span key={index} className="name-sub">
-            {task}
-          </span>
-        ))}
       </span>
+      {personTasks.length > 0 && (
+        <span className="name-subs">
+          {personTasks.map((task, index) => (
+            <span key={index} className="name-sub">
+              {task}
+            </span>
+          ))}
+        </span>
+      )}
     </button>
   );
 
@@ -305,7 +310,11 @@ export function ScheduleScreen({
               <Fragment key={crewMember.id}>
                 <li className={note ? 'noted' : undefined}>
                   {name(crewMember, personTasks)}
-                  {note && <span className="note">{note}</span>}
+                  {note && (
+                    <span className="note">
+                      <span className="note-label">Note</span> {note}
+                    </span>
+                  )}
                 </li>
                 {crewMember.id === selectedPlaced?.crewMember.id && personPanel}
               </Fragment>
