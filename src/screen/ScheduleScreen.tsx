@@ -21,6 +21,7 @@ import { DayNotes } from './DayNotes';
 import { NoteEditor } from './NoteEditor';
 import { PersonTasks } from './PersonTasks';
 import { TasksCell } from './TasksCell';
+import { useColumnCount } from './useColumnCount';
 
 interface ScheduleScreenProps {
   roster: Roster;
@@ -66,7 +67,7 @@ interface ScheduleScreenProps {
 /** How many are on a Job or Standing Row, in plain words. */
 const headcount = (count: number): string => (count === 1 ? '1 person' : `${count} people`);
 
-/** The first name, for the short button: "Take Brody off the board". */
+/** The first name, for the short labels: "Move Brody here". */
 const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')[0] ?? crewMember.name;
 
 /**
@@ -159,6 +160,31 @@ export function ScheduleScreen({
   /** What is drawn: while a name is held over a destination, the schedule as the drop would leave it. */
   const shown = viewWhileDragging(roster, schedule, drag.dragging);
 
+  /**
+   * The Crew Member in hand: selected to move, or being dragged. Every other
+   * place is a place they can go: tinted, and "Move Mike here" on the one
+   * under the pointer. `from` is where they are now, which stays plain.
+   */
+  const placedNow = (crewMemberId: string) => {
+    const row = view.rows.find((each) => each.who.some((placed) => placed.crewMember.id === crewMemberId));
+    const crewMember =
+      row?.who.find((placed) => placed.crewMember.id === crewMemberId)?.crewMember ??
+      view.notPlaced.find((each) => each.id === crewMemberId);
+    return crewMember ? { crewMember, from: row?.key ?? NOT_PLACED } : undefined;
+  };
+  const inHand = moving ? placedNow(selected.id) : drag.dragging ? placedNow(drag.dragging.crewMemberId) : undefined;
+  const isTarget = (key: string) => inHand !== undefined && inHand.from !== key;
+  const moveHere = (key: string) =>
+    isTarget(key) && inHand ? (
+      <span className="move-here" aria-hidden="true">
+        Move {firstName(inHand.crewMember)} here
+      </span>
+    ) : null;
+
+  /** The board in as many columns as fit (up to three), each packed from the top. */
+  const [board, setBoard] = useState<HTMLDivElement | null>(null);
+  const columns = useColumnCount(board);
+
   const onNameClick = (crewMember: CrewMember, event: MouseEvent) => {
     if (!moving) {
       event.stopPropagation();
@@ -200,7 +226,7 @@ export function ScheduleScreen({
     </button>
   );
 
-  /** One block: a Job card in the grid, or a small Standing Row card on the left. */
+  /** One block: a Job card on the board, or a small Standing Row card at the right. */
   const block = ({ destination, ...row }: ScheduleRow) => {
     const here = row.who.some((placed) => placed.crewMember.id === selected?.id);
     const isJob = destination.kind === 'job';
@@ -208,18 +234,18 @@ export function ScheduleScreen({
     return (
       <section
         key={row.key}
-        className={`block block-${destination.kind} destination${
-          moving && !here ? ' block-target' : ''
-        }`}
+        className={`block block-${destination.kind} destination${isTarget(row.key) ? ' block-target' : ''}`}
         aria-label={row.label}
         data-row={row.key}
         onClick={moveSelectedTo(destination)}
         {...drag.dropProps(row.key)}
       >
         <header className="block-head">
-          <h2 className="job">{isJob ? title : row.label}</h2>
+          <h2 className="job">
+            {isJob ? title : row.label}
+            {number && <span className="job-number">{number}</span>}
+          </h2>
           <span className="count" title={headcount(row.who.length)}>
-            {number ? `${number} · ` : ''}
             {row.who.length}
           </span>
         </header>
@@ -272,6 +298,7 @@ export function ScheduleScreen({
             )}
           </div>
         )}
+        {moveHere(row.key)}
       </section>
     );
   };
@@ -294,7 +321,13 @@ export function ScheduleScreen({
 
       <div className="layout">
         <div className="schedule-scroll" data-motion-area>
-          <div className="board">{jobRows.map(block)}</div>
+          <div className="board" ref={setBoard}>
+            {Array.from({ length: columns }, (_, column) => (
+              <div key={column} className="board-column">
+                {jobRows.filter((_, index) => index % columns === column).map(block)}
+              </div>
+            ))}
+          </div>
           <DayNotes
             key={view.date}
             notes={view.dayNotes}
@@ -305,7 +338,9 @@ export function ScheduleScreen({
         </div>
         <div className="side" data-motion-area>
           <aside
-            className={`not-placed destination${shown.notPlaced.length === 0 ? ' not-placed-none' : ''}`}
+            className={`not-placed destination${shown.notPlaced.length === 0 ? ' not-placed-none' : ''}${
+              isTarget(NOT_PLACED) ? ' block-target' : ''
+            }`}
             aria-labelledby="not-placed-heading"
             onClick={moveSelectedTo(NOT_PLACED)}
             {...drag.dropProps(NOT_PLACED)}
@@ -321,12 +356,7 @@ export function ScheduleScreen({
                 ))}
               </ul>
             )}
-            {moving && selectedPlaced && (
-              // The click carries on to the list around it: the destination.
-              <button type="button" className="button off-board">
-                Take {firstName(selected)} off the board
-              </button>
-            )}
+            {moveHere(NOT_PLACED)}
           </aside>
 
           <div className="yard">{standingRows.map(block)}</div>

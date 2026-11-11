@@ -14,7 +14,7 @@ interface PersonTasksProps {
 /**
  * What is only about the selected Crew Member, at the foot of their card:
  * their Person Tasks, each one to tap and change or to take away with ×, and
- * a field to add another ("Task for Rob, with a time if needed").
+ * a field to add another ("Task for Rob").
  */
 export function PersonTasks({ crewMember, tasks, onAdd, onChange, onRemove }: PersonTasksProps) {
   /** The Person Task being changed, by its place in the list. */
@@ -66,7 +66,7 @@ export function PersonTasks({ crewMember, tasks, onAdd, onChange, onRemove }: Pe
         key={crewMember.id}
         initial=""
         label={`Task for ${crewMember.name}`}
-        placeholder={`Task for ${first}, with a time if needed`}
+        placeholder={`Task for ${first}`}
         buttonText="Add task"
         keepOpen
         autoFocus={false}
