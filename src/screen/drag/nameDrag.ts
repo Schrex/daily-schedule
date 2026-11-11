@@ -28,12 +28,15 @@ export type NameDrag =
       readonly crewMemberId: string;
       /** The destination under the pointer, or null when it is over none. */
       readonly over: DropKey | null;
+      /** The spot in it: just before this Crew Member, or null for the end. */
+      readonly before: string | null;
     };
 
-/** One Crew Member let go over one destination. */
+/** One Crew Member let go over one destination, at a spot in it (see `spotAt`). */
 export interface Drop {
   crewMemberId: string;
   over: DropKey;
+  before: string | null;
 }
 
 export const idle: NameDrag = { kind: 'idle' };
@@ -46,19 +49,46 @@ export const press = (crewMemberId: string, at: Point): NameDrag => ({
 });
 
 /**
- * The pointer moved to `at`, where `over` is the destination under it (if any).
- * A press becomes a drag once the pointer is the threshold away; a drag then
- * stays a drag wherever the pointer goes.
+ * The pointer moved to `at`, where `over` is the destination under it (if any)
+ * and `before` the spot in it (see `spotAt`). A press becomes a drag once the
+ * pointer is the threshold away; a drag then stays a drag wherever the pointer
+ * goes. While neither the destination nor the spot changes it is the same drag.
  */
-export function moveTo(drag: NameDrag, at: Point, over: DropKey | null): NameDrag {
+export function moveTo(
+  drag: NameDrag,
+  at: Point,
+  over: DropKey | null,
+  before: string | null = null,
+): NameDrag {
   if (drag.kind === 'idle') return drag;
   if (drag.kind === 'pressed') {
     const travelled = Math.hypot(at.x - drag.from.x, at.y - drag.from.y);
     if (travelled < DRAG_THRESHOLD) return drag;
-  } else if (drag.over === over) {
+  } else if (drag.over === over && drag.before === before) {
     return drag;
   }
-  return { kind: 'dragging', crewMemberId: drag.crewMemberId, over };
+  return { kind: 'dragging', crewMemberId: drag.crewMemberId, over, before };
+}
+
+/** Where one name is drawn in a destination, top to bottom (CSS pixels). */
+export interface NameBox {
+  crewMemberId: string;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * The spot in a destination the pointer's height points at: just before the
+ * first name whose middle is below it, or null (the end) when there is none.
+ * `names` are the names drawn there, in the order they are listed. The
+ * dragged name's own chip is ignored: it is drawn wherever it would land, so
+ * counting it would move the spot each time the names make room.
+ */
+export function spotAt(y: number, names: readonly NameBox[], dragged: string): string | null {
+  const below = names.find(
+    (name) => name.crewMemberId !== dragged && (name.top + name.bottom) / 2 > y,
+  );
+  return below?.crewMemberId ?? null;
 }
 
 /** Escape, or the pointer was taken away: whatever was going on is off. */
@@ -70,5 +100,5 @@ export const cancel = (_drag: NameDrag): NameDrag => idle;
  */
 export function release(drag: NameDrag): Drop | null {
   if (drag.kind !== 'dragging' || drag.over === null) return null;
-  return { crewMemberId: drag.crewMemberId, over: drag.over };
+  return { crewMemberId: drag.crewMemberId, over: drag.over, before: drag.before };
 }
