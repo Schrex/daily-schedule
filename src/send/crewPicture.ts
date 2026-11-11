@@ -242,13 +242,9 @@ const SUB_BULLET = 6;
 const NOTE_LINE = 30;
 const NOTE_PAD_Y = 8;
 
-/** The Notes: a heading on the page, then the notes one under the other in a white card. */
+/** The Notes: one white card, "NOTES" at its head and the notes one under the other. */
 const DAY_NOTE_LINE = 34;
-/** The heading "NOTES", on the page above the card, and the space under it. */
-const NOTES_HEADING = 40;
-const NOTES_HEADING_GAP = 8;
-/** Inside the card: the space around the notes, and between two of them (with a hairline). */
-const NOTES_PAD_Y = 14;
+/** Between two notes, with a hairline in the middle. */
 const DAY_NOTE_GAP = 18;
 
 // --- Working out where everything goes --------------------------------------
@@ -488,7 +484,7 @@ function layOutNotes(
 ): NotesLayout | null {
   if (dayNotes.length === 0) return null;
   setType(ctx, look.type.dayNote);
-  let y = NOTES_HEADING + NOTES_HEADING_GAP + NOTES_PAD_Y;
+  let y = CARD_PAD + YARD_LINE + PART_GAP;
   const notes = dayNotes.map((note, index) => {
     if (index > 0) y += DAY_NOTE_GAP;
     const lines = wrap(ctx, note, width - 2 * CARD_PAD);
@@ -496,7 +492,7 @@ function layOutNotes(
     y += lines.length * DAY_NOTE_LINE;
     return laid;
   });
-  return { left: 0, top: 0, width, height: y + NOTES_PAD_Y, notes };
+  return { left: 0, top: 0, width, height: y + CARD_PAD, notes };
 }
 
 /** A Task's lines: the first gets the bullet; the rest line up with its text. */
@@ -743,19 +739,17 @@ function drawBulletLine(ctx: CanvasRenderingContext2D, line: BulletLine, x: numb
 }
 
 /**
- * The Notes, across the top: "NOTES" on the page, as the board heads its
- * sections, then the notes in a white card, one under the other, a hairline
- * between two of them. No bullets.
+ * The Notes, across the top: one white card, "NOTES" at its head like any
+ * card's name, then the notes one under the other, a hairline between two of
+ * them. No bullets.
  */
 function drawNotes(ctx: CanvasRenderingContext2D, layout: NotesLayout, look: Look) {
+  drawCardGround(ctx, layout, look);
+  const inner = layout.left + CARD_PAD;
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, look.type.yard);
-  ctx.fillText('NOTES', layout.left + 2, layout.top + NOTES_HEADING / 2 + 2);
+  ctx.fillText('NOTES', inner, layout.top + CARD_PAD + YARD_LINE / 2 + 2);
 
-  const cardTop = layout.top + NOTES_HEADING + NOTES_HEADING_GAP;
-  drawCardGround(ctx, { left: layout.left, top: cardTop, width: layout.width, height: layout.height - (cardTop - layout.top) }, look);
-
-  const inner = layout.left + CARD_PAD;
   const innerWidth = layout.width - 2 * CARD_PAD;
   layout.notes.forEach((note, index) => {
     const noteTop = layout.top + note.top;
