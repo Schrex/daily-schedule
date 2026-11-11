@@ -68,10 +68,12 @@ export function useSend({
     if (inFlight.current) return;
 
     const view = crewView(roster, schedule);
+    // The moment Send was pressed: the time on the picture and in the send record.
+    const pressedAt = new Date();
     inFlight.current = true;
     setSending(true);
     try {
-      await delivery.deliver(await renderCrewPicture(view, roster));
+      await delivery.deliver(await renderCrewPicture(view, pressedAt, roster));
     } catch (error) {
       console.error('Could not send the Daily Schedule', error);
       setOutcome({ kind: 'failed', schedule });
@@ -81,7 +83,7 @@ export function useSend({
       setSending(false);
     }
 
-    setOutcome({ kind: 'sent', schedule: onDelivered(view, new Date().toISOString()) });
+    setOutcome({ kind: 'sent', schedule: onDelivered(view, pressedAt.toISOString()) });
   };
 
   const pressed = outcome?.schedule === schedule ? outcome.kind : null;

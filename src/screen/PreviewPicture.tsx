@@ -7,8 +7,8 @@ type Shown = { kind: 'drawing' } | { kind: 'ready'; url: string } | { kind: 'fai
 
 /**
  * "Preview": the picture the crew would get if "Send to crew" were pressed
- * now, drawn exactly as Send draws it (the same crew view, UPDATED marker and
- * all), shown large over the blurred board with nothing else around it.
+ * now, drawn exactly as Send draws it (the same crew view, stamped with the
+ * time now), shown large over the blurred board with nothing else around it.
  * Escape, or a click outside it, closes it. It records nothing and copies nothing: only Send does that.
  */
 export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule: DailySchedule }) {
@@ -19,7 +19,7 @@ export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule:
   const open = () => {
     const thisOpening = ++opening.current;
     setShown({ kind: 'drawing' });
-    renderCrewPicture(crewView(roster, schedule), roster)
+    renderCrewPicture(crewView(roster, schedule), new Date(), roster)
       .then((picture) => {
         if (opening.current === thisOpening) setShown({ kind: 'ready', url: URL.createObjectURL(picture) });
       })

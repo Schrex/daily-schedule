@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 /** The fixed palette. Color carries no meaning in the rules. */
-export const COLORS = ['grey', 'blue', 'orange', 'yellow', 'red'] as const;
+export const COLORS = ['grey', 'blue', 'orange', 'yellow', 'red', 'gunmetal'] as const;
 export type Color = (typeof COLORS)[number];
 
 export interface CrewMember {
@@ -606,6 +606,18 @@ export function fullDate(date: ScheduleDate): string {
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
+/**
+ * When the crew picture was made, as its quiet line in the head says it:
+ * "Sent Wed, Nov 11 · 6:42 PM", on the Scheduler's own clock. Sending the
+ * same date again just gets a new time.
+ */
+export function sentStamp(when: Date): string {
+  const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(when);
+  const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(when);
+  // Some clocks put a narrow no-break space before AM/PM: a plain one reads the same everywhere.
+  return `Sent ${day} · ${time}`.replace(/\s/g, ' ');
+}
+
 const destinationKey = (destination: Destination): string =>
   destination.kind === 'job'
     ? `job:${destination.jobId}`
@@ -622,7 +634,11 @@ const destinationKey = (destination: Destination): string =>
  */
 export interface CrewView {
   date: ScheduleDate;
-  /** True when the picture replaces a different one sent earlier for this date. */
+  /**
+   * True when the picture replaces a different one sent earlier for this date.
+   * Kept in the send record as it always was; nothing draws it any more (the
+   * picture's time says which one is latest).
+   */
   updated: boolean;
   /** Only the Jobs and Standing Rows with someone on them, in the Scheduler's order. */
   rows: ScheduleRow[];
@@ -633,7 +649,7 @@ export interface CrewView {
 /**
  * The crew view of the Daily Schedule as it would be sent now.
  *
- * It is marked UPDATED when the Daily Schedule has been sent before and has
+ * It is marked `updated` when the Daily Schedule has been sent before and has
  * changed since. With nothing changed since the last Send it is that Send's
  * picture again, marked (or not) exactly as it was then.
  */

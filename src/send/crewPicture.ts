@@ -1,11 +1,12 @@
 import logoUrl from '../assets/schreiber-logo.png';
 import { CREW_DOTS, PALETTE } from '../palette';
-import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } from '../schedule-rules';
+import { cardTitle, fullDate, sentStamp, type CrewView, type Roster, type ScheduleRow } from '../schedule-rules';
 
 /**
  * Draws the crew view as a picture (a PNG) of the Daily Schedule, laid out as
  * the Scheduler's board is: the Schreiber logo at the top left with
- * "SCHEDULE FOR" and the date in the middle of that row, the Notes
+ * "SCHEDULE FOR" and the date in the middle of that row, and a quiet line at
+ * the right saying when it was made ("Sent Wed, Nov 11 · 6:42 PM"), the Notes
  * across the top, then the Job cards in two columns and Shop, Trucking and
  * Off Work in a narrower third (with Jobs carrying on under them on a busy
  * day).
@@ -27,10 +28,13 @@ import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } fro
  * is the same picture whatever the Scheduler's window looks like, and drawn
  * at 4K (3840 pixels square) so it stays sharp when zoomed.
  *
+ * `madeAt` is when it was made: the press of Send, or now for Preview. Sending
+ * the same date again just gets a new time; there is no UPDATED marker.
+ *
  * The roster, when given, gives a Job's number as the screen shows it;
  * without it (or for a Job no longer on it) the card shows the label alone.
  */
-export async function renderCrewPicture(view: CrewView, roster?: Roster): Promise<Blob> {
+export async function renderCrewPicture(view: CrewView, madeAt: Date, roster?: Roster): Promise<Blob> {
   const look = readLook();
   // The type is bundled with the page but only fetched when first used, and
   // the logo is a file of its own: make sure all of it is there before drawing.
@@ -48,7 +52,7 @@ export async function renderCrewPicture(view: CrewView, roster?: Roster): Promis
   canvas.height = PIXELS;
   const ctx = canvas.getContext('2d')!;
   ctx.scale(SHARPNESS * scale, SHARPNESS * scale);
-  draw(ctx, view, layout, look, logo);
+  draw(ctx, view, sentStamp(madeAt), layout, look, logo);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -93,8 +97,7 @@ interface Type {
 type Kind =
   | 'schedule'
   | 'date'
-  | 'updated'
-  | 'updatedNote'
+  | 'stamp'
   | 'job'
   | 'yard'
   | 'count'
@@ -138,8 +141,7 @@ function readLook(): Look {
     type: {
       schedule: type(text, 'bold', 19, 'label'),
       date: type(display, 'display', 48, 'heading'),
-      updated: type(display, 'display', 38, 'button'),
-      updatedNote: type(text, 'strong', 24),
+      stamp: type(text, 'medium', 19),
       job: type(display, 'display', 42, 'heading'),
       yard: type(display, 'display', 34, 'heading'),
       count: type(text, 'strong', 17),
@@ -169,7 +171,10 @@ function setType(ctx: CanvasRenderingContext2D, { font, letterSpacing }: Type) {
   ctx.letterSpacing = letterSpacing;
 }
 
-/** The top row: the logo at the left, and "SCHEDULE FOR" over the date in the middle. */
+/**
+ * The top row: the logo at the left, "SCHEDULE FOR" over the date in the
+ * middle, and when it was made at the right, level with the date.
+ */
 const LOGO_HEIGHT = 84;
 const HEADER_HEIGHT = LOGO_HEIGHT;
 /** From the top of the row to the middle of "SCHEDULE FOR", and of the date a clear gap under it. */
@@ -177,11 +182,8 @@ const DATE_LABEL_MIDDLE = 12;
 const DATE_MIDDLE = 58;
 /** The date keeps at least this clear of the logo. */
 const DATE_GAP = 30;
-/** Under the top row, before the UPDATED bar, the Notes or the cards. */
+/** Under the top row, before the Notes or the cards. */
 const HEADER_GAP = 22;
-const UPDATED_HEIGHT = 72;
-const UPDATED_GAP = 18;
-const UPDATED_PAD_X = 22;
 
 /**
  * The picture is always this square, whatever the day holds. Everything in it
@@ -352,7 +354,7 @@ function layOut(
   sheetWidth: number,
 ): Layout {
   const contentWidth = sheetWidth - 2 * MARGIN;
-  let top = MARGIN + HEADER_HEIGHT + HEADER_GAP + (view.updated ? UPDATED_HEIGHT + UPDATED_GAP : 0);
+  let top = MARGIN + HEADER_HEIGHT + HEADER_GAP;
 
   // The Notes for the day across the top, so everyone reads them first.
   const notes = layOutNotes(view.dayNotes ?? [], ctx, look, contentWidth);
@@ -558,6 +560,7 @@ function fitType(ctx: CanvasRenderingContext2D, type: Type, text: string, width:
 function draw(
   ctx: CanvasRenderingContext2D,
   view: CrewView,
+  stamp: string,
   layout: Layout,
   look: Look,
   logo: HTMLImageElement,
@@ -586,27 +589,16 @@ function draw(
   ctx.fillText(date, middle, MARGIN + DATE_MIDDLE);
   ctx.textAlign = 'left';
 
-  if (view.updated) drawUpdated(ctx, look, contentWidth);
+  // At the right, as wide as the logo at most: when it was made, quiet and
+  // level with the date, so the row stays balanced.
+  ctx.textAlign = 'right';
+  ctx.fillStyle = PALETTE.muted;
+  setType(ctx, fitType(ctx, look.type.stamp, stamp, logoWidth));
+  ctx.fillText(stamp, MARGIN + contentWidth, MARGIN + DATE_MIDDLE);
+  ctx.textAlign = 'left';
+
   if (layout.notes) drawNotes(ctx, layout.notes, look);
   for (const card of layout.cards) drawCard(ctx, card, look);
-}
-
-/** The UPDATED marker: a solid bar of the alert red under the top row. */
-function drawUpdated(ctx: CanvasRenderingContext2D, look: Look, width: number) {
-  const top = MARGIN + HEADER_HEIGHT + HEADER_GAP;
-  const middle = top + UPDATED_HEIGHT / 2 + 2;
-  ctx.fillStyle = PALETTE.alert;
-  ctx.beginPath();
-  ctx.roundRect(MARGIN, top, width, UPDATED_HEIGHT, look.radius.card);
-  ctx.fill();
-
-  ctx.fillStyle = PALETTE.paper;
-  setType(ctx, look.type.updated);
-  ctx.fillText('UPDATED', MARGIN + UPDATED_PAD_X, middle);
-  const afterWord = MARGIN + UPDATED_PAD_X + ctx.measureText('UPDATED').width + 18;
-  const replaces = 'This replaces the earlier schedule';
-  setType(ctx, fitType(ctx, look.type.updatedNote, replaces, MARGIN + width - UPDATED_PAD_X - afterWord));
-  ctx.fillText(replaces, afterWord, middle);
 }
 
 /** A card's ground with a fine edge drawn wholly inside it. */

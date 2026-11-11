@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dailyScheduleFor,
   fullDate,
+  sentStamp,
   nextWorkingDay,
   scheduleDateOf,
   onJob,
@@ -646,6 +647,18 @@ describe('the full date', () => {
   it('spells out the weekday, month, day and year', () => {
     expect(fullDate('2026-11-10')).toBe('Tuesday, November 10, 2026');
     expect(fullDate('2027-01-01')).toBe('Friday, January 1, 2027');
+  });
+});
+
+describe('the time on the crew picture', () => {
+  // Built in local time, as the Scheduler's clock reads it.
+  it('says when it was made: short weekday and month, day, and the clock time', () => {
+    expect(sentStamp(new Date(2026, 10, 11, 18, 42))).toBe('Sent Wed, Nov 11 · 6:42 PM');
+  });
+
+  it('pads the minutes and reads a morning or midnight time as AM, with a plain space', () => {
+    expect(sentStamp(new Date(2027, 0, 4, 7, 5))).toBe('Sent Mon, Jan 4 · 7:05 AM');
+    expect(sentStamp(new Date(2026, 11, 31, 0, 0))).toBe('Sent Thu, Dec 31 · 12:00 AM');
   });
 });
 
