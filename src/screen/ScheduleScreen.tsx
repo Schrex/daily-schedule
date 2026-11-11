@@ -45,7 +45,7 @@ interface ScheduleScreenProps {
   alertNotPlaced?: boolean;
   /** Drawn right beside the date: the Settings gear. */
   dateButtons?: ReactNode;
-  /** Drawn at the right end of the header: Undo, Change date and Send. */
+  /** Drawn at the right end of the header: Change date and Send. */
   toolbarButtons?: ReactNode;
   /** Drawn across the foot of the header: what happened to the last Send. */
   sendMessage?: ReactNode;
@@ -103,7 +103,7 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * Every move is shown: a name that is somewhere else after a redraw travels
  * there from where it was (`MoveNames`), whatever moved it.
  *
- * It is a board: a header card (the date, the hint, Undo, Change date and
+ * It is a board: a header card (the date, the hint, Change date and
  * Send), the Not Placed list on the left, and a grid of cards, one for each
  * Job and Standing Row. A card is the Job (its number small over its name),
  * how many are on it, the day's Tasks in a tinted box, and its names, one to

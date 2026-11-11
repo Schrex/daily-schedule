@@ -1,5 +1,5 @@
 /* The Scheduler's screen: a board. A header card on top (the date, the hint,
-   Undo, Change date and Send), the Not Placed list on the left, and a grid of
+   Change date and Send), the Not Placed list on the left, and a grid of
    white cards, one for each Job and Standing Row. The picture sent to the crew
    (src/send/crewPicture.ts) is these same cards, one under the other. Type,
    spacing, corners, the page, the buttons and the Crew Member colors come
@@ -48,7 +48,7 @@
   }
 }
 
-/* --- The header: the date and the hint; Undo, Change date and Send -------- */
+/* --- The header: the date and the hint; Change date and Send ------------- */
 
 .toolbar {
   flex: 0 0 auto;
