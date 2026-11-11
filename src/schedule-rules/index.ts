@@ -564,6 +564,36 @@ function lastSend(schedule: DailySchedule): (Pick<SendRecord, 'sentAt'> & Partia
   return typeof last === 'string' ? { sentAt: last } : last;
 }
 
+/** What the office TV shows: a crew view that was Sent, and when it was Sent. */
+export interface OnTheTv {
+  view: CrewView;
+  sentAt: string;
+}
+
+/**
+ * What the office TV shows on `today`: the finished Daily Schedule, which is
+ * the last Send of the earliest Daily Schedule dated today or later that has
+ * been Sent. So through the working day it is today's, and from midnight the
+ * one Sent the evening before for the next working day. A Daily Schedule never
+ * Sent is not finished and is never shown; nothing Sent at all gives null.
+ *
+ * It is what the crew got, exactly as it was Sent, whatever has been changed
+ * on the board since. A Send from before send records held the picture is
+ * shown as the Daily Schedule stands now.
+ */
+export function onTheTv(
+  roster: Roster,
+  saved: readonly DailySchedule[],
+  today: ScheduleDate,
+): OnTheTv | null {
+  const schedule = saved
+    .filter((candidate) => candidate.date >= today && lastSend(candidate) !== undefined)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))[0];
+  if (!schedule) return null;
+  const last = lastSend(schedule)!;
+  return { view: last.sent ?? crewView(roster, schedule), sentAt: last.sentAt };
+}
+
 /** Whether two pieces of plain data say the same thing, however they were built. */
 function sameData(a: unknown, b: unknown): boolean {
   if (a === b) return true;

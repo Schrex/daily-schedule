@@ -1,0 +1,265 @@
+/* The office TV: the cards the crew is sent, side by side in columns across a
+   wide screen, on the board's warm off-white. Everything is in rem, and the
+   page sets its root size itself so the board just fills the screen (the one
+   page that follows the window: nobody zooms a TV). Type, corners and the page
+   come from the shared look; colors are the palette, as custom properties. */
+
+@import '../look.css';
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.tv {
+  min-height: 100vh;
+  cursor: none; /* a mouse left on the TV is not drawn over the schedule */
+}
+
+.tv-fit {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+/* --- The head: the logo, the date, when it was sent ---------------------- */
+
+.tv-head {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.tv-logo {
+  height: 3.5rem;
+  width: auto;
+}
+
+.tv-date {
+  flex: 1 1 auto;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-size: 2.75rem;
+  line-height: 1;
+  letter-spacing: var(--tracking-heading);
+  text-transform: uppercase;
+}
+
+.tv-sent {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--ink-soft);
+  font-weight: var(--weight-strong);
+  font-size: 1.25rem;
+  white-space: nowrap;
+}
+
+.tv-updated {
+  padding: 0.375rem 1rem;
+  border-radius: var(--radius-chip);
+  background: var(--alert);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-size: 1.5rem;
+  letter-spacing: var(--tracking-button);
+  text-transform: uppercase;
+}
+
+/* --- The cards, in columns -------------------------------------------------
+   Columns as wide as a card reads well; as the text gets smaller to fit, more
+   of them fit across. A card is never split between two columns. */
+
+.tv-cards {
+  column-width: 20rem;
+  column-gap: 1rem;
+}
+
+.tv-card {
+  break-inside: avoid;
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--paper);
+}
+
+.tv-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.625rem;
+}
+
+.tv-card-name {
+  flex: 1 1 auto;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-size: 1.625rem;
+  line-height: 1.1;
+  letter-spacing: var(--tracking-heading);
+  text-transform: uppercase;
+}
+
+.tv-card-name-yard {
+  font-size: 1.375rem;
+}
+
+.tv-card-number,
+.tv-card-count {
+  color: var(--muted);
+  font-family: var(--font);
+  font-weight: var(--weight-strong);
+  font-size: 0.875rem;
+  letter-spacing: 0;
+}
+
+.tv-card-number {
+  margin-left: 0.625rem;
+}
+
+/* The Tasks: plain lines with a small bullet, ruled off from the names. */
+.tv-tasks {
+  margin: 0 0 0.75rem;
+  padding: 0 0 0.75rem;
+  border-bottom: var(--hairline);
+  list-style: none;
+  font-size: 1rem;
+}
+
+.tv-tasks li {
+  position: relative;
+  padding-left: 1rem;
+}
+
+.tv-tasks li + li {
+  margin-top: 0.25rem;
+}
+
+.tv-tasks li::before {
+  content: '';
+  position: absolute;
+  left: 0.125rem;
+  top: 0.5em;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: var(--ink-soft);
+}
+
+/* Who: one name to a line, a grey chip with a dot of their color; a Foreman's is black. */
+.tv-names {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tv-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-chip);
+  background: var(--chip);
+}
+
+.tv-chip-foreman {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.tv-dot {
+  flex: 0 0 auto;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-top: 0.35em;
+  border-radius: 50%;
+}
+
+.tv-chip-foreman .tv-dot {
+  background: var(--paper) !important;
+}
+
+.tv-chip-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tv-chip-name {
+  font-weight: var(--weight-strong);
+  font-size: 1.125rem;
+}
+
+.tv-person-task {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
+
+.tv-chip-foreman .tv-person-task {
+  color: var(--chip-ink-soft);
+}
+
+/* A Note hangs under its name, in red, in one tinted piece with it. */
+.tv-name-with-note {
+  border-radius: var(--radius-chip);
+  background: var(--alert-wash-strong);
+}
+
+.tv-note {
+  margin: 0;
+  padding: 0.25rem 0.75rem 0.5rem;
+  color: var(--alert);
+  font-weight: var(--weight-strong);
+  font-size: 1rem;
+}
+
+/* The Notes for the day: each on a soft ground of its own. */
+.tv-day-notes .tv-card-name {
+  margin-bottom: 0.625rem;
+}
+
+.tv-day-note {
+  margin: 0.375rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-chip);
+  background: var(--canvas);
+  font-size: 1rem;
+}
+
+/* --- Nothing sent yet ---------------------------------------------------- */
+
+.tv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5vw;
+  min-height: 100vh;
+  text-align: center;
+}
+
+.tv-empty .tv-logo {
+  height: 7vw;
+}
+
+.tv-empty-date {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-size: 3.5vw;
+  letter-spacing: var(--tracking-heading);
+  text-transform: uppercase;
+}
+
+.tv-empty-text {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 1.75vw;
+}

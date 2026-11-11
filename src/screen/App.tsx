@@ -22,6 +22,7 @@ import { openDate, type Opened, type ScheduleStore } from '../storage';
 import { ChangeDate } from './ChangeDate';
 import { nextOpenJobs, type OpenJobs, type OpenJobsEvent } from './openJobs';
 import { SettingsLink } from './SettingsLink';
+import { TvLink } from './TvLink';
 import { ScheduleScreen } from './ScheduleScreen';
 import { SendButton, SendMessage } from './SendBar';
 import { useSend } from './useSend';
@@ -190,7 +191,12 @@ export function App({
       onAddDayNote={(text) => change((current) => addDayNote(current, text))}
       onChangeDayNote={(index, text) => change((current) => changeDayNote(current, index, text))}
       onRemoveDayNote={(index) => change((current) => removeDayNote(current, index))}
-      dateButtons={<SettingsLink />}
+      dateButtons={
+        <>
+          <SettingsLink />
+          <TvLink />
+        </>
+      }
       toolbarButtons={
         <>
           <ChangeDate date={schedule.date} onChangeDate={changeDate} />

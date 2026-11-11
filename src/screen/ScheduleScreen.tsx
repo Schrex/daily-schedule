@@ -63,7 +63,7 @@ interface ScheduleScreenProps {
   /** A Day Note was changed (blank: taken away). */
   onChangeDayNote: (index: number, text: string) => void;
   onRemoveDayNote: (index: number) => void;
-  /** Drawn right beside the date: the Settings gear. */
+  /** Drawn right beside the date: the Settings gear and the TV button. */
   dateButtons?: ReactNode;
   /** Drawn at the right end of the header: Change date and Send. */
   toolbarButtons?: ReactNode;
