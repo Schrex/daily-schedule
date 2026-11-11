@@ -5,7 +5,7 @@ import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } fro
 /**
  * Draws the crew view as a picture (a PNG) of the Daily Schedule, laid out as
  * the Scheduler's board is: the Schreiber logo at the top left with
- * "SCHEDULE" under it and the date in the middle of that row, the Notes
+ * "SCHEDULE FOR" and the date in the middle of that row, the Notes
  * across the top, then the Job cards in two columns and Shop, Trucking and
  * Off Work in a narrower third (with Jobs carrying on under them on a busy
  * day).
@@ -136,7 +136,7 @@ function readLook(): Look {
   // everything read, strong for the names.
   return {
     type: {
-      schedule: type(text, 'bold', 20, 'label'),
+      schedule: type(text, 'bold', 19, 'label'),
       date: type(display, 'display', 48, 'heading'),
       updated: type(display, 'display', 38, 'button'),
       updatedNote: type(text, 'strong', 24),
@@ -169,17 +169,16 @@ function setType(ctx: CanvasRenderingContext2D, { font, letterSpacing }: Type) {
   ctx.letterSpacing = letterSpacing;
 }
 
-/**
- * The top row: the logo at the left with "SCHEDULE" under it (so it reads
- * "Schreiber Excavating Schedule"), and the date in the middle of the row.
- */
-const LOGO_HEIGHT = 66;
-const SCHEDULE_LINE = 34;
-const HEADER_HEIGHT = LOGO_HEIGHT + SCHEDULE_LINE;
+/** The top row: the logo at the left, and "SCHEDULE FOR" over the date in the middle. */
+const LOGO_HEIGHT = 84;
+const HEADER_HEIGHT = LOGO_HEIGHT;
+/** From the top of the row to the middle of "SCHEDULE FOR", and of the date a clear gap under it. */
+const DATE_LABEL_MIDDLE = 12;
+const DATE_MIDDLE = 58;
 /** The date keeps at least this clear of the logo. */
 const DATE_GAP = 30;
 /** Under the top row, before the UPDATED bar, the Notes or the cards. */
-const HEADER_GAP = 14;
+const HEADER_GAP = 22;
 const UPDATED_HEIGHT = 72;
 const UPDATED_GAP = 18;
 const UPDATED_PAD_X = 22;
@@ -572,28 +571,19 @@ function draw(
   const logoWidth = (logo.naturalWidth / logo.naturalHeight) * LOGO_HEIGHT;
   ctx.drawImage(logo, MARGIN, MARGIN, logoWidth, LOGO_HEIGHT);
 
-  // "SCHEDULE" under the logo, spaced out to exactly its width, so the two
-  // read as one name: "Schreiber Excavating Schedule".
-  ctx.fillStyle = PALETTE.inkSoft;
-  const schedule = 'SCHEDULE';
-  const scheduleWidth = logoWidth - 4;
-  // Larger first (up to 1.4 times), then the rest made up with letter spacing.
-  setType(ctx, look.type.schedule);
-  const grown = scaled(look.type.schedule, Math.min(1.4, scheduleWidth / ctx.measureText(schedule).width));
-  setType(ctx, fitType(ctx, grown, schedule, scheduleWidth));
-  const spare = scheduleWidth - ctx.measureText(schedule).width;
-  // Canvas adds the letter spacing after every letter, the last one too.
-  ctx.letterSpacing = `${parseFloat(ctx.letterSpacing) + spare / (schedule.length - 1)}px`;
-  ctx.fillText(schedule, MARGIN + 4, MARGIN + LOGO_HEIGHT + SCHEDULE_LINE / 2);
-
-  // The day and date (no year) in the middle of the row, clear of the logo.
+  // In the middle of the top row, clear of the logo: "SCHEDULE FOR" small,
+  // and a clear gap under it the day and date (no year).
+  const middle = MARGIN + contentWidth / 2;
   const dateWidth = contentWidth - 2 * (logoWidth + DATE_GAP);
   const [weekday, monthDay] = fullDate(view.date).split(', ');
   const date = `${weekday}, ${monthDay}`.toUpperCase();
   ctx.textAlign = 'center';
+  ctx.fillStyle = PALETTE.muted;
+  setType(ctx, fitType(ctx, look.type.schedule, 'SCHEDULE FOR', dateWidth));
+  ctx.fillText('SCHEDULE FOR', middle, MARGIN + DATE_LABEL_MIDDLE);
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, fitType(ctx, look.type.date, date, dateWidth));
-  ctx.fillText(date, MARGIN + contentWidth / 2, MARGIN + HEADER_HEIGHT / 2 + 2);
+  ctx.fillText(date, middle, MARGIN + DATE_MIDDLE);
   ctx.textAlign = 'left';
 
   if (view.updated) drawUpdated(ctx, look, contentWidth);
