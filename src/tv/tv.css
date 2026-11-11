@@ -21,7 +21,7 @@ body {
   padding: 1.25rem 1.5rem 1.5rem;
 }
 
-/* --- The head: the logo, the date, and UPDATED if it replaces an earlier Send */
+/* --- The head: the logo and the date (no time: the TV shows the day only) */
 
 .tv-head {
   display: flex;
@@ -44,19 +44,6 @@ body {
   line-height: 1;
   letter-spacing: var(--tracking-heading);
   text-transform: uppercase;
-}
-
-.tv-updated {
-  padding: 0.375rem 1rem;
-  border-radius: var(--radius-chip);
-  background: var(--alert);
-  color: var(--paper);
-  font-family: var(--font-display);
-  font-weight: var(--weight-display);
-  font-size: 1.5rem;
-  letter-spacing: var(--tracking-button);
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 
 /* --- The cards, in columns -------------------------------------------------

@@ -41,7 +41,7 @@ describe('undo', () => {
 
     expect(back.schedule.placements).toEqual(start.placements);
     expect(back.schedule.sends).toEqual(sent.sends);
-    // Changed back after the Send, so the next picture says UPDATED.
+    // Changed back after the Send, so the next crew view is marked updated.
     expect(crewView(roster, back.schedule).updated).toBe(true);
   });
 

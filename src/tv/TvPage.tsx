@@ -87,7 +87,6 @@ function Board({ roster, view }: { roster: Roster; view: CrewView }) {
       <header className="tv-head">
         <img className="tv-logo" src={logoUrl} alt="Schreiber Excavating" />
         <h1 className="tv-date">{fullDate(view.date)}</h1>
-        {view.updated && <span className="tv-updated">Updated</span>}
       </header>
       <main className="tv-cards">
         {view.rows.map((row) => (
