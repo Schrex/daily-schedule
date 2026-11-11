@@ -32,10 +32,6 @@ async function read(store: ScheduleStore): Promise<Shown> {
   return { roster, tv: onTheTv(roster, saved, today), today };
 }
 
-/** The time of a Send as a clock shows it: "6:42 PM". */
-const clockTime = (sentAt: string): string =>
-  new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(sentAt));
-
 /**
  * The finished Daily Schedule, made to be read from across the office: the
  * same cards the crew is sent, side by side in columns across a wide screen,
@@ -84,7 +80,7 @@ function NothingSent({ today }: { today: string }) {
 }
 
 function Board({ roster, tv }: { roster: Roster; tv: OnTheTv }) {
-  const { view, sentAt } = tv;
+  const { view } = tv;
   const fitRef = useFit([tv]);
 
   return (
@@ -92,10 +88,7 @@ function Board({ roster, tv }: { roster: Roster; tv: OnTheTv }) {
       <header className="tv-head">
         <img className="tv-logo" src={logoUrl} alt="Schreiber Excavating" />
         <h1 className="tv-date">{fullDate(view.date)}</h1>
-        <div className="tv-sent">
-          {view.updated && <span className="tv-updated">Updated</span>}
-          <span>Sent {clockTime(sentAt)}</span>
-        </div>
+        {view.updated && <span className="tv-updated">Updated</span>}
       </header>
       <main className="tv-cards">
         {view.rows.map((row) => (
