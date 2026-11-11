@@ -73,7 +73,6 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
                 onClick={() => setOpen({ kind: 'crew-member', id: crewMember.id })}
               >
                 {crewMember.name}
-                {crewMember.foreman && <span className="settings-foreman">Foreman</span>}
               </button>
             </li>
           ))}

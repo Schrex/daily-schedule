@@ -99,11 +99,11 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * there from where it was (`MoveNames`), whatever moved it.
  *
  * It is a board: a header card (the Schreiber logo, the date, the hint,
- * Change date and Send); on the left the Not Placed list and under it the
- * three Standing Rows (Shop, Trucking, Off Work) as small cards; and a grid
- * of cards, one for each Job. A Job card is its number and how many are on
- * it, the Job's name, the day's Tasks in a pale yellow box, and its names,
- * one to a line. Shop and Trucking can have Tasks too, as a smaller note. While a name is being moved, every card they can go to is
+ * Change date and Send); a grid of cards, one for each Job; and on the
+ * right the Not Placed list and under it the three Standing Rows (Shop,
+ * Trucking, Off Work) as small cards. A Job card is its number over its name,
+ * how many are on it at the top right, the day's Tasks in a pale yellow box,
+ * and its names, one to a line. Shop and Trucking can have Tasks too, as a smaller note. While a name is being moved, every card they can go to is
  * highlighted in the accent; clicking or tapping one puts them there. The
  * picture sent to the crew (`crewPicture`) is these same cards, one under
  * the other, without what is only the Scheduler's.
@@ -204,11 +204,12 @@ export function ScheduleScreen({
         {...drag.dropProps(row.key)}
       >
         {isJob ? (
-          <header className="block-head">
-            <span className="job-number">
-              {number} · {headcount(row.who.length)}
-            </span>
-            <h2 className="job">{title}</h2>
+          <header className="block-head block-head-job">
+            <div className="block-title">
+              <span className="job-number">{number}</span>
+              <h2 className="job">{title}</h2>
+            </div>
+            <span className="count">{headcount(row.who.length)}</span>
           </header>
         ) : (
           <header className="block-head block-head-yard">
@@ -296,6 +297,9 @@ export function ScheduleScreen({
       </header>
 
       <div className="layout">
+        <div className="schedule-scroll" data-motion-area>
+          <div className="board">{jobRows.map(block)}</div>
+        </div>
         <div className="side" data-motion-area>
           <aside
             className={`not-placed destination${alertNotPlaced ? ' not-placed-alert' : ''}`}
@@ -327,9 +331,6 @@ export function ScheduleScreen({
           <div className="yard">{standingRows.map(block)}</div>
         </div>
 
-        <div className="schedule-scroll" data-motion-area>
-          <div className="board">{jobRows.map(block)}</div>
-        </div>
       </div>
 
       {drag.overlay}

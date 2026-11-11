@@ -93,14 +93,6 @@
   box-shadow: var(--elevation-lifted);
 }
 
-.settings-foreman {
-  font-size: 0.7rem;
-  font-weight: var(--weight-strong);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  opacity: 0.75;
-}
-
 /* Jobs: one full-width row each, in the order they are scheduled. */
 .settings-jobs {
   display: grid;
