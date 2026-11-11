@@ -48,6 +48,8 @@ interface Lifted {
   text: string;
   /** The Person Tasks under the name. */
   subs: string[];
+  /** The class of its dot, for its color. */
+  dot: string;
   width: number;
   height: number;
 }
@@ -99,7 +101,9 @@ const pointerHolder = () => document.body;
  * shrink, and pull the others out from under a pointer that has not moved.
  */
 function holdDestinationHeights(): () => void {
-  const held = [...document.querySelectorAll<HTMLElement>('[data-drop]')].map((destination) => {
+  // A destination marked data-drop-grows (a folded Job) is meant to grow when a
+  // name is picked up, exactly as when one is selected: it is not held.
+  const held = [...document.querySelectorAll<HTMLElement>('[data-drop]:not([data-drop-grows])')].map((destination) => {
     const before = destination.style.minHeight;
     return { destination, before, height: destination.getBoundingClientRect().height };
   });
@@ -237,6 +241,7 @@ export function useNameDrag({
           className: source.className,
           // The name, and any Person Tasks under it, as they are drawn.
           text: source.querySelector('.name-text')?.textContent ?? source.textContent ?? '',
+          dot: source.querySelector('.name-dot')?.className ?? 'name-dot',
           subs: [...source.querySelectorAll('.name-sub')].map((sub) => sub.textContent ?? ''),
           width: box.width,
           height: box.height,
@@ -333,12 +338,19 @@ export function useNameDrag({
             style={{ width: lifted.width, height: lifted.height }}
             aria-hidden="true"
           >
-            <span className="name-text">{lifted.text}</span>
-            {lifted.subs.map((sub, index) => (
-              <span key={index} className="name-sub">
-                {sub}
+            <span className="name-head">
+              <span className={lifted.dot} />
+              <span className="name-text">{lifted.text}</span>
+            </span>
+            {lifted.subs.length > 0 && (
+              <span className="name-subs">
+                {lifted.subs.map((sub, index) => (
+                  <span key={index} className="name-sub">
+                    {sub}
+                  </span>
+                ))}
               </span>
-            ))}
+            )}
           </div>,
           document.body,
         )

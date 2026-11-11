@@ -8,9 +8,9 @@ import { cardTitle, fullDate, type CrewView, type Roster, type ScheduleRow } fro
  * cards of the Scheduler's board one under the other, in the same clean look.
  * A card is its place's name with the Job number and how many at the right,
  * the day's Tasks as plain lines ruled off from the names, then the names,
- * one to a line: a grey chip with a dot of the Crew Member's color (a
- * Foreman's chip is black), with their Person Tasks smaller under the name.
- * A Note hangs under its name in red. The Notes for the day, if any, are a
+ * one to a line: a grey chip whose top line is a dot of the Crew Member's
+ * color and the name (black for a Foreman), with their Person Tasks bulleted
+ * under it, and a Note as a soft yellow strip at its foot. The Notes for the day, if any, are a
  * last card. It draws exactly what it is given and nothing else: no buttons
  * and no Not Placed list. No rule is applied here.
  *
@@ -94,6 +94,7 @@ type Kind =
   | 'name'
   | 'personTask'
   | 'note'
+  | 'noteLabel'
   | 'dayNote';
 
 /** The shared look as the picture uses it: its kinds of text and its corners. */
@@ -135,8 +136,9 @@ function readLook(): Look {
       task: type(text, 'body', 27),
       yardTask: type(text, 'body', 24),
       name: type(text, 'strong', 28, 'name'),
-      personTask: type(text, 'body', 23),
-      note: type(text, 'strong', 24),
+      personTask: type(text, 'strong', 23),
+      note: type(text, 'body', 24),
+      noteLabel: type(text, 'bold', 24),
       dayNote: type(text, 'body', 27),
     },
     radius: { card: corner('card'), chip: corner('chip') },
@@ -189,13 +191,19 @@ const NAME_GAP = 10;
 const NAME_PAD_X = 20;
 const DOT = 22;
 const DOT_GAP = 16;
-/** A name with Person Tasks: the name on a shorter line, then one line each. */
-const SUBS_PAD_Y = 12;
-const SUBS_NAME_LINE = 38;
-const SUB_LINE = 30;
+/** Person Tasks: bulleted lines under the name's line, in the same grey chip. */
+/** From the foot of the name's line to the first task: room under a black line, close under a grey one. */
+const SUBS_PAD_TOP = 8;
+const SUBS_PAD_TOP_GREY = -12;
+const SUBS_PAD_BOTTOM = 14;
+const SUB_LINE = 32;
+const SUB_BULLET = 8;
+const SUB_BULLET_GAP = 14;
+/** A Note: a soft yellow strip at the foot of the chip, "Note" and the text. */
 const NOTE_LINE = 32;
-const NOTE_PAD_TOP = 6;
-const NOTE_PAD_BOTTOM = 12;
+const NOTE_PAD_Y = 10;
+const NOTE_LABEL = 'Note';
+const NOTE_LABEL_GAP = 10;
 
 /** The Notes for the day: one under the other, ruled apart. */
 /** The Notes for the day: each note on a soft ground of its own, one under the other. */
@@ -211,10 +219,13 @@ interface NameBox {
   name: string;
   dot: string;
   foreman: boolean;
-  /** The Person Tasks, already broken into lines that fit the chip. */
-  subLines: string[];
+  /** The Person Tasks, already broken into lines that fit the chip; `first` gets the bullet. */
+  subLines: { text: string; first: boolean }[];
   /** The height of the chip, Person Tasks included; the Note hangs under it. */
   chipHeight: number;
+  /** From the top of the chip to the first Person Task line. */
+  subsTop: number;
+  /** The Note's text in lines that fit beside "Note". */
   noteLines: string[];
   y: number;
   height: number;
@@ -321,22 +332,25 @@ function stackNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look)
 
   for (const { crewMember, note, personTasks = [] } of row.who) {
     setType(ctx, look.type.personTask);
-    const subLines = personTasks.flatMap((task) => wrap(ctx, task, textWidth));
+    // A task's later lines line up with its first, not with the bullet.
+    const subLines = personTasks.flatMap((task) =>
+      wrap(ctx, task, textWidth).map((text, index) => ({ text, first: index === 0 })),
+    );
+    const subsTop = NAME_HEIGHT + (crewMember.foreman ? SUBS_PAD_TOP : SUBS_PAD_TOP_GREY);
     const chipHeight =
-      subLines.length > 0
-        ? 2 * SUBS_PAD_Y + SUBS_NAME_LINE + subLines.length * SUB_LINE
-        : NAME_HEIGHT;
+      subLines.length > 0 ? subsTop + subLines.length * SUB_LINE + SUBS_PAD_BOTTOM : NAME_HEIGHT;
+    setType(ctx, look.type.noteLabel);
+    const labelWidth = ctx.measureText(NOTE_LABEL).width + NOTE_LABEL_GAP;
     setType(ctx, look.type.note);
-    const noteLines = note ? wrap(ctx, note, CARD_INNER_WIDTH - 2 * NAME_PAD_X) : [];
-    const height =
-      chipHeight +
-      (noteLines.length > 0 ? NOTE_PAD_TOP + noteLines.length * NOTE_LINE + NOTE_PAD_BOTTOM : 0);
+    const noteLines = note ? wrap(ctx, note, CARD_INNER_WIDTH - 2 * NAME_PAD_X - labelWidth) : [];
+    const height = chipHeight + (noteLines.length > 0 ? 2 * NOTE_PAD_Y + noteLines.length * NOTE_LINE : 0);
     names.push({
       name: crewMember.name,
       dot: CREW_DOTS[crewMember.color],
       foreman: crewMember.foreman,
       subLines,
       chipHeight,
+      subsTop,
       noteLines,
       y,
       height,
@@ -505,33 +519,29 @@ function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
 function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: Look) {
   const x = CARD_INNER_X;
   const width = CARD_INNER_WIDTH;
+  const r = look.radius.chip;
+  const hasNote = box.noteLines.length > 0;
+  const hasSubs = box.subLines.length > 0;
 
-  // A Note hangs under its name, in one red-tinted piece with it.
-  if (box.noteLines.length > 0) {
-    ctx.fillStyle = PALETTE.alertWashStrong;
-    ctx.beginPath();
-    ctx.roundRect(x, y, width, box.height, look.radius.chip);
-    ctx.fill();
-    ctx.fillStyle = PALETTE.alert;
-    setType(ctx, look.type.note);
-    const notesTop = y + box.chipHeight + NOTE_PAD_TOP;
-    box.noteLines.forEach((line, index) =>
-      ctx.fillText(line, x + NAME_PAD_X, notesTop + (index + 0.5) * NOTE_LINE + 1, width - 2 * NAME_PAD_X),
-    );
-  }
-
-  // The chip: grey, or black for a Foreman.
-  ctx.fillStyle = box.foreman ? PALETTE.ink : PALETTE.chip;
+  // The chip, grey; square at the foot when the Note hangs under it.
+  ctx.fillStyle = PALETTE.chip;
   ctx.beginPath();
-  ctx.roundRect(x, y, width, box.chipHeight, look.radius.chip);
+  ctx.roundRect(x, y, width, box.chipHeight, hasNote ? [r, r, 0, 0] : r);
   ctx.fill();
 
-  const hasSubs = box.subLines.length > 0;
-  const middle = hasSubs ? y + SUBS_PAD_Y + SUBS_NAME_LINE / 2 + 1 : y + NAME_HEIGHT / 2 + 1;
+  // A Foreman's line is black.
+  if (box.foreman) {
+    ctx.fillStyle = PALETTE.ink;
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, NAME_HEIGHT, hasSubs || hasNote ? [r, r, 0, 0] : r);
+    ctx.fill();
+  }
+
+  const middle = y + NAME_HEIGHT / 2 + 1;
   const textX = x + NAME_PAD_X + DOT + DOT_GAP;
   const textWidth = x + width - NAME_PAD_X - textX;
 
-  // The dot of their color (white on a Foreman's black chip).
+  // The dot of their color (white on a Foreman's black).
   ctx.fillStyle = box.foreman ? PALETTE.paper : box.dot;
   ctx.beginPath();
   ctx.arc(x + NAME_PAD_X + DOT / 2, middle, DOT / 2, 0, 2 * Math.PI);
@@ -541,12 +551,36 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: 
   setType(ctx, look.type.name);
   ctx.fillText(box.name, textX, middle, textWidth);
 
-  // Their Person Tasks: smaller lines under the name, in the same chip.
-  ctx.fillStyle = box.foreman ? PALETTE.chipInkSoft : PALETTE.inkSoft;
+  // Their Person Tasks: bulleted lines under the name, lined up with it.
+  ctx.fillStyle = PALETTE.ink;
   setType(ctx, look.type.personTask);
-  box.subLines.forEach((line, index) =>
-    ctx.fillText(line, textX, y + SUBS_PAD_Y + SUBS_NAME_LINE + (index + 0.5) * SUB_LINE, textWidth),
-  );
+  box.subLines.forEach((line, index) => {
+    const lineMiddle = y + box.subsTop + (index + 0.5) * SUB_LINE;
+    if (line.first) {
+      ctx.beginPath();
+      ctx.arc(textX - SUB_BULLET_GAP - SUB_BULLET / 2, lineMiddle, SUB_BULLET / 2, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+    ctx.fillText(line.text, textX, lineMiddle + 1, textWidth);
+  });
+
+  // The Note: a soft yellow strip at the foot, "Note" and then the text.
+  if (hasNote) {
+    const top = y + box.chipHeight;
+    ctx.fillStyle = PALETTE.noteWash;
+    ctx.beginPath();
+    ctx.roundRect(x, top, width, box.height - box.chipHeight, [0, 0, r, r]);
+    ctx.fill();
+    ctx.fillStyle = PALETTE.noteInk;
+    setType(ctx, look.type.noteLabel);
+    const firstMiddle = top + NOTE_PAD_Y + NOTE_LINE / 2 + 1;
+    ctx.fillText(NOTE_LABEL, x + NAME_PAD_X, firstMiddle);
+    const noteX = x + NAME_PAD_X + ctx.measureText(NOTE_LABEL).width + NOTE_LABEL_GAP;
+    setType(ctx, look.type.note);
+    box.noteLines.forEach((line, index) =>
+      ctx.fillText(line, noteX, firstMiddle + index * NOTE_LINE, x + width - NAME_PAD_X - noteX),
+    );
+  }
 }
 
 /** One line of a Task, centred on `middle`: a bullet before the first line of each. */
