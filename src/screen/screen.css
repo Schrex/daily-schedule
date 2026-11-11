@@ -705,7 +705,9 @@
   font-size: 0.875rem;
 }
 
+/* In the label's column, the field's flex basis would be its height: keep it one line. */
 .note-input {
+  flex: 0 0 auto;
   color: var(--alert);
   font-weight: var(--weight-strong);
 }
