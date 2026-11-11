@@ -13,7 +13,7 @@ interface NoteEditorProps {
 /**
  * Typing a Note for one Crew Member's Placement. The text being typed is kept
  * here and handed over once, on "Save note", so one edit is one change to the
- * Daily Schedule (and later one Undo step), not one per key.
+ * Daily Schedule, not one per key.
  */
 export function NoteEditor({ crewMemberName, note, onSave, onClear, onCancel }: NoteEditorProps) {
   const [draft, setDraft] = useState(note ?? '');

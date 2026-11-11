@@ -35,12 +35,12 @@
   --tracking-label: 0.08em; /* a small label in capitals */
 
   /* The size of a page: every length is in rem, so this one size scales the
-     whole page. 16px on a laptop, and on a larger window the page grows with
-     it instead of sitting small in a corner of a big monitor. */
-  --size-computer: clamp(16px, min(1.146vw, 2.037vh), 40px);
-  /* On a phone the page scales with its width instead. */
-  --size-screen: max(14px, min(3.9vw, var(--size-computer)));
-  --size-plain-page: max(16px, min(4.4vw, var(--size-computer)));
+     whole page. It is a fixed size, never worked out from the window: a size
+     that follows the window cancels the browser's own zoom (zooming out makes
+     the window wider in CSS pixels, which made the page grow back). So Ctrl +
+     and Ctrl - (and a phone's own text size) scale the page as expected. */
+  --size-screen: 16px;
+  --size-plain-page: 16px;
 
   /* The least height of something pressed with a finger. */
   --touch-target: 44px;

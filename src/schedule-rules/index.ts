@@ -379,7 +379,7 @@ export function crewView(roster: Roster, schedule: DailySchedule): CrewView {
 /**
  * Marks the Daily Schedule as Sent: adds the crew view that was delivered, and
  * the time (an ISO timestamp), to the send record. The only way a Send is
- * recorded: it is not an edit of the schedule, and Undo never takes it back.
+ * recorded: it is not an edit of the schedule.
  *
  * `sent` is what the crew actually got, which is recorded as it is even if the
  * Daily Schedule has been changed since it was drawn. Sending the same picture
@@ -628,65 +628,4 @@ function newId(label: string, existing: { id: string }[]): string {
   let id = base;
   for (let count = 2; taken.has(id); count += 1) id = `${base}-${count}`;
   return id;
-}
-
-// ---------------------------------------------------------------------------
-// Undo
-// ---------------------------------------------------------------------------
-
-/**
- * One sitting of editing one Daily Schedule: the schedule as it stands, plus
- * what Undo can step back through. Start a new one with `startEditing` each
- * time a Daily Schedule is opened (a reload, a different date); nothing to
- * undo carries over, and only `schedule` is ever saved.
- */
-export interface Editing {
-  /** The Daily Schedule as it stands now. */
-  readonly schedule: DailySchedule;
-  /** What earlier changes replaced, oldest first. Only this module can read it. */
-  readonly [earlier]: readonly Undoable[];
-}
-
-/** The key of what Undo steps back through; not exported, so it stays this module's business. */
-const earlier: unique symbol = Symbol('earlier');
-
-/** The part of a Daily Schedule that Undo puts back. The send record is not in it. */
-type Undoable = Pick<DailySchedule, 'placements' | 'tasks'>;
-
-/** Begins editing a Daily Schedule, with nothing to undo. */
-export const startEditing = (schedule: DailySchedule): Editing => ({ schedule, [earlier]: [] });
-
-/**
- * Applies one schedule rule to the Daily Schedule being edited. A change to
- * Placements (Notes included) or Tasks becomes one step for Undo. A rule that
- * changes nothing returns the same Editing. A rule that touches neither, such
- * as marking a Send, takes effect but is not a step: Undo never reverses it.
- */
-export function change(
-  editing: Editing,
-  rule: (schedule: DailySchedule) => DailySchedule,
-): Editing {
-  const before = editing.schedule;
-  const schedule = rule(before);
-  if (schedule === before) return editing;
-
-  const { placements, tasks } = before;
-  if (schedule.placements === placements && schedule.tasks === tasks) {
-    return { ...editing, schedule };
-  }
-  return { schedule, [earlier]: [...editing[earlier], { placements, tasks }] };
-}
-
-/** Whether there is a change for Undo to reverse. */
-export const canUndo = (editing: Editing): boolean => editing[earlier].length > 0;
-
-/**
- * Reverses the most recent change, putting back the Placements, Notes and
- * Tasks it replaced. Everything else, the send record above all, stays as it
- * is now. With nothing to undo, the same Editing is returned unchanged.
- */
-export function undo(editing: Editing): Editing {
-  const last = editing[earlier].at(-1);
-  if (!last) return editing;
-  return { schedule: { ...editing.schedule, ...last }, [earlier]: editing[earlier].slice(0, -1) };
 }

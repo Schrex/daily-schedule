@@ -17,7 +17,7 @@ interface TasksCellProps {
  * A Job's Tasks, in a tinted box under the Job: a small label, then one Task
  * to a line, each with a square bullet. Click to type, one Task per line. The text being typed is kept
  * here and handed over once, when the Scheduler leaves the field, so one edit
- * is one change to the Daily Schedule (and later one Undo step), not one per key.
+ * is one change to the Daily Schedule, not one per key.
  */
 export function TasksCell({ jobLabel, heading, tasks, canEdit, onCommit }: TasksCellProps) {
   /** The text being typed, or null when not typing. */

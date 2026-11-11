@@ -1,17 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  canUndo,
-  change as changeEditing,
   clearNote,
   markSent,
   moveCrewMember,
   setNote,
   setTasks,
-  startEditing,
-  undo,
   type CrewView,
   type DailySchedule,
-  type Editing,
   type MoveTo,
   type ScheduleDate,
 } from '../schedule-rules';
@@ -21,16 +16,15 @@ import { ChangeDate } from './ChangeDate';
 import { SettingsLink } from './SettingsLink';
 import { ScheduleScreen } from './ScheduleScreen';
 import { SendButton, SendMessage } from './SendBar';
-import { UndoButton } from './UndoButton';
 import { useSend } from './useSend';
 
 /**
- * Holds the Daily Schedule being edited (with what Undo can step back through,
- * for this sitting only) and which Crew Member is selected to move or to have
- * a Note typed. Everything that alters the schedule (a change, an Undo, a
- * Send being recorded) goes through `apply`, which works on the schedule as
- * it stands at that instant and saves the result. The screen below only draws
- * and reports clicks. `opened` is what the store held when the page loaded.
+ * Holds the Daily Schedule being edited and which Crew Member is selected to
+ * move or to have a Note typed. Everything that alters the schedule (a
+ * change, a Send being recorded) goes through `change`, which works on the
+ * schedule as it stands at that instant and saves the result. The screen
+ * below only draws and reports clicks. `opened` is what the store held when
+ * the page loaded.
  */
 export function App({
   store,
@@ -43,48 +37,43 @@ export function App({
   delivery: CrewDelivery;
 }) {
   const roster = opened.roster;
-  const [editing, setEditing] = useState<Editing>(() => startEditing(opened.schedule));
-  const schedule = editing.schedule;
+  const [schedule, setSchedule] = useState<DailySchedule>(opened.schedule);
   /**
-   * The same Editing as it stands this instant. State only catches up at the
-   * next draw; two changes before then, or a Send that finishes later, must
-   * each build on the one before and not on what was last drawn.
+   * The same Daily Schedule as it stands this instant. State only catches up
+   * at the next draw; two changes before then, or a Send that finishes later,
+   * must each build on the one before and not on what was last drawn.
    */
-  const latest = useRef(editing);
+  const latest = useRef(schedule);
   const [selectedCrewMemberId, setSelectedCrewMemberId] = useState<string | null>(null);
   /** True while a Note is being typed for the selected Crew Member. */
   const [editingNote, setEditingNote] = useState(false);
 
-  /** Puts the Daily Schedule being edited on the screen. */
-  const show = (next: Editing) => {
+  /** Puts a Daily Schedule on the screen. */
+  const show = (next: DailySchedule) => {
     latest.current = next;
-    setEditing(next);
+    setSchedule(next);
   };
 
   /**
-   * The one place the Daily Schedule being edited is altered. The step is
+   * The one place the Daily Schedule being edited is altered. The rule is
    * given the schedule as it stands now; what it returns is shown and saved by
    * itself (nothing to do if it is unchanged). Returns the schedule afterwards.
    */
-  const apply = (step: (current: Editing) => Editing): DailySchedule => {
-    const next = step(latest.current);
+  const change = (rule: (schedule: DailySchedule) => DailySchedule): DailySchedule => {
+    const next = rule(latest.current);
     if (next !== latest.current) {
       show(next);
       store
-        .saveSchedule(next.schedule)
+        .saveSchedule(next)
         .catch((error) => console.error('Could not save the Daily Schedule', error));
     }
-    return next.schedule;
+    return next;
   };
-
-  /** Applies one schedule rule. The rules decide whether it is a step for Undo. */
-  const change = (rule: (schedule: DailySchedule) => DailySchedule) =>
-    apply((current) => changeEditing(current, rule));
 
   /**
    * A delivered Send is recorded on the Daily Schedule as it stands when the
-   * delivery finishes, so a change made meanwhile is kept. The rules make it
-   * no step for Undo, and ignore it if another date has been opened since.
+   * delivery finishes, so a change made meanwhile is kept. The rules ignore
+   * it if another date has been opened since.
    */
   const recordSend = (sent: CrewView, sentAt: string) =>
     change((current) => markSent(current, sent, sentAt));
@@ -118,12 +107,6 @@ export function App({
     deselect();
   };
 
-  /** Takes back the last change and lets go of anyone selected. What is put back is saved. */
-  const undoLastChange = () => {
-    apply(undo);
-    deselect();
-  };
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') deselect();
@@ -136,7 +119,7 @@ export function App({
   const changeDate = (date: ScheduleDate) => {
     deselect();
     openDate(store, roster, date)
-      .then((schedule) => show(startEditing(schedule)))
+      .then(show)
       .catch((error) => console.error('Could not open the Daily Schedule', error));
   };
 
@@ -159,7 +142,6 @@ export function App({
       dateButtons={<SettingsLink />}
       toolbarButtons={
         <>
-          <UndoButton canUndo={canUndo(editing)} onUndo={undoLastChange} />
           <ChangeDate date={schedule.date} onChangeDate={changeDate} />
           <SendButton send={send} />
         </>
