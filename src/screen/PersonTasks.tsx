@@ -60,7 +60,7 @@ export function PersonLines({ crewMember, note, tasks, onChange, onRemove, onSet
           onClick={(event) => event.stopPropagation()}
         >
           {tasks.map((task, index) => (
-            <li key={index} className={editing === index ? 'name-sub-editing' : 'name-sub'} data-sub={task}>
+            <li key={index} className={editing === index ? 'name-sub-editing' : 'name-sub'}>
               {editing === index
                 ? changing(task, `Change task for ${crewMember.name}`, (text) => onChange(index, text))
                 : line(task, () => setEditing(index), () => onRemove(index))}

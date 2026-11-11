@@ -1,20 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  addDayNote,
-  addPersonTask,
-  changeDayNote,
-  changePersonTask,
-  removeDayNote,
-  removePersonTask,
+  applyEdit,
   markSent,
   scheduleView,
-  moveCrewMember,
-  setNote,
-  setTasks,
   type CrewView,
   type DailySchedule,
-  type MoveTo,
   type ScheduleDate,
+  type ScheduleEdit,
 } from '../schedule-rules';
 import type { CrewDelivery } from '../send';
 import { openDate, type Opened, type ScheduleStore } from '../storage';
@@ -106,23 +98,15 @@ export function App({
   /** Lets go of the selected Crew Member: no move. */
   const deselect = () => select(null);
 
-  /** Applies one rule to the selected Crew Member (a Person Task, a Note) and keeps them selected. */
-  const changeForSelected = (
-    rule: (schedule: DailySchedule, crewMemberId: string) => DailySchedule,
-  ) => {
-    if (selectedCrewMemberId === null) return;
-    const crewMemberId = selectedCrewMemberId;
-    change((current) => rule(current, crewMemberId));
-  };
-
   /**
-   * Moves one Crew Member, selected or not, however the Scheduler did it (a
-   * click-click move, a drop, a double-click), and lets go of anyone selected.
-   * The rules change nothing if they are already there.
+   * One edit the Scheduler made, applied by the rules to the schedule as it
+   * stands now. A move (a click-click move, a drop, a double-click) also lets
+   * go of anyone selected; an edit to someone's Note or Person Tasks keeps
+   * them selected. The rules change nothing if nothing is different.
    */
-  const move = (crewMemberId: string, to: MoveTo) => {
-    change((current) => moveCrewMember(current, crewMemberId, to));
-    deselect();
+  const edit = (scheduleEdit: ScheduleEdit) => {
+    change((current) => applyEdit(current, scheduleEdit));
+    if (scheduleEdit.kind === 'move') deselect();
   };
 
   useEffect(() => {
@@ -151,24 +135,12 @@ export function App({
       selectedCrewMemberId={selectedCrewMemberId}
       onSelectCrewMember={select}
       onDeselect={deselect}
-      onMoveCrewMember={move}
+      onEdit={edit}
       openJobs={openJobs}
       onOpenJob={(jobKey) => openJobsAfter({ kind: 'open', jobKey })}
       onPutAwayEmptyJobs={() =>
         openJobsAfter({ kind: 'put-away', view: scheduleView(roster, latest.current) })
       }
-      onSetNote={(text) => changeForSelected((current, crewMemberId) => setNote(current, crewMemberId, text))}
-      onSetTasks={(destination, text) => change((current) => setTasks(current, destination, text))}
-      onAddPersonTask={(text) => changeForSelected((current, id) => addPersonTask(current, id, text))}
-      onChangePersonTask={(index, text) =>
-        changeForSelected((current, id) => changePersonTask(current, id, index, text))
-      }
-      onRemovePersonTask={(index) =>
-        changeForSelected((current, id) => removePersonTask(current, id, index))
-      }
-      onAddDayNote={(text) => change((current) => addDayNote(current, text))}
-      onChangeDayNote={(index, text) => change((current) => changeDayNote(current, index, text))}
-      onRemoveDayNote={(index) => change((current) => removeDayNote(current, index))}
       dateButtons={<SettingsLink />}
       toolbarButtons={
         <>
