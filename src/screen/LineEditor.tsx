@@ -14,12 +14,15 @@ interface LineEditorProps {
   /** A new line keeps the field open and empty after each one, for the next. */
   keepOpen?: boolean;
   autoFocus?: boolean;
+  maxLength?: number;
+  /** "note": the text in the red of a Note. */
+  tone?: 'note';
   /** Drawn after the button, on the same line: "Add note" beside "Add task". */
   children?: ReactNode;
 }
 
 /**
- * One line of text being typed: a Person Task or a Day Note. The text is kept
+ * One line of text being typed: a Person Task, a Note or a Day Note. The text is kept
  * here and handed over once, so one line is one change to the Daily Schedule,
  * not one per key. Clicks inside it stay inside it: on a card they are not a
  * click on the card (which would move the selected Crew Member there).
@@ -33,6 +36,8 @@ export function LineEditor({
   onCancel,
   keepOpen = false,
   autoFocus = true,
+  maxLength,
+  tone,
   children,
 }: LineEditorProps) {
   const [draft, setDraft] = useState(initial);
@@ -45,7 +50,7 @@ export function LineEditor({
 
   return (
     <form
-      className="line-editor"
+      className={`line-editor${tone ? ` line-editor-${tone}` : ''}`}
       onClick={(event) => event.stopPropagation()}
       onSubmit={(event) => {
         event.preventDefault();
@@ -58,6 +63,8 @@ export function LineEditor({
         aria-label={label}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        maxLength={maxLength}
+        onFocus={(event) => event.target.select()}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={(event) => {

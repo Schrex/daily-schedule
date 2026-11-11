@@ -19,7 +19,7 @@ import { dropTarget, viewWhileDragging } from './dropPreview';
 import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
-import { NoteEditor } from './NoteEditor';
+import { LineEditor } from './LineEditor';
 import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
 import { PersonTasks } from './PersonTasks';
 import { TasksCell } from './TasksCell';
@@ -48,10 +48,10 @@ interface ScheduleScreenProps {
   onPutAwayEmptyJobs: () => void;
   /** "Add note" / "Change note" was clicked for the selected Crew Member. */
   onEditNote: () => void;
-  /** The Note typed for the selected Crew Member was saved. */
+  /** The Note typed for the selected Crew Member was saved (blank text takes it away). */
   onSaveNote: (text: string) => void;
-  /** "Remove note" was clicked for the selected Crew Member. */
-  onClearNote: () => void;
+  /** Typing a Note was given up: back to their tasks, still selected. */
+  onCancelNote: () => void;
   /** The Scheduler finished typing the Tasks of a Job, Shop or Trucking: the whole text, one Task per line. */
   onSetTasks: (destination: Destination, text: string) => void;
   /** A Person Task was typed for the selected Crew Member. */
@@ -132,7 +132,7 @@ export function ScheduleScreen({
   editingNote,
   onEditNote,
   onSaveNote,
-  onClearNote,
+  onCancelNote,
   onSetTasks,
   onAddPersonTask,
   onChangePersonTask,
@@ -253,14 +253,21 @@ export function ScheduleScreen({
   const personPanel = selectedPlaced && !drag.dragging && (
     <li className="person-panel" onClick={(event) => event.stopPropagation()}>
       {typingNote ? (
-        <NoteEditor
+        <LineEditor
           key={selectedPlaced.crewMember.id}
-          crewMemberName={selectedPlaced.crewMember.name}
-          note={selectedPlaced.note}
-          onSave={onSaveNote}
-          onClear={onClearNote}
-          onCancel={onDeselect}
-        />
+          initial={selectedPlaced.note ?? ''}
+          label={`Note for ${selectedPlaced.crewMember.name}. Leave it empty to take the note away.`}
+          placeholder="Note, e.g. 1/2 Day"
+          buttonText="Save"
+          maxLength={40}
+          tone="note"
+          onCommit={onSaveNote}
+          onCancel={onCancelNote}
+        >
+          <button type="button" className="person-note-button" onClick={onCancelNote}>
+            Cancel
+          </button>
+        </LineEditor>
       ) : (
         <PersonTasks
           crewMember={selectedPlaced.crewMember}
@@ -384,6 +391,7 @@ export function ScheduleScreen({
                         aria-label={inHand ? `Put ${inHand.crewMember.name} on ${title}` : `Open ${title}`}
                         onClick={() => tapFolded(row)}
                         {...drag.dropProps(row.key)}
+                        data-drop-grows
                       >
                         {title}
                       </button>

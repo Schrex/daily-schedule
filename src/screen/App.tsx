@@ -4,7 +4,6 @@ import {
   addPersonTask,
   changeDayNote,
   changePersonTask,
-  clearNote,
   removeDayNote,
   removePersonTask,
   markSent,
@@ -112,17 +111,7 @@ export function App({
   /** Lets go of the selected Crew Member: no move, and any Note being typed is dropped. */
   const deselect = () => select(null);
 
-  /** Applies one rule to the selected Crew Member (a Note), then lets go of them. */
-  const changeSelected = (
-    rule: (schedule: DailySchedule, crewMemberId: string) => DailySchedule,
-  ) => {
-    if (selectedCrewMemberId === null) return;
-    const crewMemberId = selectedCrewMemberId;
-    change((current) => rule(current, crewMemberId));
-    deselect();
-  };
-
-  /** Applies one rule to the selected Crew Member (a Person Task) and keeps them selected. */
+  /** Applies one rule to the selected Crew Member (a Person Task, a Note) and keeps them selected. */
   const changeForSelected = (
     rule: (schedule: DailySchedule, crewMemberId: string) => DailySchedule,
   ) => {
@@ -175,10 +164,11 @@ export function App({
         openJobsAfter({ kind: 'put-away', view: scheduleView(roster, latest.current) })
       }
       onEditNote={() => setEditingNote(true)}
-      onSaveNote={(text) =>
-        changeSelected((current, crewMemberId) => setNote(current, crewMemberId, text))
-      }
-      onClearNote={() => changeSelected(clearNote)}
+      onSaveNote={(text) => {
+        changeForSelected((current, crewMemberId) => setNote(current, crewMemberId, text));
+        setEditingNote(false);
+      }}
+      onCancelNote={() => setEditingNote(false)}
       onSetTasks={(destination, text) => change((current) => setTasks(current, destination, text))}
       onAddPersonTask={(text) => changeForSelected((current, id) => addPersonTask(current, id, text))}
       onChangePersonTask={(index, text) =>

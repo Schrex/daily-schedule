@@ -99,7 +99,9 @@ const pointerHolder = () => document.body;
  * shrink, and pull the others out from under a pointer that has not moved.
  */
 function holdDestinationHeights(): () => void {
-  const held = [...document.querySelectorAll<HTMLElement>('[data-drop]')].map((destination) => {
+  // A destination marked data-drop-grows (a folded Job) is meant to grow when a
+  // name is picked up, exactly as when one is selected: it is not held.
+  const held = [...document.querySelectorAll<HTMLElement>('[data-drop]:not([data-drop-grows])')].map((destination) => {
     const before = destination.style.minHeight;
     return { destination, before, height: destination.getBoundingClientRect().height };
   });
