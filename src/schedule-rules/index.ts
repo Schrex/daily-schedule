@@ -278,7 +278,7 @@ export type MoveTo = Destination | typeof NOT_PLACED;
 
 /**
  * Moves a Crew Member, however the Scheduler did it (a click-click move, a
- * drop, a double-click): onto a Job or Standing Row (`placeCrewMember`), or to
+ * drop): onto a Job or Standing Row (`placeCrewMember`), or to
  * Not Placed (`returnToNotPlaced`). If they are already there, the same Daily
  * Schedule is returned unchanged.
  */

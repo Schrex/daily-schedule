@@ -5,7 +5,7 @@ import './motion.css';
  * Shows every move of a Crew Member's name: whenever the page is redrawn, each
  * name that is now somewhere else starts from where it was last seen and
  * travels to its new place (the "FLIP" technique). It does not know why a name
- * moved (a drop, a click-click move, a double-click, Undo, the others making
+ * moved (a drop, a click-click move, Undo, the others making
  * room): it only compares where names were with where they are.
  *
  * It knows names by the mark the drag puts on them (`data-crew-member`) and

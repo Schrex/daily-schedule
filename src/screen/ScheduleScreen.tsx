@@ -35,7 +35,7 @@ interface ScheduleScreenProps {
   onDeselect: () => void;
   /**
    * The Scheduler changed the Daily Schedule: moved someone (a click, a drop,
-   * a double-click to Not Placed), typed Tasks, a Note, a Person Task or a
+   * a drop on Not placed yet), typed Tasks, a Note, a Person Task or a
    * Day Note. The rules apply it (`applyEdit`).
    */
   onEdit: (edit: ScheduleEdit) => void;
@@ -67,11 +67,6 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * click a Job or a Standing Row. Selecting someone already placed opens their
  * panel (Add task, Add note) instead: nothing is tinted as a place to go, and
  * a click on a card lets go of them. Anyone can be dragged.
- *
- * Double-clicking a name moves that Crew Member to Not Placed. The browser
- * reports a double-click as two clicks and then the double-click, so the name
- * is selected and let go of first. A double-click made with a shaky hand, which
- * the browser takes for a small drag, is reported by `useNameDrag` instead.
  *
  * With no name selected, clicking a Job's Tasks lets him type them. A selected
  * Crew Member who has a Placement gets their Person Tasks and Note with × in
@@ -143,7 +138,6 @@ export function ScheduleScreen({
       if (to !== null) move(crewMemberId, to);
     },
     onLetGo: motion.letGoAt,
-    onShakyDoubleClick: (crewMemberId) => move(crewMemberId, NOT_PLACED),
   });
   /** What is drawn: while a name is held over a destination, the schedule as the drop would leave it. */
   const shown = viewWhileDragging(roster, schedule, drag.dragging);
@@ -215,7 +209,7 @@ export function ScheduleScreen({
     return () => document.removeEventListener('click', onClick);
   }, [panelOpen, onDeselect]);
 
-  /** A name: the chip (`NameChip`), to click, double-click or drag. */
+  /** A name: the chip (`NameChip`), to click or drag. */
   const name = (crewMember: CrewMember, personTasks: string[] = []) => (
     <button
       type="button"
@@ -223,7 +217,6 @@ export function ScheduleScreen({
       aria-pressed={crewMember.id === selected?.id}
       onClick={(event) => onNameClick(crewMember, event)}
       {...drag.nameProps(crewMember.id)}
-      onDoubleClick={() => move(crewMember.id, NOT_PLACED)}
     >
       <NameLines crewMember={crewMember} personTasks={personTasks} />
     </button>
