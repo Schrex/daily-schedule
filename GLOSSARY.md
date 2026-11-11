@@ -45,7 +45,7 @@ The state of a Crew Member who has no Placement yet on the Daily Schedule being 
 _Avoid_: Unassigned, available
 
 **Task**:
-A free-text line describing work on a Job for one day ("Strip topsoil").
+A free-text line describing work on a Job, or in the Shop or Trucking, for one day ("Strip topsoil", "Go get the truck in PA"). Off Work has none.
 _Avoid_: Activity, scope
 
 **Note**:

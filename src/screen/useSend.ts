@@ -80,7 +80,7 @@ export function useSend({
     inFlight.current = true;
     setSending(true);
     try {
-      await delivery.deliver(await renderCrewPicture(view));
+      await delivery.deliver(await renderCrewPicture(view, roster));
     } catch (error) {
       console.error('Could not send the Daily Schedule', error);
       setOutcome({ kind: 'failed', schedule });

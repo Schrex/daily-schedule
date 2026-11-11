@@ -57,7 +57,10 @@ export interface DailySchedule {
   date: ScheduleDate;
   /** At most one per Crew Member. A Crew Member with none is Not Placed. */
   placements: Placement[];
-  /** Tasks per Job id, one Task per entry. */
+  /**
+   * Tasks, one Task per entry: a Job's under its id, Shop's and Trucking's
+   * under "standing-row:shop" and "standing-row:trucking".
+   */
   tasks: Record<string, string[]>;
   /** The send record: each Send, oldest first. */
   sends: SendRecord[];
@@ -160,23 +163,21 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
         placement.note ? { crewMember, note: placement.note } : { crewMember },
       );
 
-  const row = (destination: Destination, label: string, tasks: string[]): ScheduleRow => ({
+  const row = (destination: Destination, label: string): ScheduleRow => ({
     key: destinationKey(destination),
     destination,
     label,
-    tasks,
+    tasks: tasksOn(schedule, destination),
     who: whoIsOn(destination),
   });
 
-  const jobRows = roster.jobs.map((job) =>
-    row(onJob(job.id), jobLabel(job), schedule.tasks[job.id] ?? []),
-  );
+  const jobRows = roster.jobs.map((job) => row(onJob(job.id), jobLabel(job)));
 
   // A Job that was sent but has left the roster goes back where it was sent:
   // above the first Job that came after it in that picture, else after the Jobs.
   sentRows.forEach(({ key, destination, label }, index) => {
     if (destination.kind !== 'job' || jobRows.some((jobRow) => jobRow.key === key)) return;
-    const sentRow = row(destination, label, schedule.tasks[destination.jobId] ?? []);
+    const sentRow = row(destination, label);
     if (sentRow.who.length === 0) return;
     const sentAfter = new Set(sentRows.slice(index + 1).map((later) => later.key));
     const next = jobRows.findIndex((jobRow) => sentAfter.has(jobRow.key));
@@ -186,7 +187,7 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
   const rows: ScheduleRow[] = [
     ...jobRows,
     ...STANDING_ROWS.map((standingRow) =>
-      row(onStandingRow(standingRow), standingRowLabel(standingRow), []),
+      row(onStandingRow(standingRow), standingRowLabel(standingRow)),
     ),
   ];
 
@@ -261,24 +262,49 @@ const withoutCrewMember = (schedule: DailySchedule, crewMemberId: string): Place
 // Tasks
 // ---------------------------------------------------------------------------
 
+/** The Standing Rows that can have Tasks ("Go get the truck in PA"). Off Work has none. */
+export const STANDING_ROWS_WITH_TASKS: readonly StandingRow[] = ['shop', 'trucking'];
+
+/** Whether a Job or Standing Row can have Tasks: every Job, and Shop and Trucking. */
+export const canHaveTasks = (destination: Destination): boolean =>
+  destination.kind === 'job' || STANDING_ROWS_WITH_TASKS.includes(destination.standingRow);
+
 /**
- * Sets a Job's Tasks from free text, one Task per line. Blank lines and the
- * space around each Task are ignored. If the text gives the Tasks the Job
- * already has, the same Daily Schedule is returned unchanged.
+ * Where a place's Tasks are kept in `DailySchedule.tasks`: a Job's under its
+ * id (as they always were), a Standing Row's under "standing-row:shop" and so
+ * on, which no Job id can be (they never hold a colon).
  */
-export function setTasks(schedule: DailySchedule, jobId: string, text: string): DailySchedule {
+const tasksKey = (destination: Destination): string =>
+  destination.kind === 'job' ? destination.jobId : destinationKey(destination);
+
+/** The Tasks of a Job or Standing Row on a Daily Schedule; none for a place that cannot have them. */
+const tasksOn = (schedule: DailySchedule, destination: Destination): string[] =>
+  canHaveTasks(destination) ? (schedule.tasks[tasksKey(destination)] ?? []) : [];
+
+/**
+ * Sets the Tasks of a Job, Shop or Trucking from free text, one Task per
+ * line. Blank lines and the space around each Task are ignored. If the text
+ * gives the Tasks it already has, or the place cannot have Tasks (Off Work),
+ * the same Daily Schedule is returned unchanged.
+ */
+export function setTasks(
+  schedule: DailySchedule,
+  destination: Destination,
+  text: string,
+): DailySchedule {
+  if (!canHaveTasks(destination)) return schedule;
   const tasks = text
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line !== '');
-  const current = schedule.tasks[jobId] ?? [];
+  const current = tasksOn(schedule, destination);
   if (tasks.length === current.length && tasks.every((task, index) => task === current[index])) {
     return schedule;
   }
-  return { ...schedule, tasks: { ...schedule.tasks, [jobId]: tasks } };
+  return { ...schedule, tasks: { ...schedule.tasks, [tasksKey(destination)]: tasks } };
 }
 
-/** A Job's Tasks as the free text `setTasks` reads: one Task per line. */
+/** Tasks as the free text `setTasks` reads: one Task per line. */
 export const tasksText = (tasks: string[]): string => tasks.join('\n');
 
 // ---------------------------------------------------------------------------
@@ -474,6 +500,11 @@ export function dailyScheduleFor(
 
   const crewMemberIds = new Set(roster.crewMembers.map((crewMember) => crewMember.id));
   const jobIds = new Set(roster.jobs.map((job) => job.id));
+  // Tasks carry over for every Job still on the roster, and for Shop and Trucking.
+  const tasksKeys = new Set([
+    ...jobIds,
+    ...STANDING_ROWS_WITH_TASKS.map((standingRow) => tasksKey(onStandingRow(standingRow))),
+  ]);
 
   const carriesOver = ({ crewMemberId, destination }: Placement): boolean =>
     crewMemberIds.has(crewMemberId) &&
@@ -488,8 +519,8 @@ export function dailyScheduleFor(
       .map(({ crewMemberId, destination, order }) => ({ crewMemberId, destination, order })),
     tasks: Object.fromEntries(
       Object.entries(previous.tasks)
-        .filter(([jobId]) => jobIds.has(jobId))
-        .map(([jobId, tasks]) => [jobId, [...tasks]]),
+        .filter(([key]) => tasksKeys.has(key))
+        .map(([key, tasks]) => [key, [...tasks]]),
     ),
     sends: [],
   };

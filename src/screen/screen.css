@@ -1,9 +1,10 @@
-/* The Scheduler's screen: a board. A header card on top (the date, the hint,
-   Change date and Send), the Not Placed list on the left, and a grid of
-   white cards, one for each Job and Standing Row. The picture sent to the crew
-   (src/send/crewPicture.ts) is these same cards, one under the other. Type,
-   spacing, corners, the page, the buttons and the Crew Member colors come
-   from the shared look (src/look.css); colors are the palette in
+/* The Scheduler's screen: a board in Schreiber's yard yellow. A header card
+   on top (the logo, the date, the hint, Change date and Send); on the left
+   the Not Placed list and under it Shop, Trucking and Off Work as small
+   cards; and a grid of white cards, one for each Job. The picture sent to the
+   crew (src/send/crewPicture.ts) is these same cards, one under the other.
+   Type, spacing, corners, the page, the buttons and the Crew Member colors
+   come from the shared look (src/look.css); colors are the palette in
    src/palette.ts, handed over as custom properties. Sizes are in rem off one
    root size so the whole screen can be scaled in one place. */
 
@@ -15,13 +16,13 @@
 }
 
 /* --- One screen ----------------------------------------------------------
-   The screen is exactly the window: the header on top, and under it the Not
-   Placed list and the board of cards (which scrolls by itself). Nothing he
+   The screen is exactly the window: the header on top, and under it the left
+   column and the board of Job cards, each scrolling by itself. Nothing he
    needs ever scrolls away. On a window wider than the board reads well, it
    sits in the middle. */
 
 .screen {
-  --not-placed-width: 16.5rem;
+  --side-width: 16.5rem;
   --page-width: 87.5rem;
   --gutter: max(1.75rem, calc((100vw - var(--page-width)) / 2));
   display: flex;
@@ -48,22 +49,30 @@
   }
 }
 
-/* --- The header: the date and the hint; Change date and Send ------------- */
+/* --- The header: the logo, the date and the hint; Change date and Send ----- */
 
 .toolbar {
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4) 1.25rem;
+  gap: 1.25rem;
+  padding: var(--space-3) 1.375rem;
   border: var(--hairline);
   border-radius: var(--radius-card);
   background: var(--paper);
+  box-shadow: var(--elevation-1);
+}
+
+.toolbar-logo {
+  flex: 0 0 auto;
+  display: block;
+  height: 4rem;
+  width: auto;
 }
 
 .toolbar-title {
-  flex: 999 1 20rem;
+  flex: 999 1 18.75rem;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -77,17 +86,15 @@
   gap: var(--space-3);
 }
 
-.toolbar-date .date-heading {
-  min-width: 0;
-}
-
 .date-heading {
+  min-width: 0;
   margin: 0;
   font-family: var(--font-display);
-  font-size: 2.25rem;
-  font-weight: var(--weight-bold);
+  font-size: 2rem;
+  font-weight: var(--weight-display);
   letter-spacing: var(--tracking-heading);
-  line-height: 1.1;
+  line-height: 1.15;
+  text-transform: uppercase;
 }
 
 .toolbar-actions {
@@ -103,7 +110,7 @@
   flex: 0 0 auto;
   min-height: max(3rem, var(--touch-target));
   padding: 0 1.125rem;
-  font-size: 1.0625rem;
+  font-size: 1rem;
 }
 
 /* A button that is its icon alone: square, beside the date. */
@@ -113,20 +120,26 @@
   padding: 0;
 }
 
-.toolbar-button-icon {
-  font-size: 1.4rem;
-  line-height: 1;
-}
-
 .toolbar-button-svg {
   width: 1.375rem;
   height: 1.375rem;
 }
 
+/* The Settings gear: on the pale yellow. */
+.settings-link {
+  border-color: var(--line-strong);
+  background: var(--accent-wash);
+}
+
+/* Send: the yellow button, in Oswald capitals. */
 .send-button {
-  padding: 0 1.375rem;
+  padding: 0 1.5rem;
   border: 0;
-  font-size: 1.125rem;
+  font-family: var(--font-display);
+  font-size: 1.1875rem;
+  font-weight: var(--weight-display);
+  letter-spacing: var(--tracking-button);
+  text-transform: uppercase;
 }
 
 /* The hint keeps one height whether it holds the hint, "Add note" or the
@@ -137,7 +150,7 @@
   gap: var(--space-4);
   min-height: max(2.75rem, var(--touch-target));
   color: var(--ink-soft);
-  font-size: 1.0625rem;
+  font-size: 1rem;
 }
 
 .move-hint-active > span {
@@ -145,7 +158,7 @@
 }
 
 .move-hint-active strong {
-  color: var(--accent-dark);
+  color: var(--ink);
   font-weight: var(--weight-bold);
 }
 
@@ -162,21 +175,21 @@
   display: none;
 }
 
-/* --- The Not Placed list and the board, side by side ---------------------- */
+/* --- The left column and the board, side by side -------------------------- */
 
 .layout {
   flex: 1 1 auto;
-  min-height: 0; /* lets the board scroll inside instead of stretching the screen */
+  min-height: 0; /* lets each side scroll inside instead of stretching the screen */
   display: flex;
   align-items: flex-start;
   gap: 1.25rem;
 }
 
-/* The scrolling area reaches a little past the cards on every side, so the
-   ring of a selected name is never cut off. */
+/* Each scrolling area reaches a little past the cards on every side, so the
+   ring of a selected name and the shadow of a card are never cut off. */
+.side,
 .schedule-scroll {
   --overhang: var(--space-2);
-  flex: 1 1 auto;
   min-width: 0;
   max-height: calc(100% + 2 * var(--overhang));
   margin: calc(-1 * var(--overhang));
@@ -185,7 +198,25 @@
   overscroll-behavior: contain;
 }
 
-/* --- The board: a card for each Job and Standing Row ----------------------- */
+/* Left: Not Placed, then Shop, Trucking and Off Work. */
+.side {
+  flex: 0 0 calc(var(--side-width) + 2 * var(--overhang));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.yard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.schedule-scroll {
+  flex: 1 1 auto;
+}
+
+/* --- The cards -------------------------------------------------------------- */
 
 .board {
   display: grid;
@@ -203,22 +234,18 @@
   border: var(--hairline);
   border-radius: var(--radius-card);
   background: var(--paper);
+  box-shadow: var(--elevation-1);
   transition:
     background-color var(--ease),
-    border-color var(--ease);
+    border-color var(--ease),
+    box-shadow var(--ease);
 }
 
-/* The Job, its number small over it, and how many are on it at the right. */
+/* A Job: its number and how many are on it, small, over its name. */
 .block-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.block-title {
-  display: flex;
   flex-direction: column;
+  gap: 0.125rem;
   min-width: 0;
 }
 
@@ -227,27 +254,36 @@
   font-size: 0.8125rem;
   font-weight: var(--weight-strong);
   letter-spacing: var(--tracking-small);
-  text-transform: uppercase;
 }
 
 .job {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.75rem;
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-display);
   letter-spacing: var(--tracking-heading);
-  line-height: 1.1;
+  line-height: 1.15;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
+}
+
+/* Shop, Trucking, Off Work: the name and, at the right, how many. */
+.block-head-yard {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.block-head-yard .job {
+  font-size: 1.375rem;
 }
 
 /* How many are on it: there to be checked, not to be noticed. */
 .count {
   flex: 0 0 auto;
-  padding: 0.3125rem 0.5625rem;
-  border-radius: var(--radius-pill);
-  background: var(--wash);
-  color: var(--ink);
-  font-size: 0.875rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
   font-weight: var(--weight-strong);
   white-space: nowrap;
 }
@@ -256,7 +292,7 @@
 .block-empty {
   margin: 0;
   color: var(--muted);
-  font-size: 1rem;
+  font-size: 0.9375rem;
 }
 
 /* --- Names: one to a line, all the same width ----------------------------- */
@@ -285,7 +321,7 @@
   border: 0;
   border-radius: var(--radius-chip);
   font: inherit;
-  font-size: 1.0625rem;
+  font-size: 1rem;
   font-weight: var(--weight-strong);
   letter-spacing: var(--tracking-name);
   line-height: 1.15;
@@ -311,7 +347,7 @@
   box-shadow: var(--focus-ring);
 }
 
-/* The Crew Member being moved: ringed in the accent, impossible to miss. */
+/* The Crew Member being moved: ringed in gold, impossible to miss. */
 .name.name-selected {
   position: relative;
   z-index: 1;
@@ -323,16 +359,16 @@
   cursor: pointer;
 }
 
-/* While a name is selected, every card it can go to is ringed in the accent
-   (the card it is on now stays plain). The ring is a shadow, so nothing moves. */
+/* While a name is selected, every card it can go to is ringed in gold (the
+   card it is on now stays plain). The ring is a shadow, so nothing moves. */
 .block.block-target {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 1px var(--accent-strong), var(--elevation-1);
 }
 
 @media (hover: hover) {
   .moving .block.destination:hover {
-    border-color: var(--accent);
+    border-color: var(--accent-strong);
     background: var(--target);
   }
 
@@ -349,28 +385,25 @@
 }
 
 .note {
-  padding: var(--space-2) 0.875rem var(--space-2);
+  padding: var(--space-2) 0.875rem;
   color: var(--alert);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: var(--weight-strong);
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
-/* --- Not Placed: always in sight; a long list scrolls inside its own box ---
-   A dashed edge in the accent: names wait here for a place. */
+/* --- Not Placed: always in sight, at the top of the left column ------------
+   A dashed gold edge: names wait here for a place. */
 
 .not-placed {
-  flex: 0 0 var(--not-placed-width);
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   min-height: 13.75rem;
-  max-height: calc(100% - 1.75rem);
-  overflow-y: auto;
-  overscroll-behavior: contain;
   padding: 1.125rem;
-  border: 2px dashed var(--accent);
+  border: 2px dashed var(--accent-strong);
   border-radius: var(--radius-card);
   background: var(--paper);
   transition:
@@ -380,24 +413,28 @@
 
 .not-placed-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
 }
 
 .not-placed h2 {
   margin: 0;
-  color: var(--accent-dark);
   font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: var(--weight-bold);
-  line-height: 1.1;
+  font-size: 1.375rem;
+  font-weight: var(--weight-display);
+  line-height: 1.15;
+  text-transform: uppercase;
 }
 
+/* How many are left: a yellow pill. */
 .not-placed-count {
-  color: var(--accent-dark);
-  font-size: 1rem;
-  font-weight: var(--weight-strong);
+  padding: 0.125rem 0.625rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.9375rem;
+  font-weight: var(--weight-bold);
 }
 
 .not-placed-empty {
@@ -406,13 +443,14 @@
   font-size: 1rem;
 }
 
-/* Nobody left to place: nothing waiting, so the accent goes quiet. */
+/* Nobody left to place: nothing waiting, so the gold goes quiet. */
 .not-placed:has(.not-placed-empty) {
+  min-height: 0;
   border-color: var(--line-strong);
 }
 
-.not-placed:has(.not-placed-empty) h2,
 .not-placed:has(.not-placed-empty) .not-placed-count {
+  background: var(--wash);
   color: var(--muted);
 }
 
@@ -425,9 +463,10 @@
 /* "Take ... off the board": the Not Placed list, as a button. */
 .off-board {
   min-height: max(2.875rem, var(--touch-target));
-  border: 2px dashed var(--accent);
+  border: 2px dashed var(--accent-strong);
+  border-radius: var(--radius-chip);
   background: var(--accent-wash);
-  color: var(--accent-dark);
+  color: var(--ink);
   font-size: 1rem;
 }
 
@@ -444,11 +483,12 @@
   font-size: 1rem;
 }
 
-/* --- The Tasks: a tinted box under the Job --------------------------------
+/* --- The Tasks: a pale yellow box under the Job ---------------------------
    A small label ("Wednesday's work"), then one Task to a line, each with a
-   square bullet. A Task too long for its line carries on beside the bullet,
-   so two Tasks never read as three. With no name moving, the box is the
-   thing to click to type them. */
+   square black bullet. A Task too long for its line carries on beside the
+   bullet, so two Tasks never read as three. With no name moving, the box is
+   the thing to click to type them. Shop and Trucking have the same, smaller
+   and plainer (`.tasks-compact`). */
 
 .tasks-box {
   display: flex;
@@ -474,9 +514,9 @@
   display: flex;
   align-items: flex-start;
   gap: 0.625rem;
-  font-size: 1.0625rem;
+  font-size: 1rem;
   font-weight: var(--weight-strong);
-  line-height: 1.25;
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
 
@@ -486,7 +526,29 @@
   height: 0.625rem;
   margin-top: 0.375rem;
   border-radius: 2px;
-  background: var(--accent);
+  background: var(--ink);
+}
+
+/* Shop's and Trucking's: no label, no edge, smaller type and bullets. */
+.tasks-box.tasks-compact {
+  gap: var(--space-1);
+  padding: 0.375rem 0.625rem;
+  border-color: transparent;
+  border-radius: var(--radius-note);
+}
+
+.tasks-compact .task {
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.tasks-compact .task-bullet {
+  flex-basis: 0.375rem;
+  width: 0.375rem;
+  height: 0.375rem;
+  margin-top: 0.42rem;
+  border-radius: 1px;
 }
 
 .tasks-open {
@@ -509,18 +571,25 @@
   border-radius: var(--radius-control);
   background: none;
   color: var(--muted);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   text-align: left;
+}
+
+.tasks-open-empty.tasks-compact {
+  min-height: 2rem;
+  padding: var(--space-1) 0.625rem;
+  border-radius: var(--radius-note);
+  font-size: 0.8125rem;
 }
 
 @media (hover: hover) {
   .tasks-open:hover {
-    border-color: var(--accent);
+    border-color: var(--accent-strong);
   }
 
   .tasks-open-empty:hover {
     background: var(--accent-wash);
-    color: var(--accent-dark);
+    color: var(--ink);
   }
 }
 
@@ -533,7 +602,7 @@
   display: block;
   width: 100%;
   padding: var(--space-2) var(--space-2);
-  border: 2px solid var(--accent);
+  border: 2px solid var(--accent-strong);
   border-radius: var(--radius-control);
   outline: none;
   background: var(--paper);
@@ -598,10 +667,11 @@
   font-weight: var(--weight-body);
 }
 
-/* --- A window too narrow for the list beside the board: a tablet, a phone ---
-   The Not Placed list goes above the board, where it stays while the board
-   scrolls under it: a strip, its names side by side, and still the place to
-   click or drop on. */
+/* --- A window too narrow for the left column beside the board -------------
+   One scrolling page of cards: the Not Placed list on top, where it stays
+   while the cards scroll under it (a strip, its names side by side, and still
+   the place to click or drop on), then the Jobs, then Shop, Trucking and Off
+   Work. */
 
 @media (max-width: 860px) {
   .screen {
@@ -611,28 +681,53 @@
   }
 
   .layout {
+    --overhang: var(--space-2);
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-3);
+    margin: calc(-1 * var(--overhang));
+    padding: 0 var(--overhang) calc(var(--overhang) + var(--space-4));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* The left column gives its two parts to the page; the board stops scrolling by itself. */
+  .side {
+    display: contents;
   }
 
   .schedule-scroll {
-    flex: 1 1 0;
-    min-height: 0;
+    order: 1;
+    flex: 0 0 auto;
     max-height: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .yard {
+    order: 2;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(16.875rem, 100%), 1fr));
+    align-items: start;
+    gap: var(--space-3);
   }
 
   .not-placed {
-    order: -1;
-    flex: 0 0 auto;
+    order: 0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
     min-height: 0;
-    max-height: 38%;
+    max-height: 38vh;
+    overflow-y: auto;
     gap: var(--space-2);
     padding: var(--space-3);
+    box-shadow: var(--elevation-2);
   }
 
   .not-placed h2 {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
   }
 
   .not-placed .names {
@@ -665,8 +760,8 @@
 }
 
 /* --- A phone ---------------------------------------------------------------
-   The date and the gear get a line, the buttons the next, each the height
-   of a fingertip. */
+   The logo, then the date and the gear, then the buttons, each the height of
+   a fingertip. */
 
 @media (max-width: 700px) {
   .screen {
@@ -680,8 +775,12 @@
     padding: var(--space-3);
   }
 
+  .toolbar-logo {
+    height: 2.5rem;
+  }
+
   .date-heading {
-    font-size: 1.6rem;
+    font-size: 1.3rem;
   }
 
   .toolbar-actions {
@@ -698,10 +797,7 @@
     gap: var(--space-2);
   }
 
-  .layout {
-    gap: var(--space-2);
-  }
-
+  .layout,
   .board {
     gap: var(--space-3);
   }
@@ -731,17 +827,16 @@
     min-height: 100dvh;
   }
 
-  .layout {
-    flex: 1 0 auto;
-  }
-
+  .layout,
+  .side,
   .schedule-scroll {
-    flex: 0 0 auto;
+    flex: 1 0 auto;
     max-height: none;
     overflow-y: visible;
   }
 
   .not-placed {
+    position: static;
     max-height: none;
   }
 }

@@ -310,13 +310,13 @@ const tasksOf = (label: string, daily: DailySchedule): string[] =>
 
 describe("setting a Job's Tasks", () => {
   it('makes one Task of each line of the text', () => {
-    const edited = setTasks(schedule(), 'tower', 'Strip topsoil\nRough grade building pad');
+    const edited = setTasks(schedule(), onJob('tower'), 'Strip topsoil\nRough grade building pad');
 
     expect(tasksOf('J100 Tower', edited)).toEqual(['Strip topsoil', 'Rough grade building pad']);
   });
 
   it('ignores blank lines and the space around each Task', () => {
-    const edited = setTasks(schedule(), 'tower', '\n  Strip topsoil  \r\n\n   \nSet curb\n');
+    const edited = setTasks(schedule(), onJob('tower'), '\n  Strip topsoil  \r\n\n   \nSet curb\n');
 
     expect(tasksOf('J100 Tower', edited)).toEqual(['Strip topsoil', 'Set curb']);
   });
@@ -324,7 +324,7 @@ describe("setting a Job's Tasks", () => {
   it('replaces the Tasks the Job had, and leaves other Jobs alone', () => {
     const before = schedule({ tasks: { tower: ['Strip topsoil'], bridge: ['Set curb'] } });
 
-    const edited = setTasks(before, 'tower', 'Pour footings');
+    const edited = setTasks(before, onJob('tower'), 'Pour footings');
 
     expect(tasksOf('J100 Tower', edited)).toEqual(['Pour footings']);
     expect(tasksOf('Bridge', edited)).toEqual(['Set curb']);
@@ -333,22 +333,59 @@ describe("setting a Job's Tasks", () => {
   it('leaves the Job with no Tasks when the text is empty', () => {
     const before = schedule({ tasks: { tower: ['Strip topsoil'] } });
 
-    expect(tasksOf('J100 Tower', setTasks(before, 'tower', '  \n'))).toEqual([]);
+    expect(tasksOf('J100 Tower', setTasks(before, onJob('tower'), '  \n'))).toEqual([]);
   });
 
   it('changes nothing when the text gives the Tasks the Job already has', () => {
     const before = schedule({ tasks: { tower: ['Strip topsoil', 'Set curb'] } });
 
-    expect(setTasks(before, 'tower', 'Strip topsoil\nSet curb\n')).toBe(before);
-    expect(setTasks(before, 'bridge', '')).toBe(before);
+    expect(setTasks(before, onJob('tower'), 'Strip topsoil\nSet curb\n')).toBe(before);
+    expect(setTasks(before, onJob('bridge'), '')).toBe(before);
   });
 
   it('leaves the Daily Schedule it was given untouched', () => {
     const before = schedule({ tasks: { tower: ['Strip topsoil'] } });
 
-    setTasks(before, 'tower', 'Pour footings');
+    setTasks(before, onJob('tower'), 'Pour footings');
 
     expect(before.tasks).toEqual({ tower: ['Strip topsoil'] });
+  });
+});
+
+describe('Tasks for Shop and Trucking', () => {
+  it('can be set and shown on Shop and Trucking, without touching any Job', () => {
+    const before = schedule({ tasks: { tower: ['Strip topsoil'] } });
+
+    const shop = setTasks(before, onStandingRow('shop'), 'Service the loader');
+    const both = setTasks(shop, onStandingRow('trucking'), 'Go get the truck in PA');
+
+    expect(tasksOf('Shop', both)).toEqual(['Service the loader']);
+    expect(tasksOf('Trucking', both)).toEqual(['Go get the truck in PA']);
+    expect(tasksOf('J100 Tower', both)).toEqual(['Strip topsoil']);
+  });
+
+  it('cannot be set on Off Work', () => {
+    const before = schedule();
+
+    expect(setTasks(before, onStandingRow('off-work'), 'Vacation')).toBe(before);
+    expect(tasksOf('Off Work', before)).toEqual([]);
+  });
+
+  it('are never mistaken for a Job with the same name', () => {
+    const withShopJob = { ...roster, jobs: [...roster.jobs, { id: 'shop', name: 'Shop Job' }] };
+    const edited = setTasks(schedule(), onStandingRow('shop'), 'Service the loader');
+
+    const view = scheduleView(withShopJob, edited);
+    expect(view.rows.find((row) => row.label === 'Shop Job')?.tasks).toEqual([]);
+    expect(view.rows.find((row) => row.label === 'Shop')?.tasks).toEqual(['Service the loader']);
+  });
+
+  it('carry over to the next day, as a Job\'s do', () => {
+    const tuesday = setTasks(schedule({ date: '2026-11-10' }), onStandingRow('trucking'), 'Haul stone');
+
+    expect(tasksOf('Trucking', dailyScheduleFor(roster, [tuesday], '2026-11-11'))).toEqual([
+      'Haul stone',
+    ]);
   });
 });
 
@@ -357,7 +394,7 @@ describe('the text of a Job\'s Tasks', () => {
     const before = schedule({ tasks: { tower: ['Strip topsoil', 'Set curb'] } });
 
     expect(tasksText(tasksOf('J100 Tower', before))).toBe('Strip topsoil\nSet curb');
-    expect(setTasks(before, 'tower', tasksText(tasksOf('J100 Tower', before)))).toBe(before);
+    expect(setTasks(before, onJob('tower'), tasksText(tasksOf('J100 Tower', before)))).toBe(before);
   });
 });
 

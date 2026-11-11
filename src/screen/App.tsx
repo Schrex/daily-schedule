@@ -137,7 +137,7 @@ export function App({
         changeSelected((current, crewMemberId) => setNote(current, crewMemberId, text))
       }
       onClearNote={() => changeSelected(clearNote)}
-      onSetTasks={(jobId, text) => change((current) => setTasks(current, jobId, text))}
+      onSetTasks={(destination, text) => change((current) => setTasks(current, destination, text))}
       alertNotPlaced={send.status.kind === 'refused'}
       dateButtons={<SettingsLink />}
       toolbarButtons={

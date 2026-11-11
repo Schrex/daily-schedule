@@ -1,5 +1,7 @@
 import { useState, type MouseEvent, type ReactNode } from 'react';
+import logoUrl from '../assets/schreiber-logo.png';
 import {
+  canHaveTasks,
   fullDate,
   NOT_PLACED,
   scheduleView,
@@ -7,8 +9,8 @@ import {
   type DailySchedule,
   type MoveTo,
   type Roster,
+  type Destination,
   type ScheduleRow,
-  type StandingRow,
 } from '../schedule-rules';
 import { useNameDrag } from './drag/useNameDrag';
 import { dropTarget, viewWhileDragging } from './dropPreview';
@@ -39,8 +41,8 @@ interface ScheduleScreenProps {
   onSaveNote: (text: string) => void;
   /** "Remove note" was clicked for the selected Crew Member. */
   onClearNote: () => void;
-  /** The Scheduler finished typing a Job's Tasks: the whole text, one Task per line. */
-  onSetTasks: (jobId: string, text: string) => void;
+  /** The Scheduler finished typing the Tasks of a Job, Shop or Trucking: the whole text, one Task per line. */
+  onSetTasks: (destination: Destination, text: string) => void;
   /** Send was just refused: make the Not Placed list and its names stand out. */
   alertNotPlaced?: boolean;
   /** Drawn right beside the date: the Settings gear. */
@@ -54,25 +56,18 @@ interface ScheduleScreenProps {
 /** How many are on a Job or Standing Row, in plain words. */
 const headcount = (count: number): string => (count === 1 ? '1 person' : `${count} people`);
 
-/** What a Standing Row is, in the small line over its name. */
-const STANDING_KIND: Record<StandingRow, string> = {
-  shop: 'Yard',
-  trucking: 'Yard',
-  'off-work': 'Away',
-};
-
 /**
- * A block's title in two parts: the small line over it (the Job number, or
- * what kind of place it is) and the name itself, large. A Job that has left
- * the roster keeps the label it was sent with.
+ * A Job card's title in two parts: the Job number, small, over the name,
+ * large ("JOB" for a Job without one). A Job that has left the roster keeps
+ * the label it was sent with.
  */
-function blockTitle(roster: Roster, row: ScheduleRow): { over: string; title: string } {
+function jobTitle(roster: Roster, row: ScheduleRow): { number: string; title: string } {
   const { destination } = row;
-  if (destination.kind === 'standing-row') {
-    return { over: STANDING_KIND[destination.standingRow], title: row.label };
-  }
-  const job = roster.jobs.find((candidate) => candidate.id === destination.jobId);
-  return job ? { over: job.jobNumber ?? 'Job', title: job.name } : { over: 'Job', title: row.label };
+  const job =
+    destination.kind === 'job'
+      ? roster.jobs.find((candidate) => candidate.id === destination.jobId)
+      : undefined;
+  return job ? { number: job.jobNumber ?? 'JOB', title: job.name } : { number: 'JOB', title: row.label };
 }
 
 /** The first name, for the short button: "Take Brody off the board". */
@@ -103,11 +98,12 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * Every move is shown: a name that is somewhere else after a redraw travels
  * there from where it was (`MoveNames`), whatever moved it.
  *
- * It is a board: a header card (the date, the hint, Change date and
- * Send), the Not Placed list on the left, and a grid of cards, one for each
- * Job and Standing Row. A card is the Job (its number small over its name),
- * how many are on it, the day's Tasks in a tinted box, and its names, one to
- * a line. While a name is being moved, every card they can go to is
+ * It is a board: a header card (the Schreiber logo, the date, the hint,
+ * Change date and Send); on the left the Not Placed list and under it the
+ * three Standing Rows (Shop, Trucking, Off Work) as small cards; and a grid
+ * of cards, one for each Job. A Job card is its number and how many are on
+ * it, the Job's name, the day's Tasks in a pale yellow box, and its names,
+ * one to a line. Shop and Trucking can have Tasks too, as a smaller note. While a name is being moved, every card they can go to is
  * highlighted in the accent; clicking or tapping one puts them there. The
  * picture sent to the crew (`crewPicture`) is these same cards, one under
  * the other, without what is only the Scheduler's.
@@ -191,9 +187,68 @@ export function ScheduleScreen({
   /** "Wednesday's work": the Tasks are for the day being scheduled. */
   const tasksHeading = `${fullDate(view.date).split(',')[0]}'s work`;
 
+  /** One block: a Job card in the grid, or a small Standing Row card on the left. */
+  const block = ({ destination, ...row }: ScheduleRow) => {
+    const here = row.who.some((placed) => placed.crewMember.id === selected?.id);
+    const isJob = destination.kind === 'job';
+    const { number, title } = jobTitle(roster, { destination, ...row });
+    return (
+      <section
+        key={row.key}
+        className={`block block-${destination.kind} destination${
+          moving && !here ? ' block-target' : ''
+        }`}
+        aria-label={row.label}
+        data-row={row.key}
+        onClick={moveSelectedTo(destination)}
+        {...drag.dropProps(row.key)}
+      >
+        {isJob ? (
+          <header className="block-head">
+            <span className="job-number">
+              {number} · {headcount(row.who.length)}
+            </span>
+            <h2 className="job">{title}</h2>
+          </header>
+        ) : (
+          <header className="block-head block-head-yard">
+            <h2 className="job">{row.label}</h2>
+            <span className="count">{headcount(row.who.length)}</span>
+          </header>
+        )}
+        {canHaveTasks(destination) && (
+          <TasksCell
+            jobLabel={row.label}
+            heading={tasksHeading}
+            compact={!isJob}
+            tasks={row.tasks}
+            canEdit={!moving}
+            onCommit={(text) => onSetTasks(destination, text)}
+          />
+        )}
+        {row.who.length === 0 ? (
+          <p className="block-empty">Nobody here yet</p>
+        ) : (
+          <ul className="names">
+            {row.who.map(({ crewMember, note }) => (
+              <li key={crewMember.id} className={note ? 'noted' : undefined}>
+                {name(crewMember)}
+                {note && <span className="note">{note}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    );
+  };
+
+  const jobRows = shown.rows.filter((row) => row.destination.kind === 'job');
+  const standingRows = shown.rows.filter((row) => row.destination.kind === 'standing-row');
+
   return (
     <main className={`screen${moving ? ' moving' : ''}`}>
       <header className="toolbar">
+        <img className="toolbar-logo" src={logoUrl} alt="Schreiber Excavating" />
         <div className="toolbar-title">
           <div className="toolbar-date">
             <h1 className="date-heading">{fullDate(view.date)}</h1>
@@ -229,10 +284,7 @@ export function ScheduleScreen({
               </>
             ) : (
               <>
-                <span className="on-wide">
-                  Drag a name to a job, or click a name and then click the job. Click a job's tasks to
-                  change them.
-                </span>
+                <span className="on-wide">Drag a name to a job, or click a name and then click the job.</span>
                 <span className="on-narrow">Tap a name, then tap the job.</span>
               </>
             )}
@@ -244,82 +296,39 @@ export function ScheduleScreen({
       </header>
 
       <div className="layout">
-        <aside
-          className={`not-placed destination${alertNotPlaced ? ' not-placed-alert' : ''}`}
-          aria-labelledby="not-placed-heading"
-          onClick={moveSelectedTo(NOT_PLACED)}
-          data-motion-area
-          {...drag.dropProps(NOT_PLACED)}
-        >
-          <header className="not-placed-head">
-            <h2 id="not-placed-heading">Not placed yet</h2>
-            <span className="not-placed-count">{shown.notPlaced.length}</span>
-          </header>
-          {shown.notPlaced.length === 0 ? (
-            <p className="not-placed-empty">Everyone has a place.</p>
-          ) : (
-            <ul className="names">
-              {shown.notPlaced.map((crewMember) => (
-                <li key={crewMember.id}>{name(crewMember)}</li>
-              ))}
-            </ul>
-          )}
-          {moving && selectedPlaced && (
-            // The click carries on to the list around it: the destination.
-            <button type="button" className="button off-board">
-              Take {firstName(selected)} off the board
-            </button>
-          )}
-        </aside>
+        <div className="side" data-motion-area>
+          <aside
+            className={`not-placed destination${alertNotPlaced ? ' not-placed-alert' : ''}`}
+            aria-labelledby="not-placed-heading"
+            onClick={moveSelectedTo(NOT_PLACED)}
+            {...drag.dropProps(NOT_PLACED)}
+          >
+            <header className="not-placed-head">
+              <h2 id="not-placed-heading">Not placed yet</h2>
+              <span className="not-placed-count">{shown.notPlaced.length}</span>
+            </header>
+            {shown.notPlaced.length === 0 ? (
+              <p className="not-placed-empty">Everyone has a place.</p>
+            ) : (
+              <ul className="names">
+                {shown.notPlaced.map((crewMember) => (
+                  <li key={crewMember.id}>{name(crewMember)}</li>
+                ))}
+              </ul>
+            )}
+            {moving && selectedPlaced && (
+              // The click carries on to the list around it: the destination.
+              <button type="button" className="button off-board">
+                Take {firstName(selected)} off the board
+              </button>
+            )}
+          </aside>
+
+          <div className="yard">{standingRows.map(block)}</div>
+        </div>
 
         <div className="schedule-scroll" data-motion-area>
-          <div className="board">
-            {shown.rows.map(({ destination, ...row }) => {
-              const { over, title } = blockTitle(roster, { destination, ...row });
-              const here = row.who.some((placed) => placed.crewMember.id === selected?.id);
-              return (
-                <section
-                  key={row.key}
-                  className={`block block-${destination.kind} destination${
-                    moving && !here ? ' block-target' : ''
-                  }`}
-                  aria-label={row.label}
-                  data-row={row.key}
-                  onClick={moveSelectedTo(destination)}
-                  {...drag.dropProps(row.key)}
-                >
-                  <header className="block-head">
-                    <div className="block-title">
-                      <span className="job-number">{over}</span>
-                      <h2 className="job">{title}</h2>
-                    </div>
-                    <span className="count">{headcount(row.who.length)}</span>
-                  </header>
-                  {destination.kind === 'job' && (
-                    <TasksCell
-                      jobLabel={row.label}
-                      heading={tasksHeading}
-                      tasks={row.tasks}
-                      canEdit={!moving}
-                      onCommit={(text) => onSetTasks(destination.jobId, text)}
-                    />
-                  )}
-                  {row.who.length === 0 ? (
-                    <p className="block-empty">Nobody here yet</p>
-                  ) : (
-                    <ul className="names">
-                      {row.who.map(({ crewMember, note }) => (
-                        <li key={crewMember.id} className={note ? 'noted' : undefined}>
-                          {name(crewMember)}
-                          {note && <span className="note">{note}</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              );
-            })}
-          </div>
+          <div className="board">{jobRows.map(block)}</div>
         </div>
       </div>
 
