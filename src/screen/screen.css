@@ -1,7 +1,7 @@
 /* The Scheduler's screen: a board in Schreiber's yard yellow. A header card
-   on top (the logo, the date, the hint, Change date and Send); on the left
-   the Not Placed list and under it Shop, Trucking and Off Work as small
-   cards; and a grid of white cards, one for each Job. The picture sent to the
+   on top (the logo, the date, the hint, Change date and Send); a grid of
+   white cards, one for each Job; and on the right the Not Placed list and
+   under it Shop, Trucking and Off Work as small cards. The picture sent to the
    crew (src/send/crewPicture.ts) is these same cards, one under the other.
    Type, spacing, corners, the page, the buttons and the Crew Member colors
    come from the shared look (src/look.css); colors are the palette in
@@ -16,8 +16,8 @@
 }
 
 /* --- One screen ----------------------------------------------------------
-   The screen is exactly the window: the header on top, and under it the left
-   column and the board of Job cards, each scrolling by itself. Nothing he
+   The screen is exactly the window: the header on top, and under it the
+   board of Job cards and the right column, each scrolling by itself. Nothing he
    needs ever scrolls away. On a window wider than the board reads well, it
    sits in the middle. */
 
@@ -175,7 +175,7 @@
   display: none;
 }
 
-/* --- The left column and the board, side by side -------------------------- */
+/* --- The board and the right column, side by side ------------------------- */
 
 .layout {
   flex: 1 1 auto;
@@ -198,7 +198,7 @@
   overscroll-behavior: contain;
 }
 
-/* Left: Not Placed, then Shop, Trucking and Off Work. */
+/* Right: Not Placed, then Shop, Trucking and Off Work. */
 .side {
   flex: 0 0 calc(var(--side-width) + 2 * var(--overhang));
   display: flex;
@@ -241,8 +241,17 @@
     box-shadow var(--ease);
 }
 
-/* A Job: its number and how many are on it, small, over its name. */
+/* A card's head: the place on the left, how many are on it at the top right. */
 .block-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* A Job: its number, small, over its name. */
+.block-title {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
@@ -254,6 +263,7 @@
   font-size: 0.8125rem;
   font-weight: var(--weight-strong);
   letter-spacing: var(--tracking-small);
+  line-height: 1.4;
 }
 
 .job {
@@ -267,21 +277,20 @@
   overflow-wrap: anywhere;
 }
 
-/* Shop, Trucking, Off Work: the name and, at the right, how many. */
+/* Shop, Trucking, Off Work: the count sits level with the name. */
 .block-head-yard {
-  flex-direction: row;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
 }
 
 .block-head-yard .job {
   font-size: 1.375rem;
 }
 
-/* How many are on it: there to be checked, not to be noticed. */
+/* How many are on it: there to be checked, not to be noticed. On a Job it
+   sits level with the Job number. */
 .count {
   flex: 0 0 auto;
+  line-height: 1.4;
   color: var(--muted);
   font-size: 0.8125rem;
   font-weight: var(--weight-strong);
@@ -889,7 +898,7 @@
   font-weight: var(--weight-body);
 }
 
-/* --- A window too narrow for the left column beside the board -------------
+/* --- A window too narrow for the right column beside the board ------------
    One scrolling page of cards: the Not Placed list on top, where it stays
    while the cards scroll under it (a strip, its names side by side, and still
    the place to click or drop on), then the Jobs, then Shop, Trucking and Off
@@ -913,7 +922,7 @@
     overscroll-behavior: contain;
   }
 
-  /* The left column gives its two parts to the page; the board stops scrolling by itself. */
+  /* The right column gives its two parts to the page; the board stops scrolling by itself. */
   .side {
     display: contents;
   }

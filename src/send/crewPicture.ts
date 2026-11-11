@@ -14,7 +14,8 @@ import {
  * Draws the crew view as a picture (a PNG) of the Daily Schedule, made to be
  * read on a phone: the Schreiber logo and the date at the top, then the
  * cards of the Scheduler's board one under the other. A Job card is its
- * number and how many are on it, the Job's name in large capitals, the day's
+ * number over the Job's name in large capitals, how many are on it at the
+ * top right, the day's
  * Tasks in a pale yellow box, then the names, one to a line, each the full
  * width of the card and in its color. Shop and Trucking are the same with
  * their Tasks as a smaller note. A Crew Member's Person Tasks are smaller
@@ -308,8 +309,10 @@ interface CardLayout {
   isJob: boolean;
   top: number;
   height: number;
-  /** A Job's number and count ("J2601 · 5 people"); a Standing Row's count alone. */
+  /** A Job's number ("J2601"); empty for a Standing Row. */
   overText: string;
+  /** How many are on it ("5 people"), at the top right. */
+  countText: string;
   titleLines: string[];
   tasks: TasksStyle;
   taskLines: TaskLine[];
@@ -362,12 +365,12 @@ function layOut(
     let headHeight: number;
     if (isJob) {
       const { number, name } = jobParts(row, roster);
-      overText = `${number} · ${count}`;
+      overText = number;
       setType(ctx, look.type.job);
       titleLines = wrap(ctx, name.toUpperCase(), CARD_INNER_WIDTH);
       headHeight = OVER_LINE + titleLines.length * JOB_LINE;
     } else {
-      overText = count;
+      overText = '';
       setType(ctx, look.type.yard);
       titleLines = wrap(ctx, row.label.toUpperCase(), CARD_INNER_WIDTH - countWidth - 16);
       headHeight = titleLines.length * YARD_LINE;
@@ -397,6 +400,7 @@ function layOut(
       top,
       height,
       overText,
+      countText: count,
       titleLines,
       tasks,
       taskLines,
@@ -655,8 +659,18 @@ function drawCard(
   if (card.isJob) {
     // A Job: its number and count, small, then its name in large capitals.
     ctx.fillStyle = PALETTE.muted;
+    setType(ctx, look.type.count);
+    ctx.textAlign = 'right';
+    ctx.fillText(card.countText, CARD_INNER_X + CARD_INNER_WIDTH, headTop + OVER_LINE / 2);
+    ctx.textAlign = 'left';
+    const countWidth = ctx.measureText(card.countText).width;
     setType(ctx, look.type.over);
-    ctx.fillText(card.overText, CARD_INNER_X, headTop + OVER_LINE / 2, CARD_INNER_WIDTH);
+    ctx.fillText(
+      card.overText,
+      CARD_INNER_X,
+      headTop + OVER_LINE / 2,
+      CARD_INNER_WIDTH - countWidth - 16,
+    );
     ctx.fillStyle = PALETTE.ink;
     setType(ctx, look.type.job);
     card.titleLines.forEach((line, index) =>
@@ -677,7 +691,7 @@ function drawCard(
     ctx.fillStyle = PALETTE.muted;
     setType(ctx, look.type.count);
     ctx.textAlign = 'right';
-    ctx.fillText(card.overText, CARD_INNER_X + CARD_INNER_WIDTH, headTop + YARD_LINE / 2 + 4);
+    ctx.fillText(card.countText, CARD_INNER_X + CARD_INNER_WIDTH, headTop + YARD_LINE / 2 + 4);
     ctx.textAlign = 'left';
   }
 
