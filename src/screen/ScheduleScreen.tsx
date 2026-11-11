@@ -1,10 +1,11 @@
-import { useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
 import {
   canHaveTasks,
   cardTitle,
   fullDate,
   NOT_PLACED,
+  scheduleDateOf,
   scheduleView,
   type CrewMember,
   type DailySchedule,
@@ -19,6 +20,7 @@ import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
 import { NoteEditor } from './NoteEditor';
+import { foldedHeading, type OpenJobs } from './openJobs';
 import { PersonTasks } from './PersonTasks';
 import { TasksCell } from './TasksCell';
 import { useColumnCount } from './useColumnCount';
@@ -39,6 +41,10 @@ interface ScheduleScreenProps {
    * Not Placed) by double-clicking their name.
    */
   onMoveCrewMember: (crewMemberId: string, to: MoveTo) => void;
+  /** The Jobs drawn as cards (see openJobs.ts); every other Job is a folded button. */
+  openJobs: OpenJobs;
+  /** A folded Job's button was tapped with nobody in hand: open it as an empty card. */
+  onOpenJob: (jobKey: string) => void;
   /** "Add note" / "Change note" was clicked for the selected Crew Member. */
   onEditNote: () => void;
   /** The Note typed for the selected Crew Member was saved. */
@@ -119,6 +125,8 @@ export function ScheduleScreen({
   onSelectCrewMember,
   onDeselect,
   onMoveCrewMember,
+  openJobs,
+  onOpenJob,
   editingNote,
   onEditNote,
   onSaveNote,
@@ -181,6 +189,16 @@ export function ScheduleScreen({
       </span>
     ) : null;
 
+  /** A Job just opened from its folded button: its card's heading takes the focus once drawn. */
+  const [focusJob, setFocusJob] = useState<string | null>(null);
+  useEffect(() => {
+    if (focusJob === null) return;
+    const heading = document.querySelector<HTMLElement>(`[data-row="${focusJob}"] .job`);
+    if (!heading) return;
+    heading.focus();
+    setFocusJob(null);
+  });
+
   /** The board in as many columns as fit (up to three), each packed from the top. */
   const [board, setBoard] = useState<HTMLDivElement | null>(null);
   const columns = useColumnCount(board);
@@ -241,7 +259,7 @@ export function ScheduleScreen({
         {...drag.dropProps(row.key)}
       >
         <header className="block-head">
-          <h2 className="job">
+          <h2 className="job" tabIndex={isJob ? -1 : undefined}>
             {isJob ? title : row.label}
             {number && <span className="job-number">{number}</span>}
           </h2>
@@ -304,7 +322,23 @@ export function ScheduleScreen({
     );
   };
 
-  const jobRows = shown.rows.filter((row) => row.destination.kind === 'job');
+  // Only Jobs fold, and only by the open set: a name held over a folded Job
+  // (which `shown` already draws there) does not open it until it is dropped.
+  const jobRows = shown.rows.filter((row) => row.destination.kind === 'job' && openJobs.has(row.key));
+  const foldedRows = shown.rows.filter(
+    (row) => row.destination.kind === 'job' && !openJobs.has(row.key),
+  );
+
+  /**
+   * A folded Job's button: with someone in hand they are put on it (which
+   * opens it and lets go of them); with nobody, it opens as an empty card so
+   * the work can be typed first. Either way the card's heading gets the focus.
+   */
+  const tapFolded = (row: ScheduleRow) => {
+    if (moving) onMoveCrewMember(selected.id, row.destination);
+    else onOpenJob(row.key);
+    setFocusJob(row.key);
+  };
   const standingRows = shown.rows.filter((row) => row.destination.kind === 'standing-row');
 
   return (
@@ -329,6 +363,28 @@ export function ScheduleScreen({
               </div>
             ))}
           </div>
+          {foldedRows.length > 0 && (
+            <section className="folded-jobs" aria-labelledby="folded-jobs-heading">
+              <h2 id="folded-jobs-heading">{foldedHeading(view.date, scheduleDateOf(new Date()))}</h2>
+              <div className="folded-list">
+                {foldedRows.map((row) => {
+                  const { name: title } = cardTitle(roster, row);
+                  return (
+                    <button
+                      key={row.key}
+                      type="button"
+                      className={`button folded-job${inHand ? ' button-primary' : ''}`}
+                      aria-label={inHand ? `Put ${inHand.crewMember.name} on ${title}` : `Open ${title}`}
+                      onClick={() => tapFolded(row)}
+                      {...drag.dropProps(row.key)}
+                    >
+                      {inHand ? `Put ${firstName(inHand.crewMember)} on ${title}` : title}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
           <DayNotes
             key={view.date}
             notes={view.dayNotes}
