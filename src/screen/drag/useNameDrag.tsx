@@ -46,6 +46,8 @@ export interface Dragging {
 interface Lifted {
   className: string;
   text: string;
+  /** The Person Tasks under the name. */
+  subs: string[];
   width: number;
   height: number;
 }
@@ -233,7 +235,9 @@ export function useNameDrag({
         grip.current = { x: at.x - box.left, y: at.y - box.top };
         setLifted({
           className: source.className,
-          text: source.textContent ?? '',
+          // The name, and any Person Tasks under it, as they are drawn.
+          text: source.querySelector('.name-text')?.textContent ?? source.textContent ?? '',
+          subs: [...source.querySelectorAll('.name-sub')].map((sub) => sub.textContent ?? ''),
           width: box.width,
           height: box.height,
         });
@@ -329,7 +333,12 @@ export function useNameDrag({
             style={{ width: lifted.width, height: lifted.height }}
             aria-hidden="true"
           >
-            {lifted.text}
+            <span className="name-text">{lifted.text}</span>
+            {lifted.subs.map((sub, index) => (
+              <span key={index} className="name-sub">
+                {sub}
+              </span>
+            ))}
           </div>,
           document.body,
         )

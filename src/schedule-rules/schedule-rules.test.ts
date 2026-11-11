@@ -26,6 +26,13 @@ import {
   moveJob,
   removeCrewMember,
   removeJob,
+  addPersonTask,
+  changePersonTask,
+  removePersonTask,
+  addDayNote,
+  changeDayNote,
+  removeDayNote,
+  notePieces,
   type CrewMember,
   type DailySchedule,
   type Placement,
@@ -1075,5 +1082,119 @@ describe('reordering Jobs', () => {
   it('changes nothing when the Job is already first or last', () => {
     expect(moveJob(roster, 'tower', 'up')).toBe(roster);
     expect(moveJob(roster, 'bridge', 'down')).toBe(roster);
+  });
+});
+
+describe('Person Tasks', () => {
+  const onTower = () => schedule({ placements: [placement('ann', onJob('tower'), 1)] });
+  const whoOnTower = (s: DailySchedule) =>
+    scheduleView(roster, s).rows.find((row) => row.label === 'J100 Tower')?.who;
+
+  it('are added under the name, in the order typed, without the space around them', () => {
+    const s = addPersonTask(addPersonTask(onTower(), 'ann', ' Dewatering '), 'ann', '2:00 PM VAC truck training');
+    expect(whoOnTower(s)?.[0]?.personTasks).toEqual(['Dewatering', '2:00 PM VAC truck training']);
+  });
+
+  it('are left out of the view when there are none', () => {
+    expect(whoOnTower(onTower())?.[0]).not.toHaveProperty('personTasks');
+  });
+
+  it('cannot be added blank, or for someone Not Placed', () => {
+    const s = onTower();
+    expect(addPersonTask(s, 'ann', '   ')).toBe(s);
+    expect(addPersonTask(s, 'bob', 'Dewatering')).toBe(s);
+  });
+
+  it('can be changed, and a blank change or a removal takes the Task away', () => {
+    const s = addPersonTask(addPersonTask(onTower(), 'ann', 'A'), 'ann', 'B');
+    expect(whoOnTower(changePersonTask(s, 'ann', 0, 'C'))?.[0]?.personTasks).toEqual(['C', 'B']);
+    expect(whoOnTower(changePersonTask(s, 'ann', 1, ' '))?.[0]?.personTasks).toEqual(['A']);
+    const none = removePersonTask(removePersonTask(s, 'ann', 0), 'ann', 0);
+    expect(none.placements[0]).not.toHaveProperty('personTasks');
+    expect(changePersonTask(s, 'ann', 5, 'X')).toBe(s);
+    expect(changePersonTask(s, 'ann', 0, 'A')).toBe(s);
+  });
+
+  it('go along when the Crew Member is moved, while the Note does not', () => {
+    const s = setNote(addPersonTask(onTower(), 'ann', 'Dewatering'), 'ann', '1/2 Day');
+    const moved = placeCrewMember(s, 'ann', onJob('bridge'));
+    const placed = scheduleView(roster, moved).rows.find((row) => row.label === 'Bridge')?.who[0];
+    expect(placed).toEqual({ crewMember: roster.crewMembers[0], personTasks: ['Dewatering'] });
+  });
+
+  it('are gone when the Crew Member goes back to Not Placed', () => {
+    const s = returnToNotPlaced(addPersonTask(onTower(), 'ann', 'Dewatering'), 'ann');
+    expect(placeCrewMember(s, 'ann', onJob('tower')).placements[0]).not.toHaveProperty('personTasks');
+  });
+
+  it('do not carry over to the next Daily Schedule', () => {
+    const s = addPersonTask(onTower(), 'ann', 'Dewatering');
+    const next = dailyScheduleFor(roster, [s], '2026-11-11');
+    expect(next.placements[0]).not.toHaveProperty('personTasks');
+  });
+});
+
+describe('Day Notes', () => {
+  it('are none on a Daily Schedule saved before they existed', () => {
+    expect(scheduleView(roster, schedule()).dayNotes).toEqual([]);
+  });
+
+  it('are added in order, without the space around them; blank text changes nothing', () => {
+    const s = addDayNote(addDayNote(schedule(), ' First '), 'Second');
+    expect(scheduleView(roster, s).dayNotes).toEqual(['First', 'Second']);
+    expect(addDayNote(s, '  ')).toBe(s);
+  });
+
+  it('can be changed or removed', () => {
+    const s = addDayNote(addDayNote(schedule(), 'A'), 'B');
+    expect(changeDayNote(s, 1, 'C').dayNotes).toEqual(['A', 'C']);
+    expect(changeDayNote(s, 0, '').dayNotes).toEqual(['B']);
+    expect(removeDayNote(s, 1).dayNotes).toEqual(['A']);
+    expect(changeDayNote(s, 0, 'A')).toBe(s);
+    expect(changeDayNote(s, 4, 'X')).toBe(s);
+  });
+
+  it('do not carry over to the next Daily Schedule', () => {
+    expect(dailyScheduleFor(roster, [addDayNote(schedule(), 'A')], '2026-11-11').dayNotes).toBeUndefined();
+  });
+
+  it('are sent to the crew, and a change to them marks the picture UPDATED', () => {
+    const noted = addDayNote(everyonePlaced(), 'Bring boots');
+    expect(crewView(roster, noted).dayNotes).toEqual(['Bring boots']);
+    expect(crewView(roster, everyonePlaced())).not.toHaveProperty('dayNotes');
+    const sent = send(noted, '2026-11-09T23:05:00.000Z');
+    expect(crewView(roster, sent).updated).toBe(false);
+    expect(crewView(roster, changeDayNote(sent, 0, 'Bring gloves')).updated).toBe(true);
+  });
+});
+
+describe('the pieces of a Day Note', () => {
+  const people: Roster = {
+    crewMembers: [crew('brody', { name: 'Brody Wilson' }), crew('kris', { name: 'Kris Thomas' })],
+    jobs: [
+      { id: 'tiuny', name: 'TIUNY', jobNumber: 'J2601' },
+      { id: 'winter', name: 'Wintergarden' },
+    ],
+  };
+
+  it('marks Crew Members by first or full name and Jobs by name or number, whole words only', () => {
+    expect(notePieces(people, 'brody and Kris Thomas go to TIUNY after Wintergarden, not Brodyville')).toEqual([
+      { text: 'brody', kind: 'crew-member' },
+      { text: ' and ', kind: 'plain' },
+      { text: 'Kris Thomas', kind: 'crew-member' },
+      { text: ' go to ', kind: 'plain' },
+      { text: 'TIUNY', kind: 'job' },
+      { text: ' after ', kind: 'plain' },
+      { text: 'Wintergarden', kind: 'job' },
+      { text: ', not Brodyville', kind: 'plain' },
+    ]);
+  });
+
+  it('prefers the longer match: a Job written with its number is one piece', () => {
+    expect(notePieces(people, 'J2601 TIUNY')).toEqual([{ text: 'J2601 TIUNY', kind: 'job' }]);
+  });
+
+  it('is the whole note, plain, when it names nobody', () => {
+    expect(notePieces(people, 'Rain tomorrow')).toEqual([{ text: 'Rain tomorrow', kind: 'plain' }]);
   });
 });

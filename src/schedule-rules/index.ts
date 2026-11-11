@@ -48,6 +48,11 @@ export interface Placement {
   /** Placement order: lower was placed earlier. */
   order: number;
   note?: string;
+  /**
+   * Person Tasks: what is only about this Crew Member that day ("Dewatering",
+   * "2:00 PM VAC truck training"), shown under their name. Never empty when present.
+   */
+  personTasks?: string[];
 }
 
 /** A calendar day as `YYYY-MM-DD`. */
@@ -64,6 +69,11 @@ export interface DailySchedule {
   tasks: Record<string, string[]>;
   /** The send record: each Send, oldest first. */
   sends: SendRecord[];
+  /**
+   * Day Notes: free-text remarks for everyone that day, in the order added.
+   * Missing on a Daily Schedule saved before Day Notes existed.
+   */
+  dayNotes?: string[];
 }
 
 /** One Send: when it happened and exactly what the crew was sent. */
@@ -109,6 +119,8 @@ export const jobLabel = (job: Job): string =>
 export interface PlacedCrewMember {
   crewMember: CrewMember;
   note?: string;
+  /** Their Person Tasks; left out when they have none. */
+  personTasks?: string[];
 }
 
 /** One row of the Daily Schedule: a Job or a Standing Row. */
@@ -128,6 +140,8 @@ export interface ScheduleView {
   rows: ScheduleRow[];
   /** Crew Members with no Placement, in roster order. */
   notPlaced: CrewMember[];
+  /** The Day Notes, in the order added. */
+  dayNotes: string[];
 }
 
 /**
@@ -159,9 +173,11 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
             ? Number(b.crewMember.foreman) - Number(a.crewMember.foreman)
             : 0) || a.placement.order - b.placement.order,
       )
-      .map(({ placement, crewMember }) =>
-        placement.note ? { crewMember, note: placement.note } : { crewMember },
-      );
+      .map(({ placement, crewMember }) => ({
+        crewMember,
+        ...(placement.note ? { note: placement.note } : {}),
+        ...(placement.personTasks?.length ? { personTasks: [...placement.personTasks] } : {}),
+      }));
 
   const row = (destination: Destination, label: string): ScheduleRow => ({
     key: destinationKey(destination),
@@ -194,7 +210,7 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
   const placed = new Set(rows.flatMap((r) => r.who.map((p) => p.crewMember.id)));
   const notPlaced = roster.crewMembers.filter((crewMember) => !placed.has(crewMember.id));
 
-  return { date: schedule.date, rows, notPlaced };
+  return { date: schedule.date, rows, notPlaced, dayNotes: dayNotesOf(schedule) };
 }
 
 // ---------------------------------------------------------------------------
@@ -203,7 +219,8 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
 
 /**
  * Places a Crew Member on a Job or Standing Row. The new Placement replaces any
- * Placement they had, comes last in placement order, and carries no Note.
+ * Placement they had, comes last in placement order, and carries no Note. Their
+ * Person Tasks are about them, not the place, so they go along.
  * If they are already there, the same Daily Schedule is returned unchanged.
  */
 export function placeCrewMember(
@@ -219,9 +236,13 @@ export function placeCrewMember(
   // After everyone already on the schedule, so last in placement order wherever they land.
   const order = Math.max(0, ...schedule.placements.map((placement) => placement.order)) + 1;
 
+  const placement: Placement = current?.personTasks?.length
+    ? { crewMemberId, destination, order, personTasks: current.personTasks }
+    : { crewMemberId, destination, order };
+
   return {
     ...schedule,
-    placements: [...withoutCrewMember(schedule, crewMemberId), { crewMemberId, destination, order }],
+    placements: [...withoutCrewMember(schedule, crewMemberId), placement],
   };
 }
 
@@ -341,6 +362,150 @@ export const clearNote = (schedule: DailySchedule, crewMemberId: string): DailyS
   setNote(schedule, crewMemberId, '');
 
 // ---------------------------------------------------------------------------
+// Person Tasks
+// ---------------------------------------------------------------------------
+
+/**
+ * Changes the Person Tasks on a Crew Member's Placement with `edit`, which is
+ * given them as a fresh list. Nothing happens for a Crew Member who is Not
+ * Placed, or when the list comes back the same.
+ */
+function editPersonTasks(
+  schedule: DailySchedule,
+  crewMemberId: string,
+  edit: (tasks: string[]) => string[],
+): DailySchedule {
+  const current = schedule.placements.find((placement) => placement.crewMemberId === crewMemberId);
+  if (!current) return schedule;
+  const before = current.personTasks ?? [];
+  const after = edit([...before]);
+  if (after.length === before.length && after.every((task, index) => task === before[index])) {
+    return schedule;
+  }
+  const { personTasks: _old, ...rest } = current;
+  const updated: Placement = after.length > 0 ? { ...rest, personTasks: after } : rest;
+  return {
+    ...schedule,
+    placements: schedule.placements.map((placement) => (placement === current ? updated : placement)),
+  };
+}
+
+/**
+ * Adds a Person Task, typed as free text, after the Crew Member's others. The
+ * space around it is ignored; blank text, or a Crew Member who is Not Placed,
+ * changes nothing.
+ */
+export function addPersonTask(schedule: DailySchedule, crewMemberId: string, text: string): DailySchedule {
+  const task = text.trim();
+  if (task === '') return schedule;
+  return editPersonTasks(schedule, crewMemberId, (tasks) => [...tasks, task]);
+}
+
+/**
+ * Changes one of a Crew Member's Person Tasks (by its place in their list) to
+ * new text. Blank text removes it. An index they have no Task at changes nothing.
+ */
+export function changePersonTask(
+  schedule: DailySchedule,
+  crewMemberId: string,
+  index: number,
+  text: string,
+): DailySchedule {
+  const task = text.trim();
+  return editPersonTasks(schedule, crewMemberId, (tasks) => {
+    if (index < 0 || index >= tasks.length) return tasks;
+    if (task === '') tasks.splice(index, 1);
+    else tasks[index] = task;
+    return tasks;
+  });
+}
+
+/** Removes one of a Crew Member's Person Tasks, by its place in their list. */
+export const removePersonTask = (
+  schedule: DailySchedule,
+  crewMemberId: string,
+  index: number,
+): DailySchedule => changePersonTask(schedule, crewMemberId, index, '');
+
+// ---------------------------------------------------------------------------
+// Day Notes
+// ---------------------------------------------------------------------------
+
+const dayNotesOf = (schedule: DailySchedule): string[] => [...(schedule.dayNotes ?? [])];
+
+/** Adds a Day Note after the others. The space around it is ignored; blank text changes nothing. */
+export function addDayNote(schedule: DailySchedule, text: string): DailySchedule {
+  const note = text.trim();
+  if (note === '') return schedule;
+  return { ...schedule, dayNotes: [...dayNotesOf(schedule), note] };
+}
+
+/**
+ * Changes one Day Note (by its place in the list) to new text. Blank text
+ * removes it. The same text, or an index with no Day Note, changes nothing.
+ */
+export function changeDayNote(schedule: DailySchedule, index: number, text: string): DailySchedule {
+  const notes = dayNotesOf(schedule);
+  const note = text.trim();
+  if (index < 0 || index >= notes.length || notes[index] === note) return schedule;
+  if (note === '') notes.splice(index, 1);
+  else notes[index] = note;
+  return { ...schedule, dayNotes: notes };
+}
+
+/** Removes one Day Note, by its place in the list. */
+export const removeDayNote = (schedule: DailySchedule, index: number): DailySchedule =>
+  changeDayNote(schedule, index, '');
+
+/** One piece of a Day Note as it is drawn: plain words, or a Crew Member or Job it names. */
+export interface NotePiece {
+  text: string;
+  kind: 'plain' | 'crew-member' | 'job';
+}
+
+/**
+ * A Day Note cut into pieces, so the Crew Members and Jobs it names can be
+ * marked. A Crew Member is named by their full name or first name, a Job by
+ * its name, its job number or both ("TIUNY", "J2601"); case does not matter,
+ * but a name must be a whole word. Where two could match, the longer wins.
+ */
+export function notePieces(roster: Roster, note: string): NotePiece[] {
+  const names: [string, NotePiece['kind']][] = [
+    ...roster.crewMembers.flatMap((crewMember): [string, NotePiece['kind']][] => [
+      [crewMember.name, 'crew-member'],
+      [crewMember.name.split(' ')[0] ?? '', 'crew-member'],
+    ]),
+    ...roster.jobs.flatMap((job): [string, NotePiece['kind']][] => [
+      [jobLabel(job), 'job'],
+      [job.name, 'job'],
+      [job.jobNumber ?? '', 'job'],
+    ]),
+  ].filter(([name]) => name.trim().length > 1);
+  if (names.length === 0) return note ? [{ text: note, kind: 'plain' }] : [];
+
+  const kindOf = new Map(names.map(([name, kind]) => [name.toLowerCase(), kind]));
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(
+    `(?<![\\p{L}\\p{N}])(${[...kindOf.keys()]
+      .sort((a, b) => b.length - a.length)
+      .map(escape)
+      .join('|')})(?![\\p{L}\\p{N}])`,
+    'giu',
+  );
+
+  const pieces: NotePiece[] = [];
+  let at = 0;
+  for (const match of note.matchAll(pattern)) {
+    const start = match.index ?? 0;
+    if (start > at) pieces.push({ text: note.slice(at, start), kind: 'plain' });
+    pieces.push({ text: match[0], kind: kindOf.get(match[0].toLowerCase()) ?? 'plain' });
+    at = start + match[0].length;
+  }
+  if (at < note.length) pieces.push({ text: note.slice(at), kind: 'plain' });
+  return pieces;
+}
+
+// ---------------------------------------------------------------------------
 // Dates
 // ---------------------------------------------------------------------------
 
@@ -386,6 +551,8 @@ export interface CrewView {
   updated: boolean;
   /** Only the Jobs and Standing Rows with someone on them, in the Scheduler's order. */
   rows: ScheduleRow[];
+  /** The Day Notes; left out when there are none (and on Sends from before Day Notes). */
+  dayNotes?: string[];
 }
 
 /**
@@ -396,10 +563,18 @@ export interface CrewView {
  * picture again, marked (or not) exactly as it was then.
  */
 export function crewView(roster: Roster, schedule: DailySchedule): CrewView {
-  const rows = scheduleView(roster, schedule).rows.filter((row) => row.who.length > 0);
+  const view = scheduleView(roster, schedule);
+  const rows = view.rows.filter((row) => row.who.length > 0);
+  const notes = view.dayNotes.length > 0 ? { dayNotes: view.dayNotes } : {};
   const last = lastSend(schedule);
-  if (last?.sent && sameData(last.sent.rows, rows)) return last.sent;
-  return { date: schedule.date, updated: last !== undefined, rows };
+  if (
+    last?.sent &&
+    sameData(last.sent.rows, rows) &&
+    sameData(last.sent.dayNotes ?? [], view.dayNotes)
+  ) {
+    return last.sent;
+  }
+  return { date: schedule.date, updated: last !== undefined, rows, ...notes };
 }
 
 /**
@@ -476,7 +651,7 @@ const toScheduleDate = (utcMidnight: number): ScheduleDate =>
  * If one is saved for that date, it is that one, untouched. Otherwise a new one
  * is created from the most recent earlier Daily Schedule: Placements and Tasks
  * are copied, except that Crew Members who were in Off Work become Not Placed,
- * every Note is dropped, and anything for a Crew Member or Job no longer in the
+ * every Note, Person Task and Day Note is dropped, and anything for a Crew Member or Job no longer in the
  * roster is dropped. A new Daily Schedule has no send record. With no earlier
  * Daily Schedule to copy, everyone is Not Placed and there are no Tasks.
  *

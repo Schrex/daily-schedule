@@ -16,7 +16,9 @@ import { useNameDrag } from './drag/useNameDrag';
 import { dropTarget, viewWhileDragging } from './dropPreview';
 import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
+import { DayNotes } from './DayNotes';
 import { NoteEditor } from './NoteEditor';
+import { PersonTasks } from './PersonTasks';
 import { TasksCell } from './TasksCell';
 
 interface ScheduleScreenProps {
@@ -43,6 +45,15 @@ interface ScheduleScreenProps {
   onClearNote: () => void;
   /** The Scheduler finished typing the Tasks of a Job, Shop or Trucking: the whole text, one Task per line. */
   onSetTasks: (destination: Destination, text: string) => void;
+  /** A Person Task was typed for the selected Crew Member. */
+  onAddPersonTask: (text: string) => void;
+  /** One of the selected Crew Member's Person Tasks was changed (blank: taken away). */
+  onChangePersonTask: (index: number, text: string) => void;
+  onRemovePersonTask: (index: number) => void;
+  onAddDayNote: (text: string) => void;
+  /** A Day Note was changed (blank: taken away). */
+  onChangeDayNote: (index: number, text: string) => void;
+  onRemoveDayNote: (index: number) => void;
   /** Send was just refused: make the Not Placed list and its names stand out. */
   alertNotPlaced?: boolean;
   /** Drawn right beside the date: the Settings gear. */
@@ -87,7 +98,9 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * the browser takes for a small drag, is reported by `useNameDrag` instead.
  *
  * With no name selected, clicking a Job's Tasks lets him type them. A selected
- * Crew Member who has a Placement also offers "Add note".
+ * Crew Member who has a Placement also offers "Add note", and at the foot of
+ * their card their Person Tasks, to add, change or take away (`PersonTasks`).
+ * Under the Job cards are the Notes for the day (`DayNotes`).
  *
  * A name can also be dragged and dropped on one of those blocks (`useNameDrag`).
  * The drag only says who was dropped where; like a click, it is reported.
@@ -124,6 +137,12 @@ export function ScheduleScreen({
   onSaveNote,
   onClearNote,
   onSetTasks,
+  onAddPersonTask,
+  onChangePersonTask,
+  onRemovePersonTask,
+  onAddDayNote,
+  onChangeDayNote,
+  onRemoveDayNote,
   alertNotPlaced = false,
   dateButtons,
   toolbarButtons,
@@ -169,23 +188,29 @@ export function ScheduleScreen({
   /** A destination was clicked while a Crew Member is selected: they go there. */
   const moveSelectedTo = (to: MoveTo) => (moving ? () => onMoveCrewMember(selected.id, to) : undefined);
 
-  const name = (crewMember: CrewMember) => (
+  /** A name, with that Crew Member's Person Tasks (if any) under it, inside the same chip. */
+  const name = (crewMember: CrewMember, personTasks: string[] = []) => (
     <button
       type="button"
       className={`name color-${crewMember.color}${
         crewMember.id === selected?.id ? ' name-selected' : ''
-      }`}
+      }${personTasks.length > 0 ? ' name-with-subs' : ''}`}
       aria-pressed={crewMember.id === selected?.id}
       onClick={(event) => onNameClick(crewMember, event)}
       {...drag.nameProps(crewMember.id)}
       onDoubleClick={() => onMoveCrewMember(crewMember.id, NOT_PLACED)}
     >
-      {crewMember.name}
+      <span className="name-text">{crewMember.name}</span>
+      {personTasks.map((task, index) => (
+        <span key={index} className="name-sub">
+          {task}
+        </span>
+      ))}
     </button>
   );
 
-  /** "Wednesday's work": the Tasks are for the day being scheduled. */
-  const tasksHeading = `${fullDate(view.date).split(',')[0]}'s work`;
+  /** The Job's Tasks are for everyone on it; a Crew Member's own are under their name. */
+  const tasksHeading = 'Work for the whole crew';
 
   /** One block: a Job card in the grid, or a small Standing Row card on the left. */
   const block = ({ destination, ...row }: ScheduleRow) => {
@@ -231,13 +256,22 @@ export function ScheduleScreen({
           <p className="block-empty">Nobody here yet</p>
         ) : (
           <ul className="names">
-            {row.who.map(({ crewMember, note }) => (
+            {row.who.map(({ crewMember, note, personTasks }) => (
               <li key={crewMember.id} className={note ? 'noted' : undefined}>
-                {name(crewMember)}
+                {name(crewMember, personTasks)}
                 {note && <span className="note">{note}</span>}
               </li>
             ))}
           </ul>
+        )}
+        {here && moving && selectedPlaced && (
+          <PersonTasks
+            crewMember={selectedPlaced.crewMember}
+            tasks={selectedPlaced.personTasks ?? []}
+            onAdd={onAddPersonTask}
+            onChange={onChangePersonTask}
+            onRemove={onRemovePersonTask}
+          />
         )}
       </section>
     );
@@ -272,10 +306,20 @@ export function ScheduleScreen({
             ) : moving ? (
               <>
                 <span>
-                  <span className="on-wide">Now click the job for </span>
-                  <span className="on-narrow">Now tap the job for </span>
-                  <strong>{selected.name}</strong>.
-                  <span className="move-hint-cancel on-wide"> (Click the name again to cancel.)</span>
+                  {selectedPlaced ? (
+                    <>
+                      Add tasks for <strong>{selected.name}</strong> on their card, or{' '}
+                      <span className="on-wide">click</span>
+                      <span className="on-narrow">tap</span> a job to move them.
+                    </>
+                  ) : (
+                    <>
+                      <span className="on-wide">Now click the job for </span>
+                      <span className="on-narrow">Now tap the job for </span>
+                      <strong>{selected.name}</strong>.
+                    </>
+                  )}
+                  <span className="move-hint-cancel on-wide"> (Click the name again to let go.)</span>
                 </span>
                 {selectedPlaced && (
                   <button type="button" className="button action" onClick={onEditNote}>
@@ -285,8 +329,10 @@ export function ScheduleScreen({
               </>
             ) : (
               <>
-                <span className="on-wide">Drag a name to a job, or click a name and then click the job.</span>
-                <span className="on-narrow">Tap a name, then tap the job.</span>
+                <span className="on-wide">
+                  Click a name for anything that is only about that person. Drag it to move it.
+                </span>
+                <span className="on-narrow">Tap a name for anything that is only about that person.</span>
               </>
             )}
           </div>
@@ -299,6 +345,14 @@ export function ScheduleScreen({
       <div className="layout">
         <div className="schedule-scroll" data-motion-area>
           <div className="board">{jobRows.map(block)}</div>
+          <DayNotes
+            key={view.date}
+            roster={roster}
+            notes={view.dayNotes}
+            onAdd={onAddDayNote}
+            onChange={onChangeDayNote}
+            onRemove={onRemoveDayNote}
+          />
         </div>
         <div className="side" data-motion-area>
           <aside

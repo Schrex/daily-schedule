@@ -1,6 +1,14 @@
 import logoUrl from '../assets/schreiber-logo.png';
 import { CREW_COLORS, PALETTE, crewInk } from '../palette';
-import { fullDate, type Color, type CrewView, type Roster, type ScheduleRow } from '../schedule-rules';
+import {
+  fullDate,
+  notePieces,
+  type Color,
+  type CrewView,
+  type NotePiece,
+  type Roster,
+  type ScheduleRow,
+} from '../schedule-rules';
 
 /**
  * Draws the crew view as a picture (a PNG) of the Daily Schedule, made to be
@@ -10,7 +18,10 @@ import { fullDate, type Color, type CrewView, type Roster, type ScheduleRow } fr
  * top right, the day's
  * Tasks in a pale yellow box, then the names, one to a line, each the full
  * width of the card and in its color. Shop and Trucking are the same with
- * their Tasks as a smaller note. A Note hangs under its name in red. It draws
+ * their Tasks as a smaller note. A Crew Member's Person Tasks are smaller
+ * lines inside their name's chip, and a Note hangs under it in red. The
+ * Notes for the day, if any, are a last card, with the Crew Members and Jobs
+ * they name marked as on the screen. It draws
  * exactly the rows it is given and nothing else: no buttons and no Not Placed
  * list. No rule is applied here.
  *
@@ -95,7 +106,11 @@ type Kind =
   | 'task'
   | 'note'
   | 'yardTask'
-  | 'name';
+  | 'name'
+  | 'personTask'
+  | 'dayNotesTitle'
+  | 'dayNote'
+  | 'dayNoteMark';
 
 /** The shared look as the picture uses it: its kinds of text and its corners. */
 interface Look {
@@ -139,6 +154,10 @@ function readLook(): Look {
       yardTask: type(text, 'strong', 24),
       name: type(text, 'strong', 29, 'name'),
       note: type(text, 'strong', 26),
+      personTask: type(text, 'strong', 23),
+      dayNotesTitle: type(display, 'display', 40, 'heading'),
+      dayNote: type(text, 'body', 27),
+      dayNoteMark: type(text, 'bold', 27),
     },
     radius: {
       card: corner('card'),
@@ -204,6 +223,20 @@ const NAME_PAD_X = 24;
 const NOTE_LINE = 34;
 const NOTE_PAD_TOP = 6;
 const NOTE_PAD_BOTTOM = 12;
+/** Person Tasks inside a name's chip: the name on a shorter line, then one line each. */
+const SUBS_NAME_LINE = 40;
+const SUBS_PAD_TOP = 14;
+const SUBS_PAD_BOTTOM = 16;
+const SUB_LINE = 31;
+
+/** The Notes for the day: a last card, each note on a pale ground, lines of text with marks. */
+const NOTES_TITLE_LINE = 50;
+const DAY_NOTE_PAD_X = 20;
+const DAY_NOTE_PAD_Y = 14;
+const DAY_NOTE_LINE = 44;
+const DAY_NOTE_GAP = 14;
+const MARK_PAD_X = 8;
+const MARK_HEIGHT = 36;
 
 // --- Working out where everything goes --------------------------------------
 
@@ -211,9 +244,30 @@ const NOTE_PAD_BOTTOM = 12;
 interface NameBox {
   name: string;
   color: Color;
+  /** The Person Tasks, already broken into lines that fit the chip. */
+  subLines: string[];
+  /** The height of the name's chip, Person Tasks included; the Note hangs under it. */
+  chipHeight: number;
   noteLines: string[];
   y: number;
   height: number;
+}
+
+/** One word of a Day Note on its line: where it starts, and the mark it is part of, if any. */
+interface NoteWord {
+  text: string;
+  x: number;
+  width: number;
+  kind: NotePiece['kind'];
+  /** Words of one marked piece on one line share one mark. */
+  piece: number;
+}
+
+interface DayNotesLayout {
+  top: number;
+  height: number;
+  /** Each note: its lines of words, and its top from the top of the card. */
+  notes: { top: number; lines: NoteWord[][] }[];
 }
 
 /** One line of a Task: the first line of it, or the rest of one too long for a line. */
@@ -273,6 +327,7 @@ interface CardLayout {
 interface Layout {
   dateTop: number;
   cards: CardLayout[];
+  dayNotes: DayNotesLayout | null;
   height: number;
 }
 
@@ -358,22 +413,93 @@ function layOut(
     return card;
   });
 
-  return { dateTop, cards, height: top - CARD_GAP + MARGIN };
+  const dayNotes = layOutDayNotes(view.dayNotes ?? [], roster, ctx, look, top);
+  if (dayNotes) top += dayNotes.height + CARD_GAP;
+
+  return { dateTop, cards, dayNotes, height: top - CARD_GAP + MARGIN };
+}
+
+/** The Notes for the day card, starting at `top`; null when there are none. */
+function layOutDayNotes(
+  notes: string[],
+  roster: Roster | undefined,
+  ctx: CanvasRenderingContext2D,
+  look: Look,
+  top: number,
+): DayNotesLayout | null {
+  if (notes.length === 0) return null;
+  const width = CARD_INNER_WIDTH - 2 * DAY_NOTE_PAD_X;
+  let y = CARD_PAD + NOTES_TITLE_LINE + PART_GAP;
+  const laid = notes.map((note) => {
+    const pieces = roster ? notePieces(roster, note) : [{ text: note, kind: 'plain' as const }];
+    const lines = wrapPieces(ctx, pieces, width, look);
+    const laidNote = { top: y, lines };
+    y += 2 * DAY_NOTE_PAD_Y + lines.length * DAY_NOTE_LINE + DAY_NOTE_GAP;
+    return laidNote;
+  });
+  return { top, height: y - DAY_NOTE_GAP + CARD_PAD, notes: laid };
+}
+
+/** Breaks a Day Note into lines of words, keeping which mark each word belongs to. */
+function wrapPieces(
+  ctx: CanvasRenderingContext2D,
+  pieces: NotePiece[],
+  width: number,
+  look: Look,
+): NoteWord[][] {
+  const lines: NoteWord[][] = [];
+  let line: NoteWord[] = [];
+  let x = 0;
+  let spaceBefore = false;
+  pieces.forEach((piece, index) => {
+    const marked = piece.kind !== 'plain';
+    // Split into words, remembering whether a space came before each one.
+    for (const part of piece.text.split(/(\s+)/)) {
+      if (part === '') continue;
+      if (/^\s+$/.test(part)) {
+        spaceBefore = true;
+        continue;
+      }
+      setType(ctx, marked ? look.type.dayNoteMark : look.type.dayNote);
+      const wordWidth = ctx.measureText(part).width + (marked ? 2 * MARK_PAD_X : 0);
+      setType(ctx, look.type.dayNote);
+      const gap = line.length > 0 && spaceBefore ? ctx.measureText(' ').width : 0;
+      if (line.length > 0 && x + gap + wordWidth > width) {
+        lines.push(line);
+        line = [];
+        x = 0;
+      } else {
+        x += gap;
+      }
+      line.push({ text: part, x, width: wordWidth, kind: piece.kind, piece: index });
+      x += wordWidth;
+      spaceBefore = false;
+    }
+  });
+  if (line.length > 0) lines.push(line);
+  return lines;
 }
 
 /** Names one under the other, each with its Note (if any) hanging under it. */
 function stackNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look) {
-  setType(ctx, look.type.note);
   const names: NameBox[] = [];
   let y = 0;
+  const textWidth = CARD_INNER_WIDTH - 2 * NAME_PAD_X;
 
-  for (const { crewMember, note } of row.who) {
-    const noteLines = note ? wrap(ctx, note, CARD_INNER_WIDTH - 2 * NAME_PAD_X) : [];
+  for (const { crewMember, note, personTasks = [] } of row.who) {
+    setType(ctx, look.type.personTask);
+    const subLines = personTasks.flatMap((task) => wrap(ctx, task, textWidth));
+    const chipHeight =
+      subLines.length > 0
+        ? SUBS_PAD_TOP + SUBS_NAME_LINE + subLines.length * SUB_LINE + SUBS_PAD_BOTTOM
+        : NAME_HEIGHT;
+    setType(ctx, look.type.note);
+    const noteLines = note ? wrap(ctx, note, textWidth) : [];
     const height =
-      NAME_HEIGHT +
+      chipHeight +
       (noteLines.length > 0 ? NOTE_PAD_TOP + noteLines.length * NOTE_LINE + NOTE_PAD_BOTTOM : 0);
     const { name, color } = crewMember;
-    names.push({ name, color, noteLines, y, height });
+    names.push({ name, color, subLines, chipHeight, noteLines, y, height });
     y += height + NAME_GAP;
   }
 
@@ -425,9 +551,75 @@ function draw(
     CARD_WIDTH - 4,
   );
 
-  // "WEDNESDAY'S WORK": the Tasks are for the day being scheduled, as on the screen.
-  const tasksHeading = `${fullDate(view.date).split(',')[0]}'s work`.toUpperCase();
+  // A Job's Tasks are for everyone on it, as on the screen.
+  const tasksHeading = 'WORK FOR THE WHOLE CREW';
   for (const card of layout.cards) drawCard(ctx, card, look, tasksHeading);
+  if (layout.dayNotes) drawDayNotes(ctx, layout.dayNotes, look);
+}
+
+/** The white card behind a Job, a Standing Row or the Notes for the day. */
+function drawCardGround(ctx: CanvasRenderingContext2D, top: number, height: number, look: Look) {
+  ctx.save();
+  ctx.shadowColor = PALETTE.shadow;
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 2;
+  ctx.beginPath();
+  ctx.roundRect(CARD_X, top, CARD_WIDTH, height, look.radius.card);
+  ctx.fillStyle = PALETTE.paper;
+  ctx.fill();
+  ctx.restore();
+  ctx.beginPath();
+  ctx.roundRect(
+    CARD_X + CARD_EDGE / 2,
+    top + CARD_EDGE / 2,
+    CARD_WIDTH - CARD_EDGE,
+    height - CARD_EDGE,
+    look.radius.card,
+  );
+  ctx.strokeStyle = PALETTE.line;
+  ctx.lineWidth = CARD_EDGE;
+  ctx.stroke();
+}
+
+/** The Notes for the day: a title, then each note on the pale ground, names in yellow, Jobs in black. */
+function drawDayNotes(ctx: CanvasRenderingContext2D, layout: DayNotesLayout, look: Look) {
+  drawCardGround(ctx, layout.top, layout.height, look);
+  ctx.fillStyle = PALETTE.ink;
+  setType(ctx, look.type.dayNotesTitle);
+  ctx.fillText('NOTES FOR THE DAY', CARD_INNER_X, layout.top + CARD_PAD + NOTES_TITLE_LINE / 2 + 2);
+
+  for (const note of layout.notes) {
+    const noteTop = layout.top + note.top;
+    const noteHeight = 2 * DAY_NOTE_PAD_Y + note.lines.length * DAY_NOTE_LINE;
+    ctx.fillStyle = PALETTE.canvas;
+    ctx.beginPath();
+    ctx.roundRect(CARD_INNER_X, noteTop, CARD_INNER_WIDTH, noteHeight, look.radius.chip);
+    ctx.fill();
+
+    note.lines.forEach((line, lineIndex) => {
+      const middle = noteTop + DAY_NOTE_PAD_Y + (lineIndex + 0.5) * DAY_NOTE_LINE + 1;
+      const left = CARD_INNER_X + DAY_NOTE_PAD_X;
+      // The marks first: one for the run of words of the same piece on this line.
+      line.forEach((word, wordIndex) => {
+        if (word.kind === 'plain') return;
+        const previous = line[wordIndex - 1];
+        if (previous && previous.piece === word.piece) return;
+        const run = line.slice(wordIndex);
+        const end = run.findIndex((other) => other.piece !== word.piece);
+        const last = run[(end === -1 ? run.length : end) - 1] ?? word;
+        ctx.fillStyle = word.kind === 'job' ? PALETTE.ink : CREW_COLORS.yellow;
+        ctx.beginPath();
+        ctx.roundRect(left + word.x, middle - MARK_HEIGHT / 2, last.x + last.width - word.x, MARK_HEIGHT, 6);
+        ctx.fill();
+      });
+      for (const word of line) {
+        const marked = word.kind !== 'plain';
+        setType(ctx, marked ? look.type.dayNoteMark : look.type.dayNote);
+        ctx.fillStyle = word.kind === 'job' ? PALETTE.paper : PALETTE.ink;
+        ctx.fillText(word.text, left + word.x + (marked ? MARK_PAD_X : 0), middle);
+      }
+    });
+  }
 }
 
 /** The UPDATED marker: a solid bar of the alert red under the logo. */
@@ -461,26 +653,7 @@ function drawCard(
   const { top, height } = card;
 
   // The card: white, with its fine edge drawn wholly inside it and a soft shadow under it.
-  ctx.save();
-  ctx.shadowColor = PALETTE.shadow;
-  ctx.shadowBlur = 8;
-  ctx.shadowOffsetY = 2;
-  ctx.beginPath();
-  ctx.roundRect(CARD_X, top, CARD_WIDTH, height, look.radius.card);
-  ctx.fillStyle = PALETTE.paper;
-  ctx.fill();
-  ctx.restore();
-  ctx.beginPath();
-  ctx.roundRect(
-    CARD_X + CARD_EDGE / 2,
-    top + CARD_EDGE / 2,
-    CARD_WIDTH - CARD_EDGE,
-    height - CARD_EDGE,
-    look.radius.card,
-  );
-  ctx.strokeStyle = PALETTE.line;
-  ctx.lineWidth = CARD_EDGE;
-  ctx.stroke();
+  drawCardGround(ctx, top, height, look);
 
   const headTop = top + CARD_PAD;
   if (card.isJob) {
@@ -588,7 +761,8 @@ function drawTasks(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look, 
 
 function drawName(ctx: CanvasRenderingContext2D, box: NameBox, x: number, y: number, look: Look) {
   const width = CARD_INNER_WIDTH;
-  const middle = y + NAME_HEIGHT / 2 + 1;
+  const hasSubs = box.subLines.length > 0;
+  const middle = hasSubs ? y + SUBS_PAD_TOP + SUBS_NAME_LINE / 2 + 1 : y + NAME_HEIGHT / 2 + 1;
 
   // A Note hangs under its name, in one red-tinted piece with it.
   if (box.noteLines.length > 0) {
@@ -598,7 +772,7 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, x: number, y: num
     ctx.fill();
     ctx.fillStyle = PALETTE.alert;
     setType(ctx, look.type.note);
-    const notesTop = y + NAME_HEIGHT + NOTE_PAD_TOP;
+    const notesTop = y + box.chipHeight + NOTE_PAD_TOP;
     box.noteLines.forEach((line, index) =>
       ctx.fillText(
         line,
@@ -612,10 +786,21 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, x: number, y: num
   // The name: a cell of the Crew Member's color.
   ctx.fillStyle = CREW_COLORS[box.color];
   ctx.beginPath();
-  ctx.roundRect(x, y, width, NAME_HEIGHT, look.radius.chip);
+  ctx.roundRect(x, y, width, box.chipHeight, look.radius.chip);
   ctx.fill();
 
   ctx.fillStyle = crewInk(box.color);
   setType(ctx, look.type.name);
   ctx.fillText(box.name, x + NAME_PAD_X, middle, width - 2 * NAME_PAD_X);
+
+  // Their Person Tasks: smaller lines under the name, in the same chip.
+  setType(ctx, look.type.personTask);
+  box.subLines.forEach((line, index) =>
+    ctx.fillText(
+      line,
+      x + NAME_PAD_X,
+      y + SUBS_PAD_TOP + SUBS_NAME_LINE + (index + 0.5) * SUB_LINE,
+      width - 2 * NAME_PAD_X,
+    ),
+  );
 }

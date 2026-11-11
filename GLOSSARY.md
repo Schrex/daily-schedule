@@ -52,6 +52,14 @@ _Avoid_: Activity, scope
 A short free-text remark attached to one Placement ("1/2 Day").
 _Avoid_: Comment, flag
 
+**Person Task**:
+A free-text line about one placed Crew Member only, for one day ("Dewatering", "2:00 PM VAC truck training"), shown under their name. It goes with them if they move to another Job; any time is just part of the text.
+_Avoid_: Personal note, sub-task
+
+**Day Note**:
+A free-text remark for everyone on one Daily Schedule ("Brody may have to go to TIUNY after Wintergarden"), shown under the Jobs as Notes for the day. The Crew Members and Jobs it names are marked.
+_Avoid_: Announcement, comment
+
 **Send**:
 The Scheduler's act of delivering the finished Daily Schedule to the crew.
 _Avoid_: Publish, post, share
