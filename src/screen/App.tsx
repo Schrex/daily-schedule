@@ -8,6 +8,7 @@ import {
   removeDayNote,
   removePersonTask,
   markSent,
+  scheduleView,
   moveCrewMember,
   setNote,
   setTasks,
@@ -19,6 +20,7 @@ import {
 import type { CrewDelivery } from '../send';
 import { openDate, type Opened, type ScheduleStore } from '../storage';
 import { ChangeDate } from './ChangeDate';
+import { nextOpenJobs, type OpenJobs, type OpenJobsEvent } from './openJobs';
 import { SettingsLink } from './SettingsLink';
 import { ScheduleScreen } from './ScheduleScreen';
 import { SendButton, SendMessage } from './SendBar';
@@ -53,6 +55,17 @@ export function App({
   const [selectedCrewMemberId, setSelectedCrewMemberId] = useState<string | null>(null);
   /** True while a Note is being typed for the selected Crew Member. */
   const [editingNote, setEditingNote] = useState(false);
+  /**
+   * The Jobs drawn as cards this session (see openJobs.ts); every other Job
+   * is folded. Built from who is on the Jobs when the board loads.
+   */
+  const [openJobs, setOpenJobs] = useState<OpenJobs>(() =>
+    nextOpenJobs(new Set(), { kind: 'rebuild', view: scheduleView(roster, opened.schedule) }),
+  );
+  const openJobsAfter = (event: OpenJobsEvent) => setOpenJobs((open) => nextOpenJobs(open, event));
+  /** The open set starts again from this Daily Schedule: a new date, or a successful Send. */
+  const rebuildOpenJobs = (from: DailySchedule) =>
+    openJobsAfter({ kind: 'rebuild', view: scheduleView(roster, from) });
 
   /** Puts a Daily Schedule on the screen. */
   const show = (next: DailySchedule) => {
@@ -69,6 +82,8 @@ export function App({
     const next = rule(latest.current);
     if (next !== latest.current) {
       show(next);
+      // Anyone put on a Job, by whatever means, opens it; nothing closes mid-edit.
+      openJobsAfter({ kind: 'changed', view: scheduleView(roster, next) });
       store
         .saveSchedule(next)
         .catch((error) => console.error('Could not save the Daily Schedule', error));
@@ -81,8 +96,12 @@ export function App({
    * delivery finishes, so a change made meanwhile is kept. The rules ignore
    * it if another date has been opened since.
    */
-  const recordSend = (sent: CrewView, sentAt: string) =>
-    change((current) => markSent(current, sent, sentAt));
+  const recordSend = (sent: CrewView, sentAt: string) => {
+    const after = change((current) => markSent(current, sent, sentAt));
+    // Sent: Jobs left with nobody fold now. A failed Send never gets here.
+    if (after.date === sent.date) rebuildOpenJobs(after);
+    return after;
+  };
   const send = useSend({ roster, schedule, delivery, onDelivered: recordSend });
 
   const select = (crewMemberId: string | null) => {
@@ -134,7 +153,10 @@ export function App({
   const changeDate = (date: ScheduleDate) => {
     deselect();
     openDate(store, roster, date)
-      .then(show)
+      .then((next) => {
+        show(next);
+        rebuildOpenJobs(next);
+      })
       .catch((error) => console.error('Could not open the Daily Schedule', error));
   };
 
@@ -147,6 +169,11 @@ export function App({
       onSelectCrewMember={select}
       onDeselect={deselect}
       onMoveCrewMember={move}
+      openJobs={openJobs}
+      onOpenJob={(jobKey) => openJobsAfter({ kind: 'open', jobKey })}
+      onPutAwayEmptyJobs={() =>
+        openJobsAfter({ kind: 'put-away', view: scheduleView(roster, latest.current) })
+      }
       onEditNote={() => setEditingNote(true)}
       onSaveNote={(text) =>
         changeSelected((current, crewMemberId) => setNote(current, crewMemberId, text))

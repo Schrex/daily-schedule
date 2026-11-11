@@ -36,6 +36,10 @@ _Avoid_: Project, site
 One of the three permanent non-Job places on every Daily Schedule: Shop, Trucking, Off Work.
 _Avoid_: Category, special job
 
+**Folded Job**:
+A Job drawn as a button in the "No crew tomorrow" row instead of a card, because nobody was on it when the board was loaded, the date changed or the last Send succeeded. Never saved: putting someone on it, or tapping it, makes it a card again for the rest of the session.
+_Avoid_: Hidden job, inactive job
+
 **Placement**:
 One Crew Member on one Job or Standing Row for one day. A Crew Member has at most one Placement per day.
 _Avoid_: Assignment, allocation

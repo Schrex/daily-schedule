@@ -211,6 +211,7 @@
 
 .block,
 .not-placed,
+.folded-jobs,
 .day-notes {
   position: relative;
   display: flex;
@@ -239,6 +240,7 @@
 
 .job,
 .not-placed h2,
+.folded-jobs h2,
 .day-notes h2 {
   min-width: 0;
   margin: 0;
@@ -744,6 +746,56 @@
   flex: 0 0 auto;
   color: var(--alert);
   font-weight: var(--weight-strong);
+}
+
+/* --- Folded Jobs: a row of large buttons under the cards ------------------
+   A Job with nobody on it, by name; with someone in hand, "Put Mike on Pond"
+   in the yellow of an action. The buttons wrap, and so do long names. */
+
+.folded-jobs {
+  gap: var(--space-2);
+}
+
+.folded-jobs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.folded-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.folded-job {
+  min-height: 3rem;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-chip);
+  background: var(--chip);
+  font-size: 1rem;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* The shared yellow action style is kept weak (`:where`), so restate it over the grey. */
+.folded-job.button-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.folded-job.button-primary:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+.folded-job[data-drop-over] {
+  box-shadow: var(--ring-selected);
 }
 
 /* --- Notes for the day: under the Job cards, one under the other ---------- */
