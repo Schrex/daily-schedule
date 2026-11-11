@@ -20,7 +20,7 @@ import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
 import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
-import { PersonTasks } from './PersonTasks';
+import { PersonAdd, PersonLines } from './PersonTasks';
 import { TasksCell } from './TasksCell';
 
 interface ScheduleScreenProps {
@@ -257,7 +257,7 @@ export function ScheduleScreen({
       {personTasks.length > 0 && (
         <span className="name-subs">
           {personTasks.map((task, index) => (
-            <span key={index} className="name-sub">
+            <span key={index} className="name-sub" data-sub={task}>
               {task}
             </span>
           ))}
@@ -275,15 +275,7 @@ export function ScheduleScreen({
    */
   const personPanel = selectedPlaced && !drag.dragging && (
     <li className="person-panel" onClick={(event) => event.stopPropagation()}>
-      <PersonTasks
-        crewMember={selectedPlaced.crewMember}
-        note={selectedPlaced.note}
-        tasks={selectedPlaced.personTasks ?? []}
-        onAdd={onAddPersonTask}
-        onChange={onChangePersonTask}
-        onRemove={onRemovePersonTask}
-        onSetNote={onSetNote}
-      />
+      <PersonAdd crewMember={selectedPlaced.crewMember} onAddTask={onAddPersonTask} onSetNote={onSetNote} />
     </li>
   );
 
@@ -320,15 +312,30 @@ export function ScheduleScreen({
         )}
         {row.who.length > 0 && (
           <ul className="names">
-            {row.who.map(({ crewMember, note, personTasks }) => (
-              <Fragment key={crewMember.id}>
-                <li className={note ? 'noted' : undefined}>
-                  {name(crewMember, personTasks)}
-                  {note && <span className="note">{note}</span>}
-                </li>
-                {crewMember.id === selectedPlaced?.crewMember.id && personPanel}
-              </Fragment>
-            ))}
+            {row.who.map(({ crewMember, note, personTasks = [] }) => {
+              // The selected Crew Member's tasks and Note each get × in place.
+              const open = crewMember.id === selectedPlaced?.crewMember.id && !drag.dragging;
+              return (
+                <Fragment key={crewMember.id}>
+                  <li className={`${note ? 'noted' : ''}${open ? ' person-open' : ''}`.trim() || undefined}>
+                    {name(crewMember, open ? [] : personTasks)}
+                    {open ? (
+                      <PersonLines
+                        crewMember={crewMember}
+                        note={note}
+                        tasks={personTasks}
+                        onChange={onChangePersonTask}
+                        onRemove={onRemovePersonTask}
+                        onSetNote={onSetNote}
+                      />
+                    ) : (
+                      note && <span className="note">{note}</span>
+                    )}
+                  </li>
+                  {crewMember.id === selectedPlaced?.crewMember.id && personPanel}
+                </Fragment>
+              );
+            })}
           </ul>
         )}
         {moveHere(row.key)}
