@@ -35,6 +35,21 @@ import { cardTitle, fullDate, sentStamp, type CrewView, type Roster, type Schedu
  * without it (or for a Job no longer on it) the card shows the label alone.
  */
 export async function renderCrewPicture(view: CrewView, madeAt: Date, roster?: Roster): Promise<Blob> {
+  const canvas = await drawCrewPicture(view, madeAt, roster);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Could not draw the picture'))),
+      'image/png',
+    );
+  });
+}
+
+/**
+ * The same picture as `renderCrewPicture`, left on the canvas it is drawn on
+ * (3840 pixels square) instead of made into a PNG. Making the PNG is most of
+ * the time a picture takes, and only Send needs a file: Preview shows this.
+ */
+export async function drawCrewPicture(view: CrewView, madeAt: Date, roster?: Roster): Promise<HTMLCanvasElement> {
   const look = readLook();
   // The type is bundled with the page but only fetched when first used, and
   // the logo is a file of its own: make sure all of it is there before drawing.
@@ -53,13 +68,7 @@ export async function renderCrewPicture(view: CrewView, madeAt: Date, roster?: R
   const ctx = canvas.getContext('2d')!;
   ctx.scale(SHARPNESS * scale, SHARPNESS * scale);
   draw(ctx, view, sentStamp(madeAt), layout, look, logo);
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('Could not draw the picture'))),
-      'image/png',
-    );
-  });
+  return canvas;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {

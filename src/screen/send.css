@@ -80,7 +80,8 @@
   overflow: hidden;
 }
 
-.preview-panel img {
+.preview-picture,
+.preview-picture canvas {
   display: block;
   width: 100%;
   height: 100%;
