@@ -7,6 +7,8 @@ import {
   type DailySchedule,
   type MoveTo,
   type Roster,
+  type ScheduleRow,
+  type StandingRow,
 } from '../schedule-rules';
 import { useNameDrag } from './drag/useNameDrag';
 import { dropTarget, viewWhileDragging } from './dropPreview';
@@ -41,14 +43,40 @@ interface ScheduleScreenProps {
   onSetTasks: (jobId: string, text: string) => void;
   /** Send was just refused: make the Not Placed list and its names stand out. */
   alertNotPlaced?: boolean;
-  /** Drawn in the toolbar, to the right of the date: Undo and Change date. */
+  /** Drawn right beside the date: the Settings gear. */
+  dateButtons?: ReactNode;
+  /** Drawn at the right end of the header: Undo, Change date and Send. */
   toolbarButtons?: ReactNode;
-  /** Drawn under the schedule: the Send bar. */
-  footer?: ReactNode;
+  /** Drawn across the foot of the header: what happened to the last Send. */
+  sendMessage?: ReactNode;
 }
 
 /** How many are on a Job or Standing Row, in plain words. */
 const headcount = (count: number): string => (count === 1 ? '1 person' : `${count} people`);
+
+/** What a Standing Row is, in the small line over its name. */
+const STANDING_KIND: Record<StandingRow, string> = {
+  shop: 'Yard',
+  trucking: 'Yard',
+  'off-work': 'Away',
+};
+
+/**
+ * A block's title in two parts: the small line over it (the Job number, or
+ * what kind of place it is) and the name itself, large. A Job that has left
+ * the roster keeps the label it was sent with.
+ */
+function blockTitle(roster: Roster, row: ScheduleRow): { over: string; title: string } {
+  const { destination } = row;
+  if (destination.kind === 'standing-row') {
+    return { over: STANDING_KIND[destination.standingRow], title: row.label };
+  }
+  const job = roster.jobs.find((candidate) => candidate.id === destination.jobId);
+  return job ? { over: job.jobNumber ?? 'Job', title: job.name } : { over: 'Job', title: row.label };
+}
+
+/** The first name, for the short buttons: "Put Brody here". */
+const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')[0] ?? crewMember.name;
 
 /**
  * The Scheduler's screen. Thin: it asks the schedule rules for the view, draws
@@ -75,16 +103,17 @@ const headcount = (count: number): string => (count === 1 ? '1 person' : `${coun
  * Every move is shown: a name that is somewhere else after a redraw travels
  * there from where it was (`MoveNames`), whatever moved it.
  *
- * It is the sheet the crew gets, made to be worked on: the date on top, then
- * one stack of blocks, a block for each Job and Standing Row. In a block,
- * where is on the left (the Job, with its Tasks under it) and who is on the
- * right, one name to a line, every name the same width, so a name is found by
- * running an eye down the one column. The picture sent to the crew
- * (`crewPicture`) is this same view, without what is only the Scheduler's.
+ * It is a board: a header card (the date, the hint, Undo, Change date and
+ * Send), the Not Placed list on the left, and a grid of cards, one for each
+ * Job and Standing Row. A card is the Job (its number small over its name),
+ * how many are on it, the day's Tasks in a tinted box, and its names, one to
+ * a line. While a name is being moved each card offers "Put ... here". The
+ * picture sent to the crew (`crewPicture`) is these same cards, one under
+ * the other, without what is only the Scheduler's.
  *
- * It is one screen: the toolbar (date, Undo, Change date and the hint) and the
- * Send bar stay put, and so does the Not Placed list (beside the stack on a
- * wide window, above it on a narrow one). Only the stack scrolls.
+ * It is one screen: the header stays put, and so does the Not Placed list
+ * (beside the board on a wide window, above it on a narrow one). Only the
+ * board scrolls.
  */
 export function ScheduleScreen({
   roster,
@@ -99,8 +128,9 @@ export function ScheduleScreen({
   onClearNote,
   onSetTasks,
   alertNotPlaced = false,
+  dateButtons,
   toolbarButtons,
-  footer,
+  sendMessage,
 }: ScheduleScreenProps) {
   const view = scheduleView(roster, schedule);
   /** Where the selected Crew Member is now; undefined when Not Placed (no Placement, so no Note). */
@@ -157,93 +187,62 @@ export function ScheduleScreen({
     </button>
   );
 
+  /** "Wednesday's work": the Tasks are for the day being scheduled. */
+  const tasksHeading = `${fullDate(view.date).split(',')[0]}'s work`;
+
   return (
     <main className={`screen${moving ? ' moving' : ''}`}>
       <header className="toolbar">
-        <h1 className="date-heading">{fullDate(view.date)}</h1>
-        {toolbarButtons}
+        <div className="toolbar-title">
+          <div className="toolbar-date">
+            <h1 className="date-heading">{fullDate(view.date)}</h1>
+            {dateButtons}
+          </div>
 
-        <div
-          className={`move-hint${moving ? ' move-hint-active' : ''}${typingNote ? ' move-hint-note' : ''}`}
-          role="status"
-        >
-          {typingNote ? (
-            <NoteEditor
-              key={selected.id}
-              crewMemberName={selected.name}
-              note={selectedPlaced.note}
-              onSave={onSaveNote}
-              onClear={onClearNote}
-              onCancel={onDeselect}
-            />
-          ) : moving ? (
-            <>
-              <span>
-                Moving <strong>{selected.name}</strong>.{' '}
-                <span className="on-wide">Now click where they go.</span>
-                <span className="on-narrow">Tap where they go.</span>
-                <span className="move-hint-cancel on-wide"> (Click the name again to cancel.)</span>
-              </span>
-              {selectedPlaced && (
-                <button type="button" className="button action" onClick={onEditNote}>
-                  {selectedPlaced.note ? 'Change note' : 'Add note'}
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              <span className="on-wide">
-                To move someone, drag their name, or click it. To change tasks, click the tasks.
-              </span>
-              <span className="on-narrow">Tap a name, then tap where they go.</span>
-            </>
-          )}
-        </div>
-      </header>
-
-      <div className="layout">
-        <div className="schedule-scroll" data-motion-area>
-          <div className="stack">
-            {shown.rows.map(({ destination, ...row }) => (
-              <section
-                key={row.key}
-                className={`block block-${destination.kind} destination`}
-                aria-label={row.label}
-                data-row={row.key}
-                onClick={moveSelectedTo(destination)}
-                {...drag.dropProps(row.key)}
-              >
-                <div className="where">
-                  <header className="block-head">
-                    <h2 className="job">{row.label}</h2>
-                    {row.who.length > 0 && <span className="count">{headcount(row.who.length)}</span>}
-                  </header>
-                  {destination.kind === 'job' && (
-                    <TasksCell
-                      jobLabel={row.label}
-                      tasks={row.tasks}
-                      canEdit={!moving}
-                      onCommit={(text) => onSetTasks(destination.jobId, text)}
-                    />
-                  )}
-                </div>
-                {row.who.length === 0 ? (
-                  <p className="block-empty">Nobody here yet</p>
-                ) : (
-                  <ul className="names">
-                    {row.who.map(({ crewMember, note }) => (
-                      <li key={crewMember.id} className={note ? 'noted' : undefined}>
-                        {name(crewMember)}
-                        {note && <span className="note">{note}</span>}
-                      </li>
-                    ))}
-                  </ul>
+          <div
+            className={`move-hint${moving ? ' move-hint-active' : ''}${typingNote ? ' move-hint-note' : ''}`}
+            role="status"
+          >
+            {typingNote ? (
+              <NoteEditor
+                key={selected.id}
+                crewMemberName={selected.name}
+                note={selectedPlaced.note}
+                onSave={onSaveNote}
+                onClear={onClearNote}
+                onCancel={onDeselect}
+              />
+            ) : moving ? (
+              <>
+                <span>
+                  <span className="on-wide">Now click the job for </span>
+                  <span className="on-narrow">Now tap the job for </span>
+                  <strong>{selected.name}</strong>.
+                  <span className="move-hint-cancel on-wide"> (Click the name again to cancel.)</span>
+                </span>
+                {selectedPlaced && (
+                  <button type="button" className="button action" onClick={onEditNote}>
+                    {selectedPlaced.note ? 'Change note' : 'Add note'}
+                  </button>
                 )}
-              </section>
-            ))}
+              </>
+            ) : (
+              <>
+                <span className="on-wide">
+                  Drag a name to a job, or click a name and then click the job. Click a job's tasks to
+                  change them.
+                </span>
+                <span className="on-narrow">Tap a name, then tap the job.</span>
+              </>
+            )}
           </div>
         </div>
 
+        <div className="toolbar-actions">{toolbarButtons}</div>
+        {sendMessage}
+      </header>
+
+      <div className="layout">
         <aside
           className={`not-placed destination${alertNotPlaced ? ' not-placed-alert' : ''}`}
           aria-labelledby="not-placed-heading"
@@ -251,9 +250,12 @@ export function ScheduleScreen({
           data-motion-area
           {...drag.dropProps(NOT_PLACED)}
         >
-          <h2 id="not-placed-heading">NOT PLACED</h2>
+          <header className="not-placed-head">
+            <h2 id="not-placed-heading">Not placed yet</h2>
+            <span className="not-placed-count">{shown.notPlaced.length}</span>
+          </header>
           {shown.notPlaced.length === 0 ? (
-            <p className="not-placed-empty">Everyone is placed.</p>
+            <p className="not-placed-empty">Everyone has a place.</p>
           ) : (
             <ul className="names">
               {shown.notPlaced.map((crewMember) => (
@@ -261,10 +263,72 @@ export function ScheduleScreen({
               ))}
             </ul>
           )}
+          {moving && selectedPlaced && (
+            // The click carries on to the list around it: the destination.
+            <button type="button" className="button off-board">
+              Take {firstName(selected)} off the board
+            </button>
+          )}
         </aside>
+
+        <div className="schedule-scroll" data-motion-area>
+          <div className="board">
+            {shown.rows.map(({ destination, ...row }) => {
+              const { over, title } = blockTitle(roster, { destination, ...row });
+              const here = row.who.some((placed) => placed.crewMember.id === selected?.id);
+              return (
+                <section
+                  key={row.key}
+                  className={`block block-${destination.kind} destination`}
+                  aria-label={row.label}
+                  data-row={row.key}
+                  onClick={moveSelectedTo(destination)}
+                  {...drag.dropProps(row.key)}
+                >
+                  <header className="block-head">
+                    <div className="block-title">
+                      <span className="job-number">{over}</span>
+                      <h2 className="job">{title}</h2>
+                    </div>
+                    <span className="count">{headcount(row.who.length)}</span>
+                  </header>
+                  {destination.kind === 'job' && (
+                    <TasksCell
+                      jobLabel={row.label}
+                      heading={tasksHeading}
+                      tasks={row.tasks}
+                      canEdit={!moving}
+                      onCommit={(text) => onSetTasks(destination.jobId, text)}
+                    />
+                  )}
+                  {row.who.length === 0 ? (
+                    <p className="block-empty">Nobody here yet</p>
+                  ) : (
+                    <ul className="names">
+                      {row.who.map(({ crewMember, note }) => (
+                        <li key={crewMember.id} className={note ? 'noted' : undefined}>
+                          {name(crewMember)}
+                          {note && <span className="note">{note}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {/* Room to drop a name on, and while one is moving, the button that puts them here. */}
+                  <div className="block-foot">
+                    {moving && !here && (
+                      // The click carries on to the card around it: the destination.
+                      <button type="button" className="button button-primary place-here">
+                        Put {firstName(selected)} here
+                      </button>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      {footer}
       {drag.overlay}
       <MoveNames motion={motion} scene={view.date} />
     </main>

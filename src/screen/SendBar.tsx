@@ -7,34 +7,39 @@ const clockTime = (sentAt: string): string =>
   new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(sentAt));
 
 /**
- * The bar that finishes the evening: one large "Send to crew" button and, in
- * plain words, what happened. Stateless: it draws the `SendState` it is given.
+ * "Send to crew": the one main action, at the right end of the header, the
+ * same place every evening. Stateless: it draws the `SendState` it is given.
  */
-export function SendBar({ send }: { send: SendState }) {
+export function SendButton({ send }: { send: SendState }) {
   return (
-    <section className="send-bar" aria-label="Send to crew">
-      <button
-        type="button"
-        className="button button-primary send-button"
-        disabled={send.status.kind === 'sending'}
-        onClick={send.send}
-      >
-        Send to crew
-      </button>
+    <button
+      type="button"
+      className="button button-primary toolbar-button send-button"
+      disabled={send.status.kind === 'sending'}
+      onClick={send.send}
+    >
+      {send.status.kind === 'sending' ? 'Sending…' : 'Send to crew'}
+    </button>
+  );
+}
 
-      <div className="send-message" role="status" aria-live="polite">
-        {message(send.status)}
-      </div>
-    </section>
+/**
+ * What happened to the last Send, in plain words, as a strip across the foot
+ * of the header. Nothing until the Scheduler has pressed "Send to crew".
+ */
+export function SendMessage({ send }: { send: SendState }) {
+  return (
+    <div className="send-message" role="status" aria-live="polite">
+      {message(send.status)}
+    </div>
   );
 }
 
 function message(status: SendStatus): ReactNode {
   switch (status.kind) {
     case 'not-sent':
-      return <p>When the schedule is finished, press "Send to crew".</p>;
     case 'sending':
-      return <p>Sending…</p>;
+      return null;
     case 'refused': {
       // The names are not repeated here: they are ringed in red in the Not Placed list.
       const count = status.notPlaced.length;
@@ -44,7 +49,7 @@ function message(status: SendStatus): ReactNode {
             Not sent. {count === 1 ? '1 person is' : `${count} people are`} not placed yet.
           </p>
           <p>
-            Give everyone under NOT PLACED a place (Off Work counts). Then press "Send to crew"
+            Give everyone under "Not placed yet" a place (Off Work counts). Then press "Send to crew"
             again.
           </p>
         </div>
