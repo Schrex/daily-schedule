@@ -268,8 +268,9 @@ export function ScheduleScreen({
             ))}
           </ul>
         )}
-        {here && selectedPlaced && (
+        {here && selectedPlaced && !drag.dragging && (
           // Clicks here are about this Crew Member, not a move to this card.
+          // Gone the moment their name starts to be dragged, so it never travels with it.
           <div className="person-panel" onClick={(event) => event.stopPropagation()}>
             {typingNote ? (
               <NoteEditor
