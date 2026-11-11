@@ -178,7 +178,7 @@ const NUMBER_GAP = 14;
 const TASK_LINE = 38;
 const YARD_TASK_LINE = 34;
 const TASKS_RULE_GAP = 14;
-/** The small round bullet before each Task and Day Note, and the space after it. */
+/** The small round bullet before each Task, and the space after it. */
 const BULLET = 9;
 const BULLET_GAP = 16;
 const TEXT_INDENT = BULLET + BULLET_GAP;
@@ -198,8 +198,11 @@ const NOTE_PAD_TOP = 6;
 const NOTE_PAD_BOTTOM = 12;
 
 /** The Notes for the day: one under the other, ruled apart. */
+/** The Notes for the day: each note on a soft ground of its own, one under the other. */
 const DAY_NOTE_LINE = 40;
 const DAY_NOTE_GAP = 12;
+const DAY_NOTE_PAD_X = 20;
+const DAY_NOTE_PAD_Y = 12;
 
 // --- Working out where everything goes --------------------------------------
 
@@ -233,7 +236,7 @@ interface CardLayout {
   names: NameBox[];
 }
 
-/** One line of a Task or Day Note: the first line of it, which has the bullet, or the rest. */
+/** One line of a Task: the first line of it, which has the bullet, or the rest. */
 interface BulletLine {
   text: string;
   first: boolean;
@@ -243,7 +246,7 @@ interface NotesLayout {
   top: number;
   height: number;
   /** Each note's lines, and its top from the top of the card. */
-  notes: { top: number; lines: BulletLine[] }[];
+  notes: { top: number; lines: string[] }[];
 }
 
 interface Layout {
@@ -355,13 +358,10 @@ function layOutNotes(
   setType(ctx, look.type.dayNote);
   let y = CARD_PAD + YARD_LINE + PART_GAP;
   const notes = dayNotes.map((note, index) => {
-    if (index > 0) y += 2 * DAY_NOTE_GAP;
-    const lines = wrap(ctx, note, CARD_INNER_WIDTH - TEXT_INDENT).map((text, at) => ({
-      text,
-      first: at === 0,
-    }));
+    if (index > 0) y += DAY_NOTE_GAP;
+    const lines = wrap(ctx, note, CARD_INNER_WIDTH - 2 * DAY_NOTE_PAD_X);
     const laid = { top: y, lines };
-    y += lines.length * DAY_NOTE_LINE;
+    y += 2 * DAY_NOTE_PAD_Y + lines.length * DAY_NOTE_LINE;
     return laid;
   });
   return { top, height: y + CARD_PAD, notes };
@@ -549,7 +549,7 @@ function drawName(ctx: CanvasRenderingContext2D, box: NameBox, y: number, look: 
   );
 }
 
-/** One line of a Task or Day Note, centred on `middle`: a bullet before the first line of each. */
+/** One line of a Task, centred on `middle`: a bullet before the first line of each. */
 function drawBulletLine(ctx: CanvasRenderingContext2D, line: BulletLine, middle: number) {
   if (line.first) {
     ctx.fillStyle = PALETTE.inkSoft;
@@ -561,19 +561,34 @@ function drawBulletLine(ctx: CanvasRenderingContext2D, line: BulletLine, middle:
   ctx.fillText(line.text, CARD_INNER_X + TEXT_INDENT, middle, CARD_INNER_WIDTH - TEXT_INDENT);
 }
 
-/** The Notes for the day: a title, then each note, ruled apart. */
+/** The Notes for the day: a title, then each note on its own soft ground. */
 function drawNotes(ctx: CanvasRenderingContext2D, layout: NotesLayout, look: Look) {
   drawCardGround(ctx, layout.top, layout.height, look);
   ctx.fillStyle = PALETTE.ink;
   setType(ctx, look.type.yard);
   ctx.fillText('NOTES FOR THE DAY', CARD_INNER_X, layout.top + CARD_PAD + YARD_LINE / 2 + 2);
 
-  layout.notes.forEach((note, index) => {
+  for (const note of layout.notes) {
     const noteTop = layout.top + note.top;
-    if (index > 0) drawRule(ctx, noteTop - DAY_NOTE_GAP - CARD_EDGE / 2);
+    ctx.fillStyle = PALETTE.canvas;
+    ctx.beginPath();
+    ctx.roundRect(
+      CARD_INNER_X,
+      noteTop,
+      CARD_INNER_WIDTH,
+      2 * DAY_NOTE_PAD_Y + note.lines.length * DAY_NOTE_LINE,
+      look.radius.chip,
+    );
+    ctx.fill();
+    ctx.fillStyle = PALETTE.ink;
     setType(ctx, look.type.dayNote);
     note.lines.forEach((line, at) =>
-      drawBulletLine(ctx, line, noteTop + (at + 0.5) * DAY_NOTE_LINE + 1),
+      ctx.fillText(
+        line,
+        CARD_INNER_X + DAY_NOTE_PAD_X,
+        noteTop + DAY_NOTE_PAD_Y + (at + 0.5) * DAY_NOTE_LINE + 1,
+        CARD_INNER_WIDTH - 2 * DAY_NOTE_PAD_X,
+      ),
     );
-  });
+  }
 }

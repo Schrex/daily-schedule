@@ -496,7 +496,7 @@
   overflow-wrap: anywhere;
 }
 
-/* A small round bullet before each Task and each Day Note, level with the
+/* A small round bullet before each Task, level with the
    first line, so a Task too long for its line still reads as one. */
 .bullet {
   flex: 0 0 0.3125rem;
@@ -696,13 +696,11 @@
 }
 
 @media (hover: hover) {
-  .person-task-text:hover,
-  .day-note-text:hover {
+  .person-task-text:hover {
     border-color: var(--line-strong);
   }
 
-  .person-task-remove:hover,
-  .day-note-remove:hover {
+  .person-task-remove:hover {
     border-color: var(--alert-line);
     background: var(--alert-wash);
     color: var(--alert);
@@ -796,20 +794,37 @@
   margin-bottom: var(--space-1);
 }
 
-.day-note + .day-note,
-.day-note + .line-editor,
-.line-editor + .day-note {
-  padding-top: var(--space-2);
-  border-top: var(--hairline);
+/* Each note on a soft white ground of its own, the × inside it at the right,
+   quiet until pointed at. */
+.day-note {
+  gap: 0;
+  border-radius: var(--radius-chip);
+  background: var(--paper);
 }
 
 .day-note-text {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-1) 0;
+  padding: 0.625rem 0.875rem;
+  border: 0;
   font-size: 0.9375rem;
   line-height: 1.5;
+}
+
+.day-note-remove {
+  border: 0;
+  background: none;
+  color: var(--muted);
+}
+
+.day-note-text:focus-visible,
+.day-note-remove:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (hover: hover) {
+  .day-note-remove:hover {
+    color: var(--alert);
+  }
 }
 
 .day-notes-add {
