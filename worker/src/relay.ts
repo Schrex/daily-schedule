@@ -71,7 +71,7 @@ export async function handle(request: Request, env: Env, fetchImpl: typeof fetch
   try {
     await postToSlack(fetchImpl, env.SLACK_BOT_TOKEN, { channel, title, filename, picture });
   } catch (error) {
-    return refuse(502, error instanceof SlackError ? error.plain : 'Slack could not be reached. Try again.');
+    return refuse(502, error instanceof SlackError ? error.plain : 'Slack could not be reached.');
   }
   return answer(200, { ok: true });
 }
@@ -135,7 +135,7 @@ function plainSlackError(code: string): string {
   switch (code) {
     case 'not_in_channel':
     case 'channel_not_found':
-      return 'The Daily Schedule bot is not in that Slack channel. In Slack, open the channel and type /invite @Daily Schedule, then send again.';
+      return 'The Daily Schedule bot is not in that Slack channel. In Slack, open the channel and type /invite @Daily Schedule.';
     case 'invalid_auth':
     case 'not_authed':
     case 'token_revoked':
@@ -145,9 +145,9 @@ function plainSlackError(code: string): string {
     case 'missing_scope':
       return 'The Slack app is missing the files:write permission. Add it and reinstall the app.';
     case 'ratelimited':
-      return 'Slack is busy. Wait a minute and send again.';
+      return 'Slack is busy. Wait a minute.';
     default:
-      return `Slack refused the picture (${code}). Try again.`;
+      return `Slack refused the picture (${code}).`;
   }
 }
 
