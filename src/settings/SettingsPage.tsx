@@ -5,6 +5,7 @@ import {
   addJob,
   changeCrewMember,
   changeJob,
+  jobLabel,
   moveJob,
   removeCrewMember,
   removeJob,
@@ -98,7 +99,7 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
                 data-job={job.id}
                 onClick={() => setOpen({ kind: 'job', id: job.id })}
               >
-                {job.name}
+                {jobLabel(job)}
               </button>
             </li>
           ))}
@@ -390,22 +391,29 @@ function JobPanel({
   job: Job;
   position: number;
   of: number;
-  onChange: (changes: { name?: string }) => void;
+  onChange: (changes: { name?: string; jobNumber?: string }) => void;
   onMove: (direction: 'up' | 'down') => void;
   onRemove: () => void;
   onClose: () => void;
 }) {
-  // Like a Crew Member's name, it is saved when the box is left or on Done.
+  // Like a Crew Member's name, these are saved when the box is left or on Done.
   const [name, setName] = useState(job.name);
+  const [jobNumber, setJobNumber] = useState(job.jobNumber ?? '');
   const save = () => {
     const kept = name.trim() === '' ? job.name : name; // a Job must have a name
     setName(kept);
-    onChange({ name: kept });
+    onChange({ name: kept, jobNumber });
   };
 
   return (
-    <Panel title={job.name} onClose={onClose}>
+    <Panel title={jobLabel(job)} onClose={onClose}>
       <Field label="Name" value={name} onChange={setName} onLeave={save} />
+      <Field
+        label="Job number (you can leave this empty)"
+        value={jobNumber}
+        onChange={setJobNumber}
+        onLeave={save}
+      />
       <div className="settings-field">
         <span className="settings-label">
           Place on the Daily Schedule: {position} of {of}
@@ -442,8 +450,8 @@ function JobPanel({
         </button>
       </div>
       <RemoveBox
-        label={`Remove ${job.name}`}
-        warning={`Remove ${job.name}? Anyone placed on it will be Not Placed.`}
+        label={`Remove ${jobLabel(job)}`}
+        warning={`Remove ${jobLabel(job)}? Anyone placed on it will be Not Placed.`}
         onRemove={onRemove}
       />
     </Panel>
@@ -454,20 +462,26 @@ function NewJobPanel({
   onAdd,
   onClose,
 }: {
-  onAdd: (details: { name: string }) => void;
+  onAdd: (details: { name: string; jobNumber: string }) => void;
   onClose: () => void;
 }) {
   const [name, setName] = useState('');
+  const [jobNumber, setJobNumber] = useState('');
 
   return (
     <Panel title="Add a Job" onClose={onClose}>
       <Field label="Name" value={name} onChange={setName} autoFocus />
+      <Field
+        label="Job number (you can leave this empty)"
+        value={jobNumber}
+        onChange={setJobNumber}
+      />
       <div className="settings-buttons">
         <button
           type="button"
           className="button button-primary"
           disabled={name.trim() === ''}
-          onClick={() => onAdd({ name })}
+          onClick={() => onAdd({ name, jobNumber })}
         >
           Add
         </button>

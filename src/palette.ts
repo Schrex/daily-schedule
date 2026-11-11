@@ -8,53 +8,59 @@
 import type { Color } from './schedule-rules';
 
 export const PALETTE = {
-  ink: '#14181d',
+  ink: '#1a1a1a',
   paper: '#ffffff',
-  /** Behind everything: the calm grey the white cards sit on. */
-  canvas: '#e9ecef',
+  /** Behind everything: the warm off-white the white cards sit on. */
+  canvas: '#f5f5f3',
   /** Hairlines: the edge of a card, the rules between rows. */
-  line: '#d5dae0',
+  line: '#e2e2de',
   /** The edge of something to click or type in. */
-  lineStrong: '#9aa3ae',
-  /** Quiet backgrounds: a hovered plain button, the count of people on a Job. */
-  wash: '#e9ecef',
-  /** Text that is read once found: the hint, the Send message. */
-  inkSoft: '#3a424c',
+  lineStrong: '#bdbdb6',
+  /** Quiet backgrounds: a hovered plain button. */
+  wash: '#efefea',
+  /** Text that is read once found: the hint, counts, the Send message. */
+  inkSoft: '#55554f',
   /** The one alert red: Notes, a refused Send, UPDATED. */
   alert: '#c5221f',
   alertWash: '#fef4f3',
   alertWashStrong: '#fde3e0',
   alertLine: '#f0b4ae',
   /**
-   * The one accent, burnt orange: the main action, the name being moved,
-   * where it would land, Not Placed and the Tasks. No Crew Member has it.
+   * The one accent, Schreiber yellow: Send, the count of who is not placed,
+   * and the gold of the name being moved and the cards it can go to. No Crew
+   * Member has it.
    */
-  accent: '#c2410c',
-  accentHover: '#9a3412',
-  /** Text and edges in the accent's family: the Not Placed heading, the Tasks label. */
-  accentDark: '#9a3412',
-  accentWash: '#fff4ec',
-  accentLine: '#f3c9a8',
+  accent: '#ffc800',
+  accentHover: '#f0bb00',
+  /** The text on the accent. */
+  accentInk: '#1a1a1a',
+  /** The accent as an edge or ring, dark enough to show on white. */
+  accentStrong: '#c99700',
+  /** Text in the accent's family: the Tasks label. */
+  accentDark: '#6b5200',
+  /** The pale yellow of the Tasks and the Settings gear. */
+  accentWash: '#fff8dc',
+  accentLine: '#f0dc8c',
   /** The block the pointer would place them in. */
-  target: '#fff4ec',
+  target: '#fff8dc',
   /** A Send that worked. */
   goDark: '#12603d',
   goWash: '#e8f5ee',
-  muted: '#5b6470',
-  disabled: '#9aa1ad',
+  muted: '#55554f',
+  disabled: '#a3a39c',
   /** Soft shadows: a resting card, and something lifted above the screen. */
-  shadow: 'rgba(20, 24, 29, 0.07)',
-  shadowStrong: 'rgba(20, 24, 29, 0.2)',
+  shadow: 'rgba(0, 0, 0, 0.06)',
+  shadowStrong: 'rgba(0, 0, 0, 0.2)',
   /** Behind the Change date panel. */
-  backdrop: 'rgba(20, 24, 29, 0.5)',
+  backdrop: 'rgba(26, 26, 26, 0.5)',
 } as const;
 
 /** The fill of a Crew Member's name, by their color. */
 export const CREW_COLORS: Record<Color, string> = {
-  grey: '#1b2026',
-  blue: '#cfe0f5',
-  orange: '#f3b67c',
-  yellow: '#f4dc7c',
+  grey: '#1a1a1a',
+  blue: '#dce9f8',
+  orange: '#f7c59a',
+  yellow: '#ffe27a',
   red: '#b8322a',
 };
 

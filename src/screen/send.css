@@ -8,7 +8,7 @@
 }
 
 .send-headline {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: var(--weight-bold);
 }
 
@@ -61,9 +61,13 @@
   box-shadow: 0 0 0 3px var(--alert-line);
 }
 
-.not-placed.not-placed-alert h2,
-.not-placed.not-placed-alert .not-placed-count {
+.not-placed.not-placed-alert h2 {
   color: var(--alert);
+}
+
+.not-placed.not-placed-alert .not-placed-count {
+  background: var(--alert);
+  color: var(--paper);
 }
 
 .not-placed-alert .name:not(.name-selected) {
