@@ -100,7 +100,7 @@ export function App({
 
   /**
    * One edit the Scheduler made, applied by the rules to the schedule as it
-   * stands now. A move (a click-click move, a drop, a double-click) also lets
+   * stands now. A move (a click-click move or a drop) also lets
    * go of anyone selected; an edit to someone's Note or Person Tasks keeps
    * them selected. The rules change nothing if nothing is different.
    */
