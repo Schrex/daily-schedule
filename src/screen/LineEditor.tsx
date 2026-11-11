@@ -14,12 +14,20 @@ interface LineEditorProps {
   /** A new line keeps the field open and empty after each one, for the next. */
   keepOpen?: boolean;
   autoFocus?: boolean;
-  /** Drawn after the button, on the same line: "Add note" beside "Add task". */
+  maxLength?: number;
+  /** "note": the text in the dark ink of a Note. */
+  tone?: 'note';
+  /**
+   * A second button after the first, handing the same text to another
+   * place: "Add note" beside "Add task".
+   */
+  second?: { text: string; onCommit: (text: string) => void };
+  /** Drawn after the buttons, on the same line: "Cancel". */
   children?: ReactNode;
 }
 
 /**
- * One line of text being typed: a Person Task or a Day Note. The text is kept
+ * One line of text being typed: a Person Task, a Note or a Day Note. The text is kept
  * here and handed over once, so one line is one change to the Daily Schedule,
  * not one per key. Clicks inside it stay inside it: on a card they are not a
  * click on the card (which would move the selected Crew Member there).
@@ -33,19 +41,22 @@ export function LineEditor({
   onCancel,
   keepOpen = false,
   autoFocus = true,
+  maxLength,
+  tone,
+  second,
   children,
 }: LineEditorProps) {
   const [draft, setDraft] = useState(initial);
 
-  const commit = () => {
+  const commit = (to: (text: string) => void = onCommit) => {
     if (keepOpen && draft.trim() === '') return;
-    onCommit(draft);
+    to(draft);
     if (keepOpen) setDraft('');
   };
 
   return (
     <form
-      className="line-editor"
+      className={`line-editor${tone ? ` line-editor-${tone}` : ''}`}
       onClick={(event) => event.stopPropagation()}
       onSubmit={(event) => {
         event.preventDefault();
@@ -58,6 +69,8 @@ export function LineEditor({
         aria-label={label}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        maxLength={maxLength}
+        onFocus={(event) => event.target.select()}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={(event) => {
@@ -77,6 +90,11 @@ export function LineEditor({
       <button type="submit" className="button button-primary line-button">
         {buttonText}
       </button>
+      {second && (
+        <button type="button" className="button line-button" onClick={() => commit(second.onCommit)}>
+          {second.text}
+        </button>
+      )}
       {children}
     </form>
   );

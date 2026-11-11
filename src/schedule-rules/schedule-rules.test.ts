@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   dailyScheduleFor,
-  clearNote,
   fullDate,
   nextWorkingDay,
   scheduleDateOf,
@@ -32,7 +31,9 @@ import {
   addDayNote,
   changeDayNote,
   removeDayNote,
+  applyEdit,
   type CrewMember,
+  type ScheduleEdit,
   type DailySchedule,
   type Placement,
   type Roster,
@@ -478,7 +479,7 @@ describe('clearing a Note', () => {
   it('removes the Note and keeps the Placement', () => {
     const before = schedule({ placements: [placement('cal', onJob('bridge'), 1, '1/2 Day')] });
 
-    const cleared = clearNote(before, 'cal');
+    const cleared = setNote(before, 'cal', '');
 
     expect(noteOf('cal', cleared)).toBeUndefined();
     expect(whoIsOn('Bridge', cleared)).toEqual(['cal']);
@@ -487,7 +488,7 @@ describe('clearing a Note', () => {
   it('changes nothing when there is no Note', () => {
     const before = schedule({ placements: [placement('cal', onJob('bridge'), 1)] });
 
-    expect(clearNote(before, 'cal')).toBe(before);
+    expect(setNote(before, 'cal', '')).toBe(before);
   });
 });
 
@@ -806,7 +807,7 @@ describe('the crew view', () => {
 
     expect(crewView(roster, reloaded).updated).toBe(false);
     expect(send(reloaded, '2026-11-09T23:06:00.000Z')).toBe(reloaded);
-    expect(crewView(roster, clearNote(setNote(reloaded, 'ann', 'x'), 'ann')).updated).toBe(false);
+    expect(crewView(roster, setNote(setNote(reloaded, 'ann', 'x'), 'ann', '')).updated).toBe(false);
     expect(crewView(roster, placeCrewMember(reloaded, 'bob', onJob('bridge'))).updated).toBe(true);
   });
 });
@@ -1205,5 +1206,38 @@ describe('Day Notes', () => {
     const sent = send(noted, '2026-11-09T23:05:00.000Z');
     expect(crewView(roster, sent).updated).toBe(false);
     expect(crewView(roster, changeDayNote(sent, 0, 'Bring gloves')).updated).toBe(true);
+  });
+});
+
+describe('an edit from the screen', () => {
+  const before = schedule({
+    placements: [placement('cal', onJob('bridge'), 1, '1/2 Day')],
+    dayNotes: ['Gas up'],
+  });
+  const withTask = addPersonTask(before, 'cal', 'Bring the laser');
+
+  // Each edit does exactly what its rule does.
+  const cases: [ScheduleEdit, DailySchedule, DailySchedule][] = [
+    [{ kind: 'move', crewMemberId: 'cal', to: onJob('tower') }, before, moveCrewMember(before, 'cal', onJob('tower'))],
+    [{ kind: 'set-tasks', destination: onJob('tower'), text: 'Dig' }, before, setTasks(before, onJob('tower'), 'Dig')],
+    [{ kind: 'set-note', crewMemberId: 'cal', text: '' }, before, setNote(before, 'cal', '')],
+    [{ kind: 'add-person-task', crewMemberId: 'cal', text: 'Bring the laser' }, before, withTask],
+    [
+      { kind: 'change-person-task', crewMemberId: 'cal', index: 0, text: 'Laser' },
+      withTask,
+      changePersonTask(withTask, 'cal', 0, 'Laser'),
+    ],
+    [{ kind: 'remove-person-task', crewMemberId: 'cal', index: 0 }, withTask, removePersonTask(withTask, 'cal', 0)],
+    [{ kind: 'add-day-note', text: 'Rain' }, before, addDayNote(before, 'Rain')],
+    [{ kind: 'change-day-note', index: 0, text: 'Fuel' }, before, changeDayNote(before, 0, 'Fuel')],
+    [{ kind: 'remove-day-note', index: 0 }, before, removeDayNote(before, 0)],
+  ];
+
+  it.each(cases)('%o', (edit, from, expected) => {
+    expect(applyEdit(from, edit)).toEqual(expected);
+  });
+
+  it('returns the same Daily Schedule when the edit changes nothing', () => {
+    expect(applyEdit(before, { kind: 'set-note', crewMemberId: 'cal', text: '1/2 Day' })).toBe(before);
   });
 });

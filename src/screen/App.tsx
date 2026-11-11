@@ -1,25 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  addDayNote,
-  addPersonTask,
-  changeDayNote,
-  changePersonTask,
-  clearNote,
-  removeDayNote,
-  removePersonTask,
+  applyEdit,
   markSent,
   scheduleView,
-  moveCrewMember,
-  setNote,
-  setTasks,
   type CrewView,
   type DailySchedule,
-  type MoveTo,
   type ScheduleDate,
+  type ScheduleEdit,
 } from '../schedule-rules';
 import type { CrewDelivery } from '../send';
 import { openDate, type Opened, type ScheduleStore } from '../storage';
 import { ChangeDate } from './ChangeDate';
+import { PreviewPicture } from './PreviewPicture';
 import { nextOpenJobs, type OpenJobs, type OpenJobsEvent } from './openJobs';
 import { SettingsLink } from './SettingsLink';
 import { TvLink } from './TvLink';
@@ -29,7 +21,7 @@ import { useSend } from './useSend';
 
 /**
  * Holds the Daily Schedule being edited and which Crew Member is selected to
- * move or to have a Note typed. Everything that alters the schedule (a
+ * move or to give a Note or Person Task. Everything that alters the schedule (a
  * change, a Send being recorded) goes through `change`, which works on the
  * schedule as it stands at that instant and saves the result. The screen
  * below only draws and reports clicks. `opened` is what the store held when
@@ -54,8 +46,6 @@ export function App({
    */
   const latest = useRef(schedule);
   const [selectedCrewMemberId, setSelectedCrewMemberId] = useState<string | null>(null);
-  /** True while a Note is being typed for the selected Crew Member. */
-  const [editingNote, setEditingNote] = useState(false);
   /**
    * The Jobs drawn as cards this session (see openJobs.ts); every other Job
    * is folded. Built from who is on the Jobs when the board loads.
@@ -105,41 +95,20 @@ export function App({
   };
   const send = useSend({ roster, schedule, delivery, onDelivered: recordSend });
 
-  const select = (crewMemberId: string | null) => {
-    setSelectedCrewMemberId(crewMemberId);
-    setEditingNote(false);
-  };
+  const select = (crewMemberId: string | null) => setSelectedCrewMemberId(crewMemberId);
 
-  /** Lets go of the selected Crew Member: no move, and any Note being typed is dropped. */
+  /** Lets go of the selected Crew Member: no move. */
   const deselect = () => select(null);
 
-  /** Applies one rule to the selected Crew Member (a Note), then lets go of them. */
-  const changeSelected = (
-    rule: (schedule: DailySchedule, crewMemberId: string) => DailySchedule,
-  ) => {
-    if (selectedCrewMemberId === null) return;
-    const crewMemberId = selectedCrewMemberId;
-    change((current) => rule(current, crewMemberId));
-    deselect();
-  };
-
-  /** Applies one rule to the selected Crew Member (a Person Task) and keeps them selected. */
-  const changeForSelected = (
-    rule: (schedule: DailySchedule, crewMemberId: string) => DailySchedule,
-  ) => {
-    if (selectedCrewMemberId === null) return;
-    const crewMemberId = selectedCrewMemberId;
-    change((current) => rule(current, crewMemberId));
-  };
-
   /**
-   * Moves one Crew Member, selected or not, however the Scheduler did it (a
-   * click-click move, a drop, a double-click), and lets go of anyone selected.
-   * The rules change nothing if they are already there.
+   * One edit the Scheduler made, applied by the rules to the schedule as it
+   * stands now. A move (a click-click move or a drop) also lets
+   * go of anyone selected; an edit to someone's Note or Person Tasks keeps
+   * them selected. The rules change nothing if nothing is different.
    */
-  const move = (crewMemberId: string, to: MoveTo) => {
-    change((current) => moveCrewMember(current, crewMemberId, to));
-    deselect();
+  const edit = (scheduleEdit: ScheduleEdit) => {
+    change((current) => applyEdit(current, scheduleEdit));
+    if (scheduleEdit.kind === 'move') deselect();
   };
 
   useEffect(() => {
@@ -166,31 +135,14 @@ export function App({
       roster={roster}
       schedule={schedule}
       selectedCrewMemberId={selectedCrewMemberId}
-      editingNote={editingNote}
       onSelectCrewMember={select}
       onDeselect={deselect}
-      onMoveCrewMember={move}
+      onEdit={edit}
       openJobs={openJobs}
       onOpenJob={(jobKey) => openJobsAfter({ kind: 'open', jobKey })}
       onPutAwayEmptyJobs={() =>
         openJobsAfter({ kind: 'put-away', view: scheduleView(roster, latest.current) })
       }
-      onEditNote={() => setEditingNote(true)}
-      onSaveNote={(text) =>
-        changeSelected((current, crewMemberId) => setNote(current, crewMemberId, text))
-      }
-      onClearNote={() => changeSelected(clearNote)}
-      onSetTasks={(destination, text) => change((current) => setTasks(current, destination, text))}
-      onAddPersonTask={(text) => changeForSelected((current, id) => addPersonTask(current, id, text))}
-      onChangePersonTask={(index, text) =>
-        changeForSelected((current, id) => changePersonTask(current, id, index, text))
-      }
-      onRemovePersonTask={(index) =>
-        changeForSelected((current, id) => removePersonTask(current, id, index))
-      }
-      onAddDayNote={(text) => change((current) => addDayNote(current, text))}
-      onChangeDayNote={(index, text) => change((current) => changeDayNote(current, index, text))}
-      onRemoveDayNote={(index) => change((current) => removeDayNote(current, index))}
       dateButtons={
         <>
           <SettingsLink />
@@ -200,6 +152,7 @@ export function App({
       toolbarButtons={
         <>
           <ChangeDate date={schedule.date} onChangeDate={changeDate} />
+          <PreviewPicture roster={roster} schedule={schedule} />
           <SendButton send={send} />
         </>
       }

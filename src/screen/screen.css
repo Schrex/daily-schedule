@@ -165,6 +165,9 @@
   padding: var(--overhang) var(--overhang) calc(var(--overhang) + 1.75rem);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Room for the scrollbar is kept whether it shows or not, so the cards
+     never change width when the board gets just tall enough to scroll. */
+  scrollbar-gutter: stable;
 }
 
 .schedule-scroll {
@@ -335,20 +338,21 @@
   list-style: none;
 }
 
-.names li {
+.names > li {
   display: flex;
   flex-direction: column;
 }
 
-/* A grey chip: a dot of the Crew Member's color, the name, and their Person
-   Tasks, if any, smaller under it. A Foreman's chip is black. */
+/* A grey chip. Its top line is a dot of the Crew Member's color and the name
+   (black for a Foreman); their Person Tasks, if any, are bulleted lines under
+   it on the grey. */
 .name {
   display: flex;
-  align-items: center;
-  gap: 0.625rem;
+  flex-direction: column;
+  align-items: stretch;
   width: 100%;
-  min-height: max(2.75rem, var(--touch-target));
-  padding: 0.375rem 0.75rem;
+  padding: 0;
+  overflow: hidden;
   border: 0;
   border-radius: var(--radius-chip);
   background: var(--chip);
@@ -373,11 +377,12 @@
 .dot-yellow { background: var(--dot-yellow); }
 .dot-red { background: var(--dot-red); }
 
-.name-lines {
+.name-head {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: max(2.75rem, var(--touch-target));
+  padding: 0.375rem 0.75rem;
 }
 
 .name-text {
@@ -386,23 +391,49 @@
   line-height: 1.2;
 }
 
-.name-sub {
-  color: var(--ink-soft);
-  font-size: 0.8125rem;
-  line-height: 1.25;
+/* The Person Tasks, in regular weight so the name leads. Their text starts
+   where the name starts (one left edge for name, tasks and Note); each
+   bullet is a small grey dot centred under the color dot. */
+.name-subs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.375rem 0.75rem 0.5rem 2.25rem;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: var(--weight-body);
+  line-height: 1.3;
 }
 
-.name-foreman {
+.name-sub {
+  position: relative;
+}
+
+.name-sub::before {
+  content: '';
+  position: absolute;
+  top: calc(0.65em - 0.125rem);
+  left: -1.1875rem;
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+/* On a grey line the tasks follow the name closely; under a black one they
+   need room to breathe. */
+.name:not(.name-foreman) .name-subs {
+  padding-top: 0;
+}
+
+/* A Foreman: the top line black, the dot white. */
+.name-foreman .name-head {
   background: var(--ink);
   color: var(--paper);
 }
 
 .name-foreman .name-dot {
   background: var(--paper);
-}
-
-.name-foreman .name-sub {
-  color: var(--chip-ink-soft);
 }
 
 /* The ring under the pointer (only where there is a pointer to be under).
@@ -431,21 +462,126 @@
   box-shadow: var(--ring-selected);
 }
 
-/* A Note hangs under its name, in one red-tinted piece with it, so it cannot
-   be read as anyone else's. */
-.names li.noted {
+/* A Note is the foot of its name's chip, a soft yellow strip, so it cannot be
+   read as anyone else's. */
+.names li.noted .name {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* With a Note, the name and its Note are one piece: the ring of the selected
+   name goes round both, and a name being dragged fades with its Note. */
+.names li.noted,
+.names li.person-open {
   border-radius: var(--radius-chip);
-  background: var(--alert-wash-strong);
+  transition: box-shadow var(--ease);
+}
+
+.names li.noted:has(> .name-selected),
+.names li.person-open:has(> .name-selected) {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--ring-selected);
+}
+
+.names li.noted > .name.name-selected,
+.names li.person-open > .name.name-selected {
+  box-shadow: none;
+}
+
+/* --- The selected Crew Member's chip: each task and the Note with × -------
+   Drawn just as when not selected; the tasks sit beside the name's button
+   (a button cannot hold buttons), on the same grey. */
+.names li.person-open > .name:not(:last-child) {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.name-subs-open {
+  margin: 0;
+  list-style: none;
+  background: var(--chip);
+}
+
+.name-subs-open:last-child {
+  border-radius: 0 0 var(--radius-chip) var(--radius-chip);
+}
+
+.person-open > .name:not(.name-foreman) + .name-subs-open {
+  padding-top: 0;
+}
+
+.name-subs-open .name-sub,
+.note-open {
+  display: flex;
+  align-items: flex-start;
+}
+
+.name-sub-editing {
+  margin-left: -1.5rem;
+}
+
+/* A line's text, tapped to change it. */
+.line-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.25rem;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+/* Its ×: borderless and grey, red when pointed at. */
+.line-remove {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 1.25rem;
+  margin-right: -0.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.25rem;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.125rem;
+  font-weight: var(--weight-body);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.line-text:focus-visible,
+.line-remove:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (hover: hover) {
+  .line-remove:hover {
+    color: var(--alert);
+  }
+}
+
+.names li.noted:has(> .name[data-dragging]) > .note {
+  opacity: 0.35;
 }
 
 .note {
-  padding: 0.375rem 0.75rem;
-  color: var(--alert);
+  /* Lined up with the name and the tasks above it. */
+  padding: 0.375rem 0.75rem 0.375rem 2.25rem;
+  border-radius: 0 0 var(--radius-chip) var(--radius-chip);
+  background: var(--note-wash);
+  color: var(--note-ink);
   font-size: 0.875rem;
-  font-weight: var(--weight-strong);
-  line-height: 1.2;
+  font-weight: var(--weight-medium);
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
+
 
 /* --- Not Placed: always in sight, at the top of the right column ---------- */
 
@@ -471,13 +607,15 @@
 }
 
 
-/* --- The Tasks: plain lines under the name, ruled off from the names ---- */
+/* --- The Tasks: plain lines under the name, ruled off from the names ----
+   They line up with the names below: each bullet centred under the color
+   dots, the text starting where the names start. */
 
 .tasks-box {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: 0 0 0.625rem;
+  padding: 0 0 0.625rem 2.25rem;
   margin-bottom: var(--space-1);
   border: 0;
   border-bottom: var(--hairline);
@@ -488,23 +626,22 @@
 }
 
 .task {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
+  position: relative;
   font-size: 0.9375rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
-/* A small round bullet before each Task, level with the
-   first line, so a Task too long for its line still reads as one. */
+/* A small round bullet before each Task, level with the first line (so a
+   Task too long for its line still reads as one), under the color dots. */
 .bullet {
-  flex: 0 0 0.3125rem;
+  position: absolute;
+  top: calc(0.7em - 0.15625rem);
+  left: calc(1.1875rem - 2.25rem - 0.15625rem);
   width: 0.3125rem;
   height: 0.3125rem;
-  margin-top: 0.55em;
   border-radius: 50%;
-  background: var(--ink-soft);
+  background: var(--muted);
 }
 
 /* Shop's and Trucking's: smaller. */
@@ -595,8 +732,7 @@
   gap: var(--space-2);
 }
 
-.line-input,
-.note-input {
+.line-input {
   flex: 1 1 8.75rem;
   min-width: 0;
   min-height: max(2.75rem, var(--touch-target));
@@ -610,15 +746,19 @@
   font-size: max(0.9375rem, 16px);
 }
 
-.line-input:focus,
-.note-input:focus {
+.line-input:focus {
   border-color: var(--ink);
   box-shadow: 0 0 0 3px var(--accent-wash);
 }
 
-.line-input::placeholder,
-.note-input::placeholder {
+.line-input::placeholder {
   color: var(--muted);
+}
+
+/* A Note being typed: in the dark text of a Note. */
+.line-editor-note .line-input {
+  color: var(--note-ink);
+  font-weight: var(--weight-strong);
 }
 
 .line-button {
@@ -630,25 +770,46 @@
 }
 
 /* --- The selected Crew Member's own things, right under their name -------
-   Edged on the left in the blue of their ring, so it reads as theirs. */
+   Joined to their chip by a soft blue branch, so it reads as theirs. */
 
 .names li.person-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin: 0.125rem 0 0.25rem 0.375rem;
-  padding-left: 0.625rem;
-  border-left: 3px solid var(--select);
+  margin: 0.125rem 0 0.25rem;
+  padding-left: 1.75rem;
   cursor: auto;
 }
 
-/* The field, Add and Add note on one line, wrapping when the card is narrow. */
+/* A soft blue branch out of the chip above, curving into the field: what is
+   typed here is theirs. It starts from under the chip's ring, in line with
+   the color dot. */
+.names li.person-panel::before {
+  content: '';
+  position: absolute;
+  top: -0.5rem;
+  left: 1.0625rem;
+  width: 0.5rem;
+  height: calc(0.5rem + max(2.75rem, var(--touch-target)) / 2);
+  border-bottom: 2px solid var(--select);
+  border-left: 2px solid var(--select);
+  border-bottom-left-radius: 0.625rem;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* The field on its own line; Add task and Add note side by side under it. */
 .person-tasks .line-editor {
   flex-wrap: wrap;
 }
 
 .person-tasks .line-input {
-  flex-basis: 6rem;
+  flex-basis: 100%;
+}
+
+.person-tasks .line-button {
+  flex: 1 1 0;
 }
 
 .person-tasks {
@@ -657,23 +818,11 @@
   gap: var(--space-2);
 }
 
-.person-task-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.person-task,
 .day-note {
   display: flex;
   align-items: stretch;
-  gap: var(--space-1);
 }
 
-.person-task-text,
 .day-note-text {
   flex: 1 1 auto;
   min-width: 0;
@@ -687,84 +836,17 @@
   cursor: text;
 }
 
-.person-task-text {
-  min-height: 2.25rem;
-  padding: var(--space-1) var(--space-3);
-  background: var(--canvas);
-  font-size: 0.875rem;
-}
-
-.person-task-remove,
+/* The × of a Day Note: borderless, grey, red when pointed at. */
 .day-note-remove {
   flex: 0 0 auto;
   width: max(2.25rem, var(--touch-target));
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: var(--radius-chip);
-  background: var(--paper);
+  background: none;
   color: var(--muted);
   font: inherit;
   font-size: 1.125rem;
   line-height: 1;
-}
-
-@media (hover: hover) {
-  .person-task-text:hover {
-    border-color: var(--line-strong);
-  }
-
-  .person-task-remove:hover {
-    border-color: var(--alert-line);
-    background: var(--alert-wash);
-    color: var(--alert);
-  }
-}
-
-/* Add note: a quiet text button beside Add. */
-.person-note-button {
-  flex: 0 0 auto;
-  min-height: max(2.75rem, var(--touch-target));
-  padding: 0 var(--space-1);
-  border: 0;
-  background: none;
-  color: var(--ink-soft);
-  font: inherit;
-  font-size: 0.875rem;
-  font-weight: var(--weight-strong);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.person-note-button:hover {
-  color: var(--ink);
-}
-
-.person-note-button:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-/* Typing a Note: the field across the panel, its buttons under it. */
-.note-editor {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.note-editor-label {
-  flex: 1 1 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: 0.875rem;
-}
-
-/* In the label's column, the field's flex basis would be its height: keep it one line. */
-.note-input {
-  flex: 0 0 auto;
-  color: var(--alert);
-  font-weight: var(--weight-strong);
 }
 
 /* --- Under the cards: No crew tomorrow, and Notes for the day -------------
@@ -847,12 +929,6 @@
   border: 0;
   font-size: 0.9375rem;
   line-height: 1.5;
-}
-
-.day-note-remove {
-  border: 0;
-  background: none;
-  color: var(--muted);
 }
 
 .day-note-text:focus-visible,

@@ -20,15 +20,16 @@ export const PALETTE = {
   wash: '#efefea',
   /** Text that is read once found: the hint, counts, the Send message. */
   inkSoft: '#55554f',
-  /** The one alert red: Notes, a failed Send, UPDATED. */
+  /** A Note on a Crew Member: dark text on a soft yellow. */
+  noteWash: '#fff4d1',
+  noteInk: '#3d2f00',
+  /** The one alert red: a failed Send, UPDATED. */
   alert: '#c5221f',
   alertWash: '#fef4f3',
-  alertWashStrong: '#fde3e0',
   alertLine: '#f0b4ae',
   /**
-   * The one accent, Schreiber yellow: Send, the count of who is not placed,
-   * and the gold of the name being moved and the cards it can go to. No Crew
-   * Member has it.
+   * The one accent, Schreiber yellow: Send, Add task, the dashed edge of Not
+   * placed yet and the focus ring. No Crew Member has it.
    */
   accent: '#ffc800',
   accentHover: '#f0bb00',
@@ -39,15 +40,15 @@ export const PALETTE = {
   /** The pale yellow of the Settings gear and a field being typed in. */
   accentWash: '#fff8dc',
   /**
-   * The blue of a selected name, and of the cards it can be moved to: its
-   * ring, a card's edge, and the wash of the card under the pointer.
+   * The blue of a selected name: its ring, the edge of its panel, and the
+   * tint of the cards someone in hand can be moved to.
    */
   select: '#3b7dd8',
   selectWash: '#eef4fc',
-  /** The grey chip of a name; a Foreman's is ink. */
+  /** The ground of a quiet card in the crew picture (Off Work): between the canvas and white. */
+  quietGround: '#fafaf8',
+  /** The grey chip of a name; a Foreman's top line is ink. */
   chip: '#f1f1ee',
-  /** A Person Task under a Foreman's name, on the ink chip. */
-  chipInkSoft: '#d6d6d2',
   /** A Send that worked. */
   goDark: '#12603d',
   goWash: '#e8f5ee',

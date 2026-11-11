@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type MouseEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
 import {
   canHaveTasks,
@@ -11,7 +11,7 @@ import {
   type DailySchedule,
   type MoveTo,
   type Roster,
-  type Destination,
+  type ScheduleEdit,
   type ScheduleRow,
 } from '../schedule-rules';
 import { useNameDrag } from './drag/useNameDrag';
@@ -19,50 +19,32 @@ import { dropTarget, viewWhileDragging } from './dropPreview';
 import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
-import { NoteEditor } from './NoteEditor';
 import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
-import { PersonTasks } from './PersonTasks';
+import { NameLines, nameClass } from './NameChip';
+import { PersonAdd, PersonLines } from './PersonTasks';
+import { inHand as inHandOf, isTarget as isTargetFor, nameClick, selectedCrewMember, selectionOf } from './selection';
 import { TasksCell } from './TasksCell';
 
 interface ScheduleScreenProps {
   roster: Roster;
   schedule: DailySchedule;
-  /** The Crew Member picked up to move, or to have a Note typed, if any. */
+  /** The Crew Member selected, if any: what that means is `selection.ts`'s to say. */
   selectedCrewMemberId: string | null;
-  /** True while a Note is being typed for the selected Crew Member (no move then). */
-  editingNote: boolean;
   onSelectCrewMember: (crewMemberId: string) => void;
-  /** The selected name was clicked again, or "Cancel" on a Note: let go of them. */
+  /** Let go of whoever is selected. */
   onDeselect: () => void;
   /**
-   * The Scheduler moved a Crew Member to a Job, a Standing Row or Not Placed:
-   * by clicking there with them selected, by dropping their name there, or (to
-   * Not Placed) by double-clicking their name.
+   * The Scheduler changed the Daily Schedule: moved someone (a click, a drop,
+   * a drop on Not placed yet), typed Tasks, a Note, a Person Task or a
+   * Day Note. The rules apply it (`applyEdit`).
    */
-  onMoveCrewMember: (crewMemberId: string, to: MoveTo) => void;
+  onEdit: (edit: ScheduleEdit) => void;
   /** The Jobs drawn as cards (see openJobs.ts); every other Job is a folded button. */
   openJobs: OpenJobs;
   /** A folded Job's button was tapped with nobody in hand: open it as an empty card. */
   onOpenJob: (jobKey: string) => void;
   /** "Put away empty jobs": every open Job with nobody on it folds now. */
   onPutAwayEmptyJobs: () => void;
-  /** "Add note" / "Change note" was clicked for the selected Crew Member. */
-  onEditNote: () => void;
-  /** The Note typed for the selected Crew Member was saved. */
-  onSaveNote: (text: string) => void;
-  /** "Remove note" was clicked for the selected Crew Member. */
-  onClearNote: () => void;
-  /** The Scheduler finished typing the Tasks of a Job, Shop or Trucking: the whole text, one Task per line. */
-  onSetTasks: (destination: Destination, text: string) => void;
-  /** A Person Task was typed for the selected Crew Member. */
-  onAddPersonTask: (text: string) => void;
-  /** One of the selected Crew Member's Person Tasks was changed (blank: taken away). */
-  onChangePersonTask: (index: number, text: string) => void;
-  onRemovePersonTask: (index: number) => void;
-  onAddDayNote: (text: string) => void;
-  /** A Day Note was changed (blank: taken away). */
-  onChangeDayNote: (index: number, text: string) => void;
-  onRemoveDayNote: (index: number) => void;
   /** Drawn right beside the date: the Settings gear and the TV button. */
   dateButtons?: ReactNode;
   /** Drawn at the right end of the header: Change date and Send. */
@@ -81,19 +63,16 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * The Scheduler's screen. Thin: it asks the schedule rules for the view, draws
  * it, and reports clicks. It applies no rule (ordering, Not Placed, ...) itself.
  *
- * Moving is click-click: click a name to select it, then click a Job, a
- * Standing Row or the Not Placed list. While a name is selected, a click
- * anywhere in one of those blocks (even on another name) is the destination.
- *
- * Double-clicking a name moves that Crew Member to Not Placed. The browser
- * reports a double-click as two clicks and then the double-click, so the name
- * is selected and let go of first. A double-click made with a shaky hand, which
- * the browser takes for a small drag, is reported by `useNameDrag` instead.
+ * Someone Not Placed moves click-click: click their name to select it, then
+ * click a Job or a Standing Row. Selecting someone already placed opens their
+ * panel (Add task, Add note) instead: nothing is tinted as a place to go, and
+ * a click on a card lets go of them. Anyone can be dragged.
  *
  * With no name selected, clicking a Job's Tasks lets him type them. A selected
- * Crew Member who has a Placement also offers "Add note", and at the foot of
- * their card their Person Tasks, to add, change or take away (`PersonTasks`).
- * Under the Job cards are the Notes for the day (`DayNotes`).
+ * Crew Member who has a Placement gets their Person Tasks and Note with × in
+ * their chip, and a field under it to add more (`PersonTasks`); a click
+ * anywhere else lets go of them. Under the Job cards are the Notes for the
+ * day (`DayNotes`).
  *
  * A name can also be dragged and dropped on one of those blocks (`useNameDrag`).
  * The drag only says who was dropped where; like a click, it is reported.
@@ -109,9 +88,9 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * right the Not Placed list and under it the three Standing Rows (Shop,
  * Trucking, Off Work). A card is its name with the Job number and how many at
  * the right, the day's Tasks as plain lines, and its names, one to a line: a
- * grey chip with a dot of the Crew Member's color (a Foreman's is black).
- * While a name is selected it is ringed in blue, and every card it can go to
- * is edged in blue; clicking or tapping one puts them there. The picture sent
+ * grey chip with a dot of the Crew Member's color (a Foreman's top line is
+ * black). The name selected is ringed in blue; while someone is in hand,
+ * every card they can go to is tinted. The picture sent
  * to the crew (`crewPicture`) is these same cards, one under the other,
  * without what is only the Scheduler's.
  *
@@ -125,71 +104,67 @@ export function ScheduleScreen({
   selectedCrewMemberId,
   onSelectCrewMember,
   onDeselect,
-  onMoveCrewMember,
+  onEdit,
   openJobs,
   onOpenJob,
   onPutAwayEmptyJobs,
-  editingNote,
-  onEditNote,
-  onSaveNote,
-  onClearNote,
-  onSetTasks,
-  onAddPersonTask,
-  onChangePersonTask,
-  onRemovePersonTask,
-  onAddDayNote,
-  onChangeDayNote,
-  onRemoveDayNote,
   dateButtons,
   toolbarButtons,
   sendMessage,
 }: ScheduleScreenProps) {
   const view = scheduleView(roster, schedule);
-  /** Where the selected Crew Member is now; undefined when Not Placed (no Placement, so no Note). */
-  const selectedPlaced = view.rows
-    .flatMap((row) => row.who)
-    .find((placed) => placed.crewMember.id === selectedCrewMemberId);
-  // Anyone the view shows can be selected, so look there and not in the roster.
-  const selected =
-    selectedPlaced?.crewMember ??
-    view.notPlaced.find((crewMember) => crewMember.id === selectedCrewMemberId);
-  const typingNote = selected !== undefined && selectedPlaced !== undefined && editingNote;
-  const moving = selected !== undefined && !typingNote;
+  const selection = selectionOf(view, selectedCrewMemberId);
+  const selected = selectedCrewMember(selection);
+  const moving = selection.mode === 'moving';
+  const panelOpen = selection.mode === 'panel';
+  const move = (crewMemberId: string, to: MoveTo) => onEdit({ kind: 'move', crewMemberId, to });
 
-  // Dragging a name: no drag while a Note is being typed. A drop names the block by its key.
+  // Dragging a name. A drop names the block by its key; the copy lifted is the name as drawn here.
   const [motion] = useState(createNameMotion);
   const drag = useNameDrag({
-    enabled: !typingNote,
+    drawLifted: (crewMemberId) => {
+      const placed = view.rows.flatMap((row) => row.who).find((each) => each.crewMember.id === crewMemberId);
+      const crewMember = placed?.crewMember ?? view.notPlaced.find((each) => each.id === crewMemberId);
+      return (
+        crewMember && (
+          <div className={nameClass(crewMember)}>
+            <NameLines crewMember={crewMember} personTasks={placed?.personTasks} />
+          </div>
+        )
+      );
+    },
     onDrop: (crewMemberId, over) => {
       const to = dropTarget(view, over);
-      if (to !== null) onMoveCrewMember(crewMemberId, to);
+      if (to !== null) move(crewMemberId, to);
     },
     onLetGo: motion.letGoAt,
-    onShakyDoubleClick: (crewMemberId) => onMoveCrewMember(crewMemberId, NOT_PLACED),
   });
   /** What is drawn: while a name is held over a destination, the schedule as the drop would leave it. */
   const shown = viewWhileDragging(roster, schedule, drag.dragging);
 
-  /**
-   * The Crew Member in hand: selected to move, or being dragged. Every other
-   * place is a place they can go: tinted, and "Move Mike here" on the one
-   * under the pointer. `from` is where they are now, which stays plain.
-   */
-  const placedNow = (crewMemberId: string) => {
-    const row = view.rows.find((each) => each.who.some((placed) => placed.crewMember.id === crewMemberId));
-    const crewMember =
-      row?.who.find((placed) => placed.crewMember.id === crewMemberId)?.crewMember ??
-      view.notPlaced.find((each) => each.id === crewMemberId);
-    return crewMember ? { crewMember, from: row?.key ?? NOT_PLACED } : undefined;
-  };
-  const inHand = moving ? placedNow(selected.id) : drag.dragging ? placedNow(drag.dragging.crewMemberId) : undefined;
-  const isTarget = (key: string) => inHand !== undefined && inHand.from !== key;
+  /** Who is in hand (picked up, or dragged): every other place is tinted, with "Move Mike here" on the one pointed at. */
+  const inHand = inHandOf(view, selection, drag.dragging?.crewMemberId ?? null);
+  const isTarget = (key: string) => isTargetFor(inHand, key);
   const moveHere = (key: string) =>
     isTarget(key) && inHand ? (
       <span className="move-here" aria-hidden="true">
         Move {firstName(inHand.crewMember)} here
       </span>
     ) : null;
+
+  /**
+   * When someone is let go of while the focus was in their panel (Escape in
+   * its field, the last × in it), the panel goes and the focus with it. Hand
+   * it back to their name so the keyboard keeps its place.
+   */
+  const wasSelected = useRef<string | null>(null);
+  useEffect(() => {
+    const was = wasSelected.current;
+    wasSelected.current = selectedCrewMemberId;
+    if (was === null || was === selectedCrewMemberId) return;
+    if (document.activeElement !== null && document.activeElement !== document.body) return;
+    document.querySelector<HTMLElement>(`[data-crew-member="${CSS.escape(was)}"]`)?.focus();
+  }, [selectedCrewMemberId]);
 
   /** A Job just opened from its folded button: its card's heading takes the focus once drawn. */
   const [focusJob, setFocusJob] = useState<string | null>(null);
@@ -203,78 +178,72 @@ export function ScheduleScreen({
 
 
   const onNameClick = (crewMember: CrewMember, event: MouseEvent) => {
-    if (!moving) {
-      event.stopPropagation();
-      onSelectCrewMember(crewMember.id);
-    } else if (crewMember.id === selected?.id) {
-      event.stopPropagation();
-      onDeselect();
-    }
-    // Otherwise the click carries on to the block the name sits in: the destination.
+    const does = nameClick(selection, crewMember.id);
+    // A pass-through carries on to the block the name sits in: the destination.
+    if (does === 'pass-through') return;
+    event.stopPropagation();
+    if (does === 'select') onSelectCrewMember(crewMember.id);
+    else onDeselect();
   };
 
-  /** A destination was clicked while a Crew Member is selected: they go there. */
-  const moveSelectedTo = (to: MoveTo) => (moving ? () => onMoveCrewMember(selected.id, to) : undefined);
+  /** A destination was clicked with a Crew Member picked up to move: they go there. */
+  const moveSelectedTo = (to: MoveTo) =>
+    selection.mode === 'moving' ? () => move(selection.crewMember.id, to) : undefined;
 
   /**
-   * A name: a grey chip with a dot of the Crew Member's color (a Foreman's is
-   * black), with their Person Tasks, if any, under the name in the same chip.
+   * While someone's panel is open, a click anywhere outside their chip and
+   * the field under it closes it: a card, the header, the empty page. A click
+   * on another name is left to select that name instead.
    */
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onClick = (event: globalThis.MouseEvent) => {
+      // The path as it was when clicked: a × or a task tapped to change it may be gone by now.
+      const inside = event
+        .composedPath()
+        .some((at) => at instanceof Element && at.matches('.person-open, .person-panel, .name'));
+      if (inside) return;
+      onDeselect();
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, [panelOpen, onDeselect]);
+
+  /** A name: the chip (`NameChip`), to click or drag. */
   const name = (crewMember: CrewMember, personTasks: string[] = []) => (
     <button
       type="button"
-      className={`name${crewMember.foreman ? ' name-foreman' : ''}${
-        crewMember.id === selected?.id ? ' name-selected' : ''
-      }`}
+      className={nameClass(crewMember, crewMember.id === selected?.id)}
       aria-pressed={crewMember.id === selected?.id}
       onClick={(event) => onNameClick(crewMember, event)}
       {...drag.nameProps(crewMember.id)}
-      onDoubleClick={() => onMoveCrewMember(crewMember.id, NOT_PLACED)}
     >
-      <span className={`name-dot dot-${crewMember.color}`} aria-hidden="true" />
-      <span className="name-lines">
-        <span className="name-text">{crewMember.name}</span>
-        {personTasks.map((task, index) => (
-          <span key={index} className="name-sub">
-            {task}
-          </span>
-        ))}
-      </span>
+      <NameLines crewMember={crewMember} personTasks={personTasks} />
     </button>
   );
 
+  /** The selected Crew Member with a Placement, whose panel is open; none while their name is dragged. */
+  const open = selection.mode === 'panel' && !drag.dragging ? selection.placed : undefined;
+  /** An edit to the open Crew Member's own Note or Person Tasks. */
+  const editOpen = (edit: (crewMemberId: string) => ScheduleEdit) => {
+    if (open) onEdit(edit(open.crewMember.id));
+  };
+
+  const setNote = (text: string) => editOpen((crewMemberId) => ({ kind: 'set-note', crewMemberId, text }));
+  const addTask = (text: string) => editOpen((crewMemberId) => ({ kind: 'add-person-task', crewMemberId, text }));
+  const changeTask = (index: number, text: string) =>
+    editOpen((crewMemberId) => ({ kind: 'change-person-task', crewMemberId, index, text }));
+  const removeTask = (index: number) =>
+    editOpen((crewMemberId) => ({ kind: 'remove-person-task', crewMemberId, index }));
+
   /**
-   * What is only about the selected Crew Member, drawn right under their name
-   * (edged in the blue of their ring): their Person Tasks and the field to add
-   * one, with Add note beside Add task; or the Note being typed. Clicks here
-   * are about them, not a move to this card. Gone the moment their name starts
-   * to be dragged, so it never travels with it.
+   * Under the open Crew Member's chip (edged in the blue of their ring): one
+   * field with Add task and Add note. Gone the moment their name starts to be
+   * dragged, so it never travels with it.
    */
-  const personPanel = selectedPlaced && !drag.dragging && (
+  const personPanel = open && (
     <li className="person-panel" onClick={(event) => event.stopPropagation()}>
-      {typingNote ? (
-        <NoteEditor
-          key={selectedPlaced.crewMember.id}
-          crewMemberName={selectedPlaced.crewMember.name}
-          note={selectedPlaced.note}
-          onSave={onSaveNote}
-          onClear={onClearNote}
-          onCancel={onDeselect}
-        />
-      ) : (
-        <PersonTasks
-          crewMember={selectedPlaced.crewMember}
-          tasks={selectedPlaced.personTasks ?? []}
-          onAdd={onAddPersonTask}
-          onChange={onChangePersonTask}
-          onRemove={onRemovePersonTask}
-          beside={
-            <button type="button" className="person-note-button" onClick={onEditNote}>
-              {selectedPlaced.note ? 'Change note' : 'Add note'}
-            </button>
-          }
-        />
-      )}
+      <PersonAdd crewMember={open.crewMember} onAddTask={addTask} onSetNote={setNote} />
     </li>
   );
 
@@ -306,20 +275,35 @@ export function ScheduleScreen({
             compact={!isJob}
             tasks={row.tasks}
             canEdit={!moving}
-            onCommit={(text) => onSetTasks(destination, text)}
+            onCommit={(text) => onEdit({ kind: 'set-tasks', destination, text })}
           />
         )}
         {row.who.length > 0 && (
           <ul className="names">
-            {row.who.map(({ crewMember, note, personTasks }) => (
-              <Fragment key={crewMember.id}>
-                <li className={note ? 'noted' : undefined}>
-                  {name(crewMember, personTasks)}
-                  {note && <span className="note">{note}</span>}
-                </li>
-                {crewMember.id === selectedPlaced?.crewMember.id && personPanel}
-              </Fragment>
-            ))}
+            {row.who.map(({ crewMember, note, personTasks = [] }) => {
+              // The open Crew Member's tasks and Note each get × in place.
+              const isOpen = crewMember.id === open?.crewMember.id;
+              return (
+                <Fragment key={crewMember.id}>
+                  <li className={`${note ? 'noted' : ''}${isOpen ? ' person-open' : ''}`.trim() || undefined}>
+                    {name(crewMember, isOpen ? [] : personTasks)}
+                    {isOpen ? (
+                      <PersonLines
+                        crewMember={crewMember}
+                        note={note}
+                        tasks={personTasks}
+                        onChange={changeTask}
+                        onRemove={removeTask}
+                        onSetNote={setNote}
+                      />
+                    ) : (
+                      note && <span className="note">{note}</span>
+                    )}
+                  </li>
+                  {isOpen && personPanel}
+                </Fragment>
+              );
+            })}
           </ul>
         )}
         {moveHere(row.key)}
@@ -340,7 +324,7 @@ export function ScheduleScreen({
    * the work can be typed first. Either way the card's heading gets the focus.
    */
   const tapFolded = (row: ScheduleRow) => {
-    if (moving) onMoveCrewMember(selected.id, row.destination);
+    if (selection.mode === 'moving') move(selection.crewMember.id, row.destination);
     else onOpenJob(row.key);
     setFocusJob(row.key);
   };
@@ -384,6 +368,7 @@ export function ScheduleScreen({
                         aria-label={inHand ? `Put ${inHand.crewMember.name} on ${title}` : `Open ${title}`}
                         onClick={() => tapFolded(row)}
                         {...drag.dropProps(row.key)}
+                        data-drop-grows
                       >
                         {title}
                       </button>
@@ -396,9 +381,9 @@ export function ScheduleScreen({
           <DayNotes
             key={view.date}
             notes={view.dayNotes}
-            onAdd={onAddDayNote}
-            onChange={onChangeDayNote}
-            onRemove={onRemoveDayNote}
+            onAdd={(text) => onEdit({ kind: 'add-day-note', text })}
+            onChange={(index, text) => onEdit({ kind: 'change-day-note', index, text })}
+            onRemove={(index) => onEdit({ kind: 'remove-day-note', index })}
           />
         </div>
         <div className="side" data-motion-area>

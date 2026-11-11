@@ -278,7 +278,7 @@ export type MoveTo = Destination | typeof NOT_PLACED;
 
 /**
  * Moves a Crew Member, however the Scheduler did it (a click-click move, a
- * drop, a double-click): onto a Job or Standing Row (`placeCrewMember`), or to
+ * drop): onto a Job or Standing Row (`placeCrewMember`), or to
  * Not Placed (`returnToNotPlaced`). If they are already there, the same Daily
  * Schedule is returned unchanged.
  */
@@ -368,13 +368,6 @@ export function setNote(schedule: DailySchedule, crewMemberId: string, text: str
     ),
   };
 }
-
-/**
- * Clears the Note on a Crew Member's Placement. If there is no Note, the same
- * Daily Schedule is returned unchanged.
- */
-export const clearNote = (schedule: DailySchedule, crewMemberId: string): DailySchedule =>
-  setNote(schedule, crewMemberId, '');
 
 // ---------------------------------------------------------------------------
 // Person Tasks
@@ -471,6 +464,49 @@ export function changeDayNote(schedule: DailySchedule, index: number, text: stri
 /** Removes one Day Note, by its place in the list. */
 export const removeDayNote = (schedule: DailySchedule, index: number): DailySchedule =>
   changeDayNote(schedule, index, '');
+
+// ---------------------------------------------------------------------------
+// Edits: every change the Scheduler can make to a Daily Schedule
+// ---------------------------------------------------------------------------
+
+/** One change the Scheduler made, as the screen reports it. */
+export type ScheduleEdit =
+  | { kind: 'move'; crewMemberId: string; to: MoveTo }
+  | { kind: 'set-tasks'; destination: Destination; text: string }
+  | { kind: 'set-note'; crewMemberId: string; text: string }
+  | { kind: 'add-person-task'; crewMemberId: string; text: string }
+  | { kind: 'change-person-task'; crewMemberId: string; index: number; text: string }
+  | { kind: 'remove-person-task'; crewMemberId: string; index: number }
+  | { kind: 'add-day-note'; text: string }
+  | { kind: 'change-day-note'; index: number; text: string }
+  | { kind: 'remove-day-note'; index: number };
+
+/**
+ * The Daily Schedule after one edit, by the rule for it. Returns the same
+ * Daily Schedule when the edit changes nothing.
+ */
+export function applyEdit(schedule: DailySchedule, edit: ScheduleEdit): DailySchedule {
+  switch (edit.kind) {
+    case 'move':
+      return moveCrewMember(schedule, edit.crewMemberId, edit.to);
+    case 'set-tasks':
+      return setTasks(schedule, edit.destination, edit.text);
+    case 'set-note':
+      return setNote(schedule, edit.crewMemberId, edit.text);
+    case 'add-person-task':
+      return addPersonTask(schedule, edit.crewMemberId, edit.text);
+    case 'change-person-task':
+      return changePersonTask(schedule, edit.crewMemberId, edit.index, edit.text);
+    case 'remove-person-task':
+      return removePersonTask(schedule, edit.crewMemberId, edit.index);
+    case 'add-day-note':
+      return addDayNote(schedule, edit.text);
+    case 'change-day-note':
+      return changeDayNote(schedule, edit.index, edit.text);
+    case 'remove-day-note':
+      return removeDayNote(schedule, edit.index);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Dates
