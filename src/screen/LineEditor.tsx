@@ -15,7 +15,7 @@ interface LineEditorProps {
   keepOpen?: boolean;
   autoFocus?: boolean;
   maxLength?: number;
-  /** "note": the text in the red of a Note. */
+  /** "note": the text in the dark ink of a Note. */
   tone?: 'note';
   /**
    * A second button after the first, handing the same text to another

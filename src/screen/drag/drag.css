@@ -29,27 +29,25 @@ body[data-name-dragging] * {
 }
 
 /* The lifted copy that follows the pointer: raised off the page (a little
-   larger, with a shadow under it). It lets the pointer through, so what is
-   under it can be found. Its place is set from the pointer, in script, as
-   `translate`; the lift animates only `transform` and `opacity`.
-
-   It is a copy of the name as it looked, classes and all (it may have been
-   the selected one), so what makes it float over the page is `!important`:
-   whatever else it carries, it is fixed to the window, above everything, and
-   can never be part of the page or make it longer. */
+   larger, with a shadow under it), ringed as the name in hand. It lets the
+   pointer through, so what is under it can be found. Its place is set from
+   the pointer, in script, as `translate`; the lift animates only `transform`.
+   Inside it is the name drawn just as on the board. */
 .name-drag-overlay {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  z-index: var(--z-dragged) !important;
-  box-sizing: border-box;
-  margin: 0 !important;
-  pointer-events: none !important;
-  opacity: 1;
-  box-shadow: var(--ring-selected) !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-dragged);
+  border-radius: var(--radius-chip);
+  pointer-events: none;
+  box-shadow: var(--ring-selected);
   transform: scale(1.05);
   animation: name-lift var(--move-duration) var(--move-ease);
   will-change: translate, transform;
+}
+
+.name-drag-overlay > .name {
+  box-shadow: none;
 }
 
 /* Its shadow, on a layer of its own so it can fade in without being redrawn. */

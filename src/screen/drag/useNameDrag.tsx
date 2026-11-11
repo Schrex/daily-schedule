@@ -42,21 +42,9 @@ export interface Dragging {
   over: DropKey | null;
 }
 
-/** What the name looked like when the drag began; the lifted copy is drawn from it. */
-interface Lifted {
-  className: string;
-  text: string;
-  /** The Person Tasks under the name. */
-  subs: string[];
-  /** The class of its dot, for its color. */
-  dot: string;
-  width: number;
-  height: number;
-}
-
 export interface NameDragOptions {
-  /** False while names may not be dragged (a Note is being typed). */
-  enabled: boolean;
+  /** The name as it is drawn on the board, for the lifted copy that follows the pointer. */
+  drawLifted: (crewMemberId: string) => ReactNode;
   /** A name was let go over a destination. Not called for a drop outside one, or after Escape. */
   onDrop: (crewMemberId: string, over: DropKey) => void;
   /**
@@ -143,13 +131,14 @@ function swallowNextClick(): void {
 }
 
 export function useNameDrag({
-  enabled,
+  drawLifted,
   onDrop,
   onLetGo,
   onShakyDoubleClick,
 }: NameDragOptions): NameDragHandle {
   const [dragging, setDragging] = useState<Dragging | null>(null);
-  const [lifted, setLifted] = useState<Lifted | null>(null);
+  /** How wide the name was when it was lifted: the copy is drawn as wide. */
+  const [liftedWidth, setLiftedWidth] = useState<number | null>(null);
 
   /** The drag as it stands this instant; state only catches up at the next draw. */
   const drag = useRef<NameDrag>(idle);
@@ -185,7 +174,7 @@ export function useNameDrag({
     setDragging(
       next.kind === 'dragging' ? { crewMemberId: next.crewMemberId, over: next.over } : null,
     );
-    if (next.kind !== 'dragging') setLifted(null);
+    if (next.kind !== 'dragging') setLiftedWidth(null);
     document.body.toggleAttribute('data-name-dragging', next.kind === 'dragging');
   };
 
@@ -204,14 +193,11 @@ export function useNameDrag({
     show(cancel(was));
   };
 
-  // Names can no longer be dragged (a Note is now being typed), or the screen is gone.
-  useEffect(() => {
-    if (!enabled) end();
-  }, [enabled]);
+  // The screen is gone: so is any drag.
   useEffect(() => end, []);
 
   const onPointerDown = (crewMemberId: string, event: ReactPointerEvent<HTMLElement>) => {
-    if (!enabled || event.button !== 0 || !event.isPrimary || drag.current.kind !== 'idle') return;
+    if (event.button !== 0 || !event.isPrimary || drag.current.kind !== 'idle') return;
     // A finger scrolls; it does not pick names up.
     if (event.pointerType === 'touch') return;
 
@@ -234,21 +220,10 @@ export function useNameDrag({
         // Still within a shaky click of where it was pressed: not a drag yet.
         if (moveTo(was, pointer.current, null).kind !== 'dragging') return;
 
-        // The drag begins: lift a copy of the name as it looks right now.
+        // The drag begins: lift a copy of the name, as wide as it is, held where it was pressed.
         const box = source.getBoundingClientRect();
         grip.current = { x: at.x - box.left, y: at.y - box.top };
-        setLifted({
-          className: source.className,
-          // The name, and any Person Tasks under it, as they are drawn.
-          text: source.querySelector('.name-text')?.textContent ?? source.textContent ?? '',
-          dot: source.querySelector('.name-dot')?.className ?? 'name-dot',
-          // Read from the whole chip: a selected name's tasks sit beside its button, not in it.
-          subs: [...(source.closest('li') ?? source).querySelectorAll('[data-sub]')].map(
-            (sub) => sub.getAttribute('data-sub') ?? '',
-          ),
-          width: box.width,
-          height: box.height,
-        });
+        setLiftedWidth(box.width);
         swallowNextClick();
         releaseHeights = holdDestinationHeights();
         // A row out of sight is reached by holding the name at the edge of the schedule.
@@ -333,27 +308,10 @@ export function useNameDrag({
   }, []);
 
   const overlay =
-    dragging && lifted
+    dragging && liftedWidth !== null
       ? createPortal(
-          <div
-            ref={placeOverlay}
-            className={`${lifted.className} name-drag-overlay`}
-            style={{ width: lifted.width, height: lifted.height }}
-            aria-hidden="true"
-          >
-            <span className="name-head">
-              <span className={lifted.dot} />
-              <span className="name-text">{lifted.text}</span>
-            </span>
-            {lifted.subs.length > 0 && (
-              <span className="name-subs">
-                {lifted.subs.map((sub, index) => (
-                  <span key={index} className="name-sub">
-                    {sub}
-                  </span>
-                ))}
-              </span>
-            )}
+          <div ref={placeOverlay} className="name-drag-overlay" style={{ width: liftedWidth }} aria-hidden="true">
+            {drawLifted(dragging.crewMemberId)}
           </div>,
           document.body,
         )
