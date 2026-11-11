@@ -64,8 +64,9 @@ export const PALETTE = {
 /**
  * The role colours: the dot beside a Crew Member's name on the board and in
  * the picture. Operator blue, driver orange, laborer green (stored as
- * "yellow"), mechanic red; a Foreman's chip is dark with a white dot. Each is
- * at least 3:1 against the grey chip (WCAG AA for a non-text mark).
+ * "yellow"), mechanic red, and gunmetal: a blue-grey kept clearly lighter
+ * than the black dot. A Foreman's chip is dark with a white dot. Each is at
+ * least 3:1 against the grey chip (WCAG AA for a non-text mark).
  */
 export const CREW_DOTS: Record<Color, string> = {
   grey: '#1a1a1a',
@@ -73,6 +74,7 @@ export const CREW_DOTS: Record<Color, string> = {
   orange: '#d9620b',
   yellow: '#2f9e5b',
   red: '#e02020',
+  gunmetal: '#5f6b75',
 };
 
 /** The fill of a Crew Member's name on the settings page, by their color. */
@@ -82,6 +84,7 @@ export const CREW_COLORS: Record<Color, string> = {
   orange: '#f7c59a',
   yellow: '#cfeedd',
   red: '#b8322a',
+  gunmetal: '#5f6b75',
 };
 
 /** What a color is called where the Scheduler picks one: "grey" is drawn near-black. */
@@ -91,11 +94,12 @@ export const COLOR_NAMES: Record<Color, string> = {
   orange: 'Orange',
   yellow: 'Green',
   red: 'Red',
+  gunmetal: 'Gunmetal',
 };
 
-/** The text on a name: white on the dark colors (black, red), ink on the lighter ones. */
+/** The text on a name: white on the dark colors (black, red, gunmetal), ink on the lighter ones. */
 export const crewInk = (color: Color): string =>
-  color === 'red' || color === 'grey' ? PALETTE.paper : PALETTE.ink;
+  color === 'red' || color === 'grey' || color === 'gunmetal' ? PALETTE.paper : PALETTE.ink;
 
 /**
  * Hands the palette to the style sheets: `--ink`, `--alert-wash`, ... and the
