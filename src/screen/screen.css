@@ -607,13 +607,15 @@
 }
 
 
-/* --- The Tasks: plain lines under the name, ruled off from the names ---- */
+/* --- The Tasks: plain lines under the name, ruled off from the names ----
+   They line up with the names below: each bullet centred under the color
+   dots, the text starting where the names start. */
 
 .tasks-box {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: 0 0 0.625rem;
+  padding: 0 0 0.625rem 2.25rem;
   margin-bottom: var(--space-1);
   border: 0;
   border-bottom: var(--hairline);
@@ -624,23 +626,22 @@
 }
 
 .task {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
+  position: relative;
   font-size: 0.9375rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
-/* A small round bullet before each Task, level with the
-   first line, so a Task too long for its line still reads as one. */
+/* A small round bullet before each Task, level with the first line (so a
+   Task too long for its line still reads as one), under the color dots. */
 .bullet {
-  flex: 0 0 0.3125rem;
+  position: absolute;
+  top: calc(0.7em - 0.15625rem);
+  left: calc(1.1875rem - 2.25rem - 0.15625rem);
   width: 0.3125rem;
   height: 0.3125rem;
-  margin-top: 0.55em;
   border-radius: 50%;
-  background: var(--ink-soft);
+  background: var(--muted);
 }
 
 /* Shop's and Trucking's: smaller. */
