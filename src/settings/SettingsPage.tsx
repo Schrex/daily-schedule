@@ -16,6 +16,14 @@ import {
 } from '../schedule-rules';
 import { COLOR_NAMES } from '../palette';
 import type { ScheduleStore } from '../storage';
+import {
+  channelLooksRight,
+  cleanSlackSettings,
+  loadSlackSettings,
+  saveSlackSettings,
+  slackIsSetUp,
+  type SlackSettings,
+} from '../send/slackSettings';
 
 /** What is open over the page: one Crew Member, one Job, or a new one of either. */
 type Open =
@@ -107,6 +115,8 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
           <span aria-hidden="true">+</span> Add a Job
         </button>
       </section>
+
+      <SlackSection />
 
       {openCrewMember && (
         <CrewMemberPanel
@@ -489,5 +499,75 @@ function NewJobPanel({
         </button>
       </div>
     </Panel>
+  );
+}
+
+/**
+ * Where "Send to crew" posts the picture: the Slack relay's address, its send
+ * key and the Slack channel. Saved on this computer when a box is left. Until
+ * the address and key are both filled in, Send copies the picture instead.
+ */
+function SlackSection() {
+  const [settings, setSettings] = useState<SlackSettings>(() => loadSlackSettings());
+  const [saved, setSaved] = useState(false);
+  const set = (changes: Partial<SlackSettings>) => {
+    setSettings((current) => ({ ...current, ...changes }));
+    setSaved(false);
+  };
+  const save = () => {
+    const clean = cleanSlackSettings(settings);
+    setSettings(clean);
+    try {
+      saveSlackSettings(clean);
+      setSaved(true);
+    } catch (error) {
+      console.error('Could not save the Slack settings', error);
+    }
+  };
+
+  const ready = slackIsSetUp(settings);
+  const channelOk = channelLooksRight(settings.channel);
+
+  return (
+    <section aria-labelledby="slack-heading">
+      <h2 id="slack-heading">Slack</h2>
+      <p className="settings-hint">
+        {ready
+          ? '"Send to crew" posts the picture straight to the Slack channel below.'
+          : 'Until these are filled in, "Send to crew" copies the picture for you to paste into Slack.'}
+      </p>
+      <Field
+        label="Slack relay address"
+        value={settings.relayUrl}
+        onChange={(relayUrl) => set({ relayUrl })}
+        onLeave={save}
+      />
+      <label className="settings-field">
+        <span className="settings-label">Send key</span>
+        <input
+          type="password"
+          autoComplete="off"
+          value={settings.sendKey}
+          onChange={(event) => set({ sendKey: event.target.value })}
+          onBlur={save}
+        />
+      </label>
+      <Field
+        label="Slack channel ID (in Slack: the channel name, then the foot of About)"
+        value={settings.channel}
+        onChange={(channel) => set({ channel })}
+        onLeave={save}
+      />
+      {!channelOk && (
+        <p className="settings-hint" role="alert">
+          A channel ID looks like C0CHSMJFFPS. Leave it empty to use the relay&apos;s own channel.
+        </p>
+      )}
+      {saved && channelOk && (
+        <p className="settings-hint" role="status">
+          Saved. Reload the Daily Schedule for it to take effect.
+        </p>
+      )}
+    </section>
   );
 }

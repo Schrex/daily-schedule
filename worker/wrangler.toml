@@ -1,0 +1,18 @@
+# The Slack relay for the Daily Schedule (see worker/src/relay.ts and docs/slack-setup.md).
+# Deploy from this folder with:  npx wrangler deploy
+name = "daily-schedule-slack"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+# Served at https://daily-schedule-slack.<account>.workers.dev; no extra preview addresses.
+workers_dev = true
+preview_urls = false
+
+[vars]
+# The channel the picture goes to when Settings names none.
+SLACK_CHANNEL = "C0CHSMJFFPS"
+# The address of the Scheduler's screen, e.g. "https://schedule.example.com". "*" allows any.
+ALLOWED_ORIGIN = "https://daily-schedule.schrex.workers.dev"
+
+# Secrets, set once with `npx wrangler secret put <NAME>` (never written here):
+#   SLACK_BOT_TOKEN  the Slack app's Bot User OAuth Token (xoxb-…)
+#   SEND_KEY         a long random password the Settings page will also hold
