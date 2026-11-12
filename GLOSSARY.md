@@ -61,7 +61,7 @@ A free-text line about one placed Crew Member only, for one day ("Dewatering", "
 _Avoid_: Personal note, sub-task
 
 **Day Note**:
-A free-text remark for everyone on one Daily Schedule ("Brody may have to go to TIUNY after Wintergarden"), shown under the Jobs as Notes (and across the top of the crew picture).
+A free-text remark for everyone on one Daily Schedule ("Brody may have to go to TIUNY after Wintergarden"), shown under the Jobs as Notes (and across the top of the crew picture and the Office TV).
 _Avoid_: Announcement, comment
 
 **Send**:
