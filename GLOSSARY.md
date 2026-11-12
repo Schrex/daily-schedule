@@ -45,7 +45,7 @@ One Crew Member on one Job or Standing Row for one day. A Crew Member has at mos
 _Avoid_: Assignment, allocation
 
 **Not Placed**:
-The state of a Crew Member who has no Placement yet on the Daily Schedule being built.
+The state of a Crew Member who has no Placement yet on the Daily Schedule being built. The Not Placed list is in roster order until the Scheduler drags names into an order of their own, which the next day's Daily Schedule keeps.
 _Avoid_: Unassigned, available
 
 **Task**:

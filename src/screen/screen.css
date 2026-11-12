@@ -327,6 +327,25 @@
   }
 }
 
+/* While a name is dragged with the mouse, the board stays calm, as in Windows
+   11: no tint on every place and no "Move Mike here" (the open slot already
+   shows where it lands). Only the place under the pointer lifts a little,
+   with a soft edge of the selection blue. */
+body[data-name-dragging] .block-target {
+  background: var(--paper);
+}
+
+body[data-name-dragging] .block-target .move-here {
+  display: none;
+}
+
+body[data-name-dragging] .destination[data-drop-over] {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--select) 45%, transparent),
+    var(--elevation-2);
+  transition: box-shadow var(--ease);
+}
+
 /* --- Names: one to a line, all the same width ----------------------------- */
 
 .names {
