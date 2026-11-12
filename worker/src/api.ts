@@ -1,9 +1,7 @@
 import type { Role } from '../../shared';
 import type { Env } from './app';
 import type { D1Database } from './d1';
-import { handleImport } from './import';
 import { refuse } from './refuse';
-import { saveRoster } from './roster';
 import { isDailySchedule, isDate, isRoster } from './shapes';
 import { whoIsCalling } from './signIn';
 
@@ -18,8 +16,6 @@ import { whoIsCalling } from './signIn';
  *   GET /schedules          the saved dates, earliest first
  *   GET /schedules/:date    that Daily Schedule, or null
  *   PUT /schedules/:date    saves it (its date must be :date)  editors
- *   POST /import            replaces everything from an Export file  editors
- *                           (409 once a Send is recorded; import.ts)
  *
  * Editors are the people listed as `editor`; everyone else signed in to the
  * hub is a viewer, sent to the Office TV by the pages.
@@ -32,11 +28,6 @@ export async function handleApi(request: Request, env: Env, path: string): Promi
   if (email === null) return refuse(401, 'You are not signed in.');
   const role = await roleOf(env.DB, email);
 
-  if (path === 'import' && request.method === 'POST') {
-    if (role !== 'editor') return refuse(403, 'Only an Editor can change the Daily Schedule.');
-    return handleImport(request, env.DB, email);
-  }
-
   const reading = request.method === 'GET';
   const writing = request.method === 'PUT';
   if (!reading && !writing) return refuse(405, 'That method is not allowed here.');
@@ -48,7 +39,13 @@ export async function handleApi(request: Request, env: Env, path: string): Promi
     if (reading) return Response.json(await readBody(env.DB.prepare('SELECT body FROM roster WHERE id = 1')));
     const roster = await bodyOf(request);
     if (!isRoster(roster)) return refuse(400, 'That is not a Roster.');
-    await saveRoster(env.DB, roster, new Date().toISOString(), email).run();
+    // There is one Roster (row 1); a save replaces it, with who saved it and when.
+    await env.DB.prepare(
+      'INSERT INTO roster (id, body, saved_at, saved_by) VALUES (1, ?, ?, ?) ' +
+        'ON CONFLICT (id) DO UPDATE SET body = excluded.body, saved_at = excluded.saved_at, saved_by = excluded.saved_by',
+    )
+      .bind(JSON.stringify(roster), new Date().toISOString(), email)
+      .run();
     return new Response(null, { status: 204 });
   }
 

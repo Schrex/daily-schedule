@@ -10,8 +10,9 @@ export const NEW_ADDRESS = 'https://app.schreiberexcavating.com/daily-schedule/'
 /**
  * The old address's only page: a notice that the Daily Schedule has moved,
  * with a link, and "Download this computer's schedules", which saves this
- * computer's Roster, Daily Schedules and Slack settings as an Export file to
- * upload in Settings at the new address.
+ * computer's Roster, Daily Schedules and Slack settings as an Export file: a
+ * backup and a reference. The new address doesn't take the file; the data
+ * there is entered in the app itself.
  */
 export function ExportPage({ store, slack }: { store: ScheduleStore; slack: SlackSettings }) {
   const [count, setCount] = useState<number | null>(null);
@@ -47,7 +48,7 @@ export function ExportPage({ store, slack }: { store: ScheduleStore; slack: Slac
       </p>
 
       <section aria-labelledby="export-heading">
-        <h2 id="export-heading">Take your schedules with you</h2>
+        <h2 id="export-heading">Keep a copy of your schedules</h2>
         <p className="settings-hint">
           {count === null
             ? 'Looking for the schedules saved on this computer…'
@@ -56,8 +57,8 @@ export function ExportPage({ store, slack }: { store: ScheduleStore; slack: Slac
               : `${count} Daily Schedule${count === 1 ? ' is' : 's are'} saved on this computer, with the Roster and the Slack settings.`}
         </p>
         <p className="settings-hint">
-          Download the Export file, then open Settings at the new address and choose &ldquo;Upload the Export
-          file&rdquo;.
+          Download the Export file to keep as a backup. The new address doesn&apos;t read it: enter the Roster
+          and the Daily Schedules there in the app.
         </p>
         <div className="settings-buttons">
           <button type="button" className="button button-primary" onClick={download}>
