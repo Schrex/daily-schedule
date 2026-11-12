@@ -386,6 +386,31 @@ function fit(
   return { scale: SMALLEST, layout: layOut(view, roster, ctx, look, PICTURE_SIZE / SMALLEST) };
 }
 
+/**
+ * How wide the right column (Shop, Trucking, Off Work) is, as a share of a
+ * Job column: `YARD_SHARE`, or wider when a name in it would not fit at its
+ * full size (on a quiet day the picture is drawn larger, so the sheet, and the
+ * column, is narrower). Never wider than a Job column.
+ */
+function yardShare(
+  yardRows: ScheduleRow[],
+  ctx: CanvasRenderingContext2D,
+  look: Look,
+  jobColumns: number,
+  /** The width the columns share, the gaps between them taken out. */
+  room: number,
+): number {
+  setType(ctx, look.type.name);
+  const widestName = Math.max(
+    0,
+    ...yardRows.flatMap((row) => row.who.map(({ crewMember }) => ctx.measureText(crewMember.name).width)),
+  );
+  const needed = Math.ceil(widestName) + 2 * NAME_PAD_X + DOT + DOT_GAP + 2 * CARD_PAD;
+  // The column is share × room / (jobColumns + share) wide; the share at which that is `needed`:
+  const share = room > needed ? (jobColumns * needed) / (room - needed) : 1;
+  return Math.min(1, Math.max(YARD_SHARE, share));
+}
+
 /** Everything laid out on a sheet `sheetWidth` wide, at the usual sizes. */
 function layOut(
   view: CrewView,
@@ -410,8 +435,12 @@ function layOut(
   const jobRows = view.rows.filter((row) => row.destination.kind === 'job');
   const yardRows = view.rows.filter((row) => row.destination.kind !== 'job');
   const jobColumns = Math.max(1, Math.min(JOB_COLUMNS, jobRows.length));
-  const shares = [...Array<number>(jobColumns).fill(1), ...(yardRows.length > 0 ? [YARD_SHARE] : [])];
-  const unit = (contentWidth - (shares.length - 1) * COLUMN_GAP) / shares.reduce((sum, share) => sum + share, 0);
+  const gaps = (jobColumns + (yardRows.length > 0 ? 1 : 0) - 1) * COLUMN_GAP;
+  const shares = [
+    ...Array<number>(jobColumns).fill(1),
+    ...(yardRows.length > 0 ? [yardShare(yardRows, ctx, look, jobColumns, contentWidth - gaps)] : []),
+  ];
+  const unit = (contentWidth - gaps) / shares.reduce((sum, share) => sum + share, 0);
   let left = MARGIN;
   const columns = shares.map((share) => {
     const column = { left, width: share * unit, bottom: top };
