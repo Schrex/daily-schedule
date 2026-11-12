@@ -23,6 +23,17 @@ pages read and save them through the Worker's API under `/daily-schedule/api/`
    `--command "DELETE FROM people WHERE email = 'name@example.com'"`. To see the list:
    `--command "SELECT * FROM people"`. Never write anyone's email in this repository.
 
+## Sign-in
+
+People sign in to the hub (app.schreiberexcavating.com); the pages reuse that sign-in on the
+shared address, through `supabase-js` configured for the hub's project in
+`src/signIn/hubConfig.ts` (its URL and publishable key, public by design). It is used **for
+sign-in only**: a test fails if anything in `src/` asks the hub's Supabase for data. The pages
+send the sign-in's token with every API call, and the Worker checks it itself
+(`worker/src/signIn.ts`) against the hub's published ES256 keys (`HUB_AUTH_URL` in
+`wrangler.jsonc`), then looks the email up in `people`. Each page first asks `GET /api/me`: an
+editor gets the page, a viewer is sent to the Office TV, anyone else gets a plain message.
+
 ## Running it locally
 
 Locally, the Worker uses a **development-only sign-in**: it takes every request to come from the
