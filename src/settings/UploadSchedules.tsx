@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent } from 'react';
 import { uploadExportFile } from '../exportFile';
+import { signedInFetch } from '../signIn/openPage';
 
 /** The query the page reloads with after an upload: how many Daily Schedules were saved. */
 const UPLOADED = 'uploaded';
@@ -30,7 +31,7 @@ export function UploadSchedules() {
     setBusy(true);
     setMessage(null);
     try {
-      const { schedules } = await uploadExportFile(await file.text());
+      const { schedules } = await uploadExportFile(await file.text(), { fetch: signedInFetch });
       const url = new URL(window.location.href);
       url.searchParams.set(UPLOADED, String(schedules));
       window.location.replace(url);
