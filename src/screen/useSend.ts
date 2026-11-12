@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   crewView,
-  fullDate,
+  sendTitle,
   lastSentAt,
   type CrewView,
   type DailySchedule,
@@ -80,7 +80,7 @@ export function useSend({
     inFlight.current = true;
     setSending(true);
     try {
-      const title = `${view.updated ? 'UPDATED: ' : ''}Daily Schedule for ${fullDate(view.date)}`;
+      const title = sendTitle(view.date, view.updated);
       await delivery.deliver(await renderCrewPicture(view, pressedAt, roster), title);
     } catch (error) {
       console.error('Could not send the Daily Schedule', error);

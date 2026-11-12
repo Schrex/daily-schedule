@@ -667,6 +667,22 @@ export function fullDate(date: ScheduleDate): string {
 }
 
 /**
+ * The line the crew picture is sent with, as the Slack message reads and a
+ * phone's notification shows it: "Schedule for Thursday, Nov 12", or
+ * "UPDATED: Schedule for Thursday, Nov 12" when it replaces one sent earlier.
+ */
+export function sendTitle(date: ScheduleDate, updated: boolean): string {
+  const [year = 0, month = 1, day = 1] = date.split('-').map(Number);
+  const when = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+  return `${updated ? 'UPDATED: ' : ''}Schedule for ${when}`;
+}
+
+/**
  * When the crew picture was made, as its quiet line in the head says it:
  * "Sent Wed, Nov 11 · 6:42 PM", on the Scheduler's own clock. Sending the
  * same date again just gets a new time.

@@ -43,8 +43,10 @@ describe('the Slack relay', () => {
     expect(form(ask!.init).get('filename')).toBe('Daily-Schedule-for-Thursday.png');
     expect(new Uint8Array(put!.init.body as Uint8Array)).toEqual(png);
     expect(form(complete!.init).get('channel_id')).toBe('C0CHSMJFFPS');
+    // The title is said once, as the message; the picture's caption does not repeat it.
+    expect(form(complete!.init).get('initial_comment')).toBe('Daily Schedule for Thursday');
     expect(JSON.parse(form(complete!.init).get('files')!)).toEqual([
-      { id: 'F123', title: 'Daily Schedule for Thursday' },
+      { id: 'F123', title: 'Tap to see it full size' },
     ]);
     expect((ask!.init.headers as Record<string, string>).Authorization).toBe('Bearer xoxb-test');
   });
