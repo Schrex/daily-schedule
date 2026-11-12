@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dailyScheduleFor,
   fullDate,
+  sendTitle,
   sentStamp,
   nextWorkingDay,
   scheduleDateOf,
@@ -695,6 +696,15 @@ describe('the full date', () => {
   it('spells out the weekday, month, day and year', () => {
     expect(fullDate('2026-11-10')).toBe('Tuesday, November 10, 2026');
     expect(fullDate('2027-01-01')).toBe('Friday, January 1, 2027');
+  });
+});
+
+describe('the line the crew picture is sent with', () => {
+  it('names the day and short date, without the year', () => {
+    expect(sendTitle('2026-11-12', false)).toBe('Schedule for Thursday, Nov 12');
+  });
+  it('starts with UPDATED when it replaces one sent earlier', () => {
+    expect(sendTitle('2026-11-12', true)).toBe('UPDATED: Schedule for Thursday, Nov 12');
   });
 });
 
