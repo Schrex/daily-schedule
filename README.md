@@ -1,5 +1,51 @@
 # Daily Schedule
 
+## Where things are saved
+
+The Roster and every Daily Schedule are kept in the Worker's D1 database (binding `DB`), and the
+pages read and save them through the Worker's API under `/daily-schedule/api/`
+(`worker/src/api.ts`). The schema is in `migrations/`. The database also holds the access list,
+`people`: each email is an `editor` (the Scheduler's screen and Settings) or a `viewer`.
+
+### Setting up the database (once)
+
+1. `npx wrangler d1 create daily-schedule`, and put the `database_id` it prints in `wrangler.jsonc`
+   in place of `REPLACE_WITH_DATABASE_ID`. Deploys fail until this is done.
+2. The tables are created by CI before the next deploy (or by hand:
+   `npx wrangler d1 migrations apply DB --remote`).
+3. Add the first editor (use the email they sign in to the hub with):
+
+   ```sh
+   npx wrangler d1 execute DB --remote --command "INSERT INTO people (email, role) VALUES ('name@example.com', 'editor')"
+   ```
+
+   The same command with `'viewer'` adds a viewer. To remove someone:
+   `--command "DELETE FROM people WHERE email = 'name@example.com'"`. To see the list:
+   `--command "SELECT * FROM people"`. Never write anyone's email in this repository.
+
+## Running it locally
+
+Locally, the Worker uses a **development-only sign-in**: it takes every request to come from the
+email in `DEV_AUTH_EMAIL`. Put it in `.dev.vars` (git-ignored; never in `wrangler.jsonc`):
+
+```sh
+echo "DEV_AUTH_EMAIL=you@example.com" > .dev.vars
+npx wrangler d1 migrations apply DB --local
+npx wrangler d1 execute DB --local --command "INSERT INTO people (email, role) VALUES ('you@example.com', 'editor')"
+npm run preview   # then open http://localhost:8787/daily-schedule/
+```
+
+The local database lives in `.wrangler/state/`. On first open, an editor gets the starter Roster and
+Daily Schedule.
+
+The Worker refuses to answer at all on `app.schreiberexcavating.com` or
+`daily-schedule.schrex.workers.dev` if `DEV_AUTH_EMAIL` is set, so it can never reach production.
+
+### Tests
+
+`npm test` runs the API and the storage tests against a real local D1 (Wrangler's test harness,
+`worker/src/testing/localD1.ts`, migrated from `migrations/`); no Cloudflare account is needed.
+
 ## CI
 
 Two GitHub Actions workflows in `.github/workflows/`:
@@ -10,7 +56,7 @@ Two GitHub Actions workflows in `.github/workflows/`:
 - **Deploy** (`deploy.yml`), on every merge to `main`: typecheck and tests, then the D1 migrations,
   then `npm run deploy` (the `daily-schedule` Worker). A failed migration stops the deploy.
   The Slack relay (`npm run deploy:relay`) is deployed only when its own files changed
-  (`worker/wrangler.toml` or relay code in `worker/src/`; see `.github/scripts/relay-changed.mjs`).
+  (`worker/wrangler.toml`, `worker/src/index.ts` or `worker/src/relay.ts`; see `.github/scripts/relay-changed.mjs`).
 
 ### Previews never touch production data
 

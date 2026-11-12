@@ -12,14 +12,14 @@ export function relayChanged(files) {
   return files.some(isRelayFile);
 }
 
+// The relay is its config and its two files (index.ts imports only relay.ts).
+// Everything else in worker/src is the app's Worker (app.ts, api.ts,
+// signIn.ts and the rest) or tests. If the relay ever imports another file,
+// add it here.
+const RELAY_FILES = ['worker/wrangler.toml', 'worker/src/index.ts', 'worker/src/relay.ts'];
+
 function isRelayFile(path) {
-  if (path === 'worker/wrangler.toml') return true;
-  if (!path.startsWith('worker/src/')) return false;
-  const name = path.slice('worker/src/'.length);
-  // The app's Worker (app.ts, app-index.ts) and every test are not the relay.
-  if (name.startsWith('app')) return false;
-  if (/\.test\.[cm]?[jt]s$/.test(name)) return false;
-  return true;
+  return RELAY_FILES.includes(path);
 }
 
 function changedFiles(before, after) {

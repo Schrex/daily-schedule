@@ -1,8 +1,20 @@
+import { handleApi } from './api';
+import type { D1Database } from './d1';
+
 /** The path the Daily Schedule owns on the hub's address. */
 export const BASE = '/daily-schedule';
 
+/** Where the API answers (see api.ts). */
+const API = `${BASE}/api/`;
+
 /** The hub's address, which forwards /daily-schedule and /daily-schedule/* here. */
 export const HUB_HOST = 'app.schreiberexcavating.com';
+
+/** The Daily Schedule's own address before the move (it stays on). */
+export const OLD_HOST = 'daily-schedule.schrex.workers.dev';
+
+/** Where the real Daily Schedule answers; the development sign-in is refused there. */
+const PRODUCTION_HOSTS = [HUB_HOST, OLD_HOST];
 
 /** The page files, as the Worker's assets binding serves them (built at the root). */
 export interface Assets {
@@ -11,6 +23,13 @@ export interface Assets {
 
 export interface Env {
   ASSETS: Assets;
+  /** The Roster, the Daily Schedules and the access list (migrations/). */
+  DB: D1Database;
+  /**
+   * The development-only sign-in: every request is taken to come from this
+   * email. Only ever set in local configuration (.dev.vars).
+   */
+  DEV_AUTH_EMAIL?: string;
 }
 
 export interface Options {
@@ -24,13 +43,19 @@ export interface Options {
 /** Answers every request the Daily Schedule Worker gets. */
 export async function handle(request: Request, env: Env, options: Options = {}): Promise<Response> {
   const url = new URL(request.url);
+  if (env.DEV_AUTH_EMAIL && PRODUCTION_HOSTS.includes(url.hostname)) {
+    // The development sign-in lets anyone in as that email: never in production.
+    return Response.json(
+      { error: 'The development sign-in (DEV_AUTH_EMAIL) is set on a production address; refusing to answer.' },
+      { status: 500 },
+    );
+  }
   if (url.pathname === BASE) {
     url.pathname = `${BASE}/`;
     return Response.redirect(url.toString(), 301);
   }
-  if (url.pathname.startsWith(`${BASE}/api/`)) {
-    // The API (the Roster, the Daily Schedules, sign-in) is routed here.
-    return Response.json({ error: 'Not found.' }, { status: 404 });
+  if (url.pathname.startsWith(API)) {
+    return handleApi(request, env, url.pathname.slice(API.length));
   }
   if (url.pathname.startsWith(`${BASE}/`)) {
     if (options.devServer) return env.ASSETS.fetch(request);
