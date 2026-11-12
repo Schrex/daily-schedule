@@ -1,4 +1,4 @@
-import { nameMove, type Seen } from './nameMove';
+import { cssTimeMs, nameMove, type Seen } from './nameMove';
 import './motion.css';
 
 /**
@@ -56,9 +56,9 @@ const AREA = '[data-motion-area]';
  */
 function timing(): { duration: number; easing: string } {
   const look = getComputedStyle(document.documentElement);
-  const duration = parseFloat(look.getPropertyValue('--move-duration'));
   return {
-    duration: Number.isFinite(duration) ? duration : 0,
+    // In seconds or milliseconds: the production build rewrites "300ms" as ".3s".
+    duration: cssTimeMs(look.getPropertyValue('--move-duration')),
     easing: look.getPropertyValue('--move-ease').trim(),
   };
 }

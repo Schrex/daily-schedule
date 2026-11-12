@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nameMove, type Seen } from './nameMove';
+import { cssTimeMs, nameMove, type Seen } from './nameMove';
 
 const table = 'the table';
 const notPlacedList = 'the Not Placed list';
@@ -50,5 +50,23 @@ describe('how a name gets from where it was seen to where it is now', () => {
 
   it('flies a lifted name home even when it is let go exactly over its place', () => {
     expect(nameMove(seen(260, 110, null), seen(260, 110, table)).kind).toBe('fly');
+  });
+});
+
+describe('a CSS time in milliseconds', () => {
+  it('reads milliseconds as written in the look', () => {
+    expect(cssTimeMs('300ms')).toBe(300);
+    expect(cssTimeMs(' 300ms ')).toBe(300);
+  });
+
+  it('reads seconds, as the production build rewrites them', () => {
+    expect(cssTimeMs('.3s')).toBe(300);
+    expect(cssTimeMs('0.25s')).toBe(250);
+    expect(cssTimeMs('0s')).toBe(0);
+  });
+
+  it('is no time at all when there is none, or it cannot be read', () => {
+    expect(cssTimeMs('')).toBe(0);
+    expect(cssTimeMs('fast')).toBe(0);
   });
 });
