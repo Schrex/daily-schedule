@@ -136,6 +136,7 @@ type Kind =
   | 'job'
   | 'yard'
   | 'count'
+  | 'number'
   | 'task'
   | 'yardTask'
   | 'name'
@@ -178,13 +179,15 @@ function readLook(): Look {
       date: type(display, 'display', 48, 'heading'),
       stamp: type(text, 'medium', 19),
       job: type(display, 'display', 42, 'heading'),
-      yard: type(display, 'display', 34, 'heading'),
-      count: type(text, 'strong', 17),
-      task: type(text, 'medium', 24),
-      yardTask: type(text, 'medium', 22),
+      yard: type(display, 'display', 32, 'heading'),
+      count: type(text, 'strong', 23),
+      number: type(text, 'strong', 23, 'small'),
+      // Tasks in regular weight so the names lead, as on the board; a Note medium.
+      task: type(text, 'body', 24),
+      yardTask: type(text, 'body', 22),
       name: type(text, 'strong', 27, 'name'),
-      personTask: type(text, 'medium', 22),
-      note: type(text, 'strong', 22),
+      personTask: type(text, 'body', 22),
+      note: type(text, 'medium', 22),
       notesTitle: type(display, 'display', 32, 'heading'),
       dayNote: type(text, 'body', 24),
     },
@@ -267,14 +270,15 @@ const TASKS_RULE_GAP = 14;
 const NAME_HEIGHT = 58;
 const NAME_GAP = 9;
 const NAME_PAD_X = 16;
-const DOT = 15;
+/** The color dot: nearly the name's size, as on the board (a 14px dot by a 15px name). */
+const DOT = 25;
 const DOT_GAP = 13;
 
 /**
  * A Task lines up with the names under it: its bullet centred under their
  * color dots, its text where their names start.
  */
-const BULLET = 8;
+const BULLET = 9;
 const BULLET_X = NAME_PAD_X + DOT / 2;
 const TEXT_INDENT = NAME_PAD_X + DOT + DOT_GAP;
 /** Person Tasks: bulleted lines under the name's line, in the same grey chip. From
@@ -284,7 +288,7 @@ const SUBS_PAD_TOP_GREY = -6;
 const SUBS_PAD_BOTTOM = 12;
 const SUB_LINE = 30;
 /** A task's bullet: a small grey dot centred under the color dot. */
-const SUB_BULLET = 6;
+const SUB_BULLET = 7;
 /** A Note: a soft yellow strip at the foot of the chip, its text lined up with the name. */
 const NOTE_LINE = 30;
 const NOTE_PAD_Y = 8;
@@ -446,6 +450,7 @@ function layOutCard(
   setType(ctx, look.type.count);
   const countWidth = Math.ceil(ctx.measureText(countText).width);
   // Room for the Job number after the name, so it never runs into the count.
+  setType(ctx, look.type.number);
   const numberWidth = number ? Math.ceil(ctx.measureText(number).width) + NUMBER_GAP : 0;
 
   // A word too long for the room beside the number and count makes the title
@@ -494,6 +499,13 @@ function layOutCard(
 function stackNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look, inner: number) {
   const names: NameBox[] = [];
   const textWidth = inner - 2 * NAME_PAD_X - DOT - DOT_GAP;
+  // One size for every name in the card: a name too long for its line makes
+  // them all a little smaller together, so no one name looks smaller than the rest.
+  setType(ctx, look.type.name);
+  const widest = row.who
+    .map(({ crewMember }) => crewMember.name)
+    .reduce((longest, name) => (ctx.measureText(name).width > ctx.measureText(longest).width ? name : longest), '');
+  const nameType = fitType(ctx, look.type.name, widest, textWidth);
   let y = 0;
 
   for (const { crewMember, note, personTasks = [] } of row.who) {
@@ -507,7 +519,7 @@ function stackNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look,
     const height = chipHeight + (noteLines.length > 0 ? 2 * NOTE_PAD_Y + noteLines.length * NOTE_LINE : 0);
     names.push({
       name: crewMember.name,
-      nameType: fitType(ctx, look.type.name, crewMember.name, textWidth),
+      nameType,
       dot: CREW_DOTS[crewMember.color],
       foreman: crewMember.foreman,
       subLines,
@@ -682,7 +694,7 @@ function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
   if (card.number) {
     const lastMiddle = headTop + (card.titleLines.length - 0.5) * line + 4;
     const numberRoom = inner + innerWidth - countWidth - 12 - (titleEnd + NUMBER_GAP);
-    setType(ctx, fitType(ctx, look.type.count, card.number, Math.max(0, numberRoom)));
+    setType(ctx, fitType(ctx, look.type.number, card.number, Math.max(0, numberRoom)));
     ctx.fillText(card.number, titleEnd + NUMBER_GAP, lastMiddle);
     setType(ctx, look.type.count);
   }

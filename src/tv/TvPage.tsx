@@ -227,7 +227,7 @@ function Card({ roster, row }: { roster: Roster; row: ScheduleRow }) {
         <span className="tv-card-count">{row.who.length}</span>
       </div>
       {row.tasks.length > 0 && (
-        <ul className="tv-tasks">
+        <ul className={`tv-tasks${isJob ? '' : ' tv-tasks-yard'}`}>
           {row.tasks.map((task, index) => (
             <li key={index}>{task}</li>
           ))}
@@ -258,8 +258,12 @@ function Card({ roster, row }: { roster: Roster; row: ScheduleRow }) {
 /** Narrower than this (a phone), the board is one column that scrolls instead of fitting the screen. */
 const NARROW = 700;
 
-/** The largest and smallest text the TV is set in, in CSS pixels. */
-const LARGEST = 40;
+/**
+ * The largest and smallest text the TV is set in, in CSS pixels. The largest
+ * is high enough for a quiet day to fill a 4K TV shown at full size; the
+ * width (`innerWidth / 48`) is what holds it back on a smaller screen.
+ */
+const LARGEST = 80;
 const SMALLEST = 8;
 
 /**
@@ -301,7 +305,11 @@ function useFit(dependencies: unknown[]) {
     window.addEventListener('resize', fit);
     // The type is fetched on first use; fit again once it is in.
     void document.fonts.ready.then(fit);
-    return () => window.removeEventListener('resize', fit);
+    return () => {
+      window.removeEventListener('resize', fit);
+      // Back to the usual size, for whatever shows next (the nothing-yet screen).
+      root.style.fontSize = '';
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies);
 
