@@ -28,7 +28,7 @@ function fakeSlack(complete: Record<string, unknown> = { ok: true }) {
 const form = (init: RequestInit) => new URLSearchParams(String(init.body));
 
 describe('the Slack relay', () => {
-  it('uploads the picture and shares it in the channel, titled', async () => {
+  it('uploads the picture and shares it in the channel, with no message, titled with the day', async () => {
     const slack = fakeSlack();
     const response = await handle(send(), env, slack.fetchImpl);
 
@@ -43,10 +43,11 @@ describe('the Slack relay', () => {
     expect(form(ask!.init).get('filename')).toBe('Daily-Schedule-for-Thursday.png');
     expect(new Uint8Array(put!.init.body as Uint8Array)).toEqual(png);
     expect(form(complete!.init).get('channel_id')).toBe('C0CHSMJFFPS');
-    // The title is said once, as the message; the picture's caption does not repeat it.
-    expect(form(complete!.init).get('initial_comment')).toBe('Daily Schedule for Thursday');
+    // The picture alone: no message with it. Its title (the line Slack always
+    // shows over a file) says which day it is, once.
+    expect(form(complete!.init).has('initial_comment')).toBe(false);
     expect(JSON.parse(form(complete!.init).get('files')!)).toEqual([
-      { id: 'F123', title: 'Tap to see it full size' },
+      { id: 'F123', title: 'Daily Schedule for Thursday' },
     ]);
     expect((ask!.init.headers as Record<string, string>).Authorization).toBe('Bearer xoxb-test');
   });
