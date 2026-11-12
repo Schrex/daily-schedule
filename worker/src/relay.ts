@@ -9,7 +9,7 @@
  *
  * One request: POST /send with the PNG as the body and
  *   Authorization: Bearer <send key>
- *   X-Title:       the message posted with the picture, URI-encoded (optional)
+ *   X-Title:       the picture's title in Slack, URI-encoded (optional)
  *   X-Channel:     a Slack channel ID to post to instead of SLACK_CHANNEL (optional)
  * It answers { ok: true } once Slack has the picture, or { ok: false, error }
  * where `error` is in plain words for the Scheduler.
@@ -29,9 +29,6 @@ export interface Env {
 /** The biggest picture accepted. The 4K picture is a few MB at most. */
 const MAX_BYTES = 20 * 1024 * 1024;
 const CHANNEL_ID = /^[CGD][A-Z0-9]{6,}$/;
-/** The grey line Slack shows over the picture. */
-export const PICTURE_CAPTION = 'Tap to see it full size';
-
 export async function handle(request: Request, env: Env, fetchImpl: typeof fetch = fetch): Promise<Response> {
   const cors = {
     'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
@@ -101,12 +98,11 @@ async function postToSlack(
   });
   if (!put.ok) throw new SlackError(`upload_failed_${put.status}`);
 
-  // The title is the message itself; the picture's own caption (the grey line
-  // over it in Slack) says what to do with it rather than repeating the title.
+  // The picture alone, with no message: only its title, the one line Slack
+  // always shows over a file, saying which day it is.
   await slackCall(fetchImpl, auth, 'files.completeUploadExternal', {
-    files: JSON.stringify([{ id: fileId, title: PICTURE_CAPTION }]),
+    files: JSON.stringify([{ id: fileId, title: file.title }]),
     channel_id: file.channel,
-    initial_comment: file.title,
   });
 }
 
