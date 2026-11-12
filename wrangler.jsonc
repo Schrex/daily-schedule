@@ -22,7 +22,7 @@
     {
       "binding": "DB",
       "database_name": "daily-schedule",
-      "database_id": "REPLACE_WITH_DATABASE_ID",
+      "database_id": "ce405ebb-eeac-4ea4-88c0-6cc22aa8b79b",
       "migrations_dir": "migrations"
     }
   ],
