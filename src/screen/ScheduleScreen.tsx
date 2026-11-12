@@ -45,11 +45,13 @@ interface ScheduleScreenProps {
   onOpenJob: (jobKey: string) => void;
   /** "Put away empty jobs": every open Job with nobody on it folds now. */
   onPutAwayEmptyJobs: () => void;
-  /** Drawn right beside the date: the Settings gear and the TV button. */
-  dateButtons?: ReactNode;
-  /** Drawn at the right end of the header: Change date and Send. */
+  /** Drawn under the date: when it was last Sent. */
+  dateNote?: ReactNode;
+  /** Drawn at the right of the header: Undo, Change date, Preview and Send. */
   toolbarButtons?: ReactNode;
-  /** Drawn across the foot of the header: what happened to the last Send. */
+  /** Drawn at the far right of the header, set apart: TV view and Settings. */
+  toolbarLinks?: ReactNode;
+  /** Drawn across the foot of the header: a Send that failed. */
   sendMessage?: ReactNode;
 }
 
@@ -110,8 +112,9 @@ export function ScheduleScreen({
   openJobs,
   onOpenJob,
   onPutAwayEmptyJobs,
-  dateButtons,
+  dateNote,
   toolbarButtons,
+  toolbarLinks,
   sendMessage,
 }: ScheduleScreenProps) {
   const view = scheduleView(roster, schedule);
@@ -339,10 +342,13 @@ export function ScheduleScreen({
         <img className="toolbar-logo" src={logoUrl} alt="Schreiber Excavating" />
         <div className="toolbar-date">
           <h1 className="date-heading">{fullDate(view.date)}</h1>
-          {dateButtons}
+          {dateNote}
         </div>
 
-        <div className="toolbar-actions">{toolbarButtons}</div>
+        <div className="toolbar-actions">
+          {toolbarButtons}
+          {toolbarLinks && <div className="toolbar-links">{toolbarLinks}</div>}
+        </div>
         {sendMessage}
       </header>
 

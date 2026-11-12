@@ -16,7 +16,7 @@ import { nextOpenJobs, type OpenJobs, type OpenJobsEvent } from './openJobs';
 import { SettingsLink } from './SettingsLink';
 import { TvLink } from './TvLink';
 import { ScheduleScreen } from './ScheduleScreen';
-import { SendButton, SendMessage } from './SendBar';
+import { SendButton, SendFailure, LastSent } from './SendBar';
 import { emptyHistory, remember, undo, type UndoHistory } from './undoHistory';
 import { useSend } from './useSend';
 
@@ -178,12 +178,7 @@ export function App({
       onPutAwayEmptyJobs={() =>
         openJobsAfter({ kind: 'put-away', view: scheduleView(roster, latest.current) })
       }
-      dateButtons={
-        <>
-          <SettingsLink />
-          <TvLink />
-        </>
-      }
+      dateNote={<LastSent send={send} />}
       toolbarButtons={
         <>
           <button
@@ -200,7 +195,13 @@ export function App({
           <SendButton send={send} />
         </>
       }
-      sendMessage={<SendMessage send={send} />}
+      toolbarLinks={
+        <>
+          <TvLink />
+          <SettingsLink />
+        </>
+      }
+      sendMessage={<SendFailure send={send} />}
     />
   );
 }

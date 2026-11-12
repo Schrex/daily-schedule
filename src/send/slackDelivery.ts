@@ -35,7 +35,7 @@ export function slackDelivery(settings: SlackSettings, fetchImpl: typeof fetch =
         );
       }
     },
-    nextStep: 'It is in the Slack channel. Nothing more to do.',
+    nextStep: '',
     failureMessage: 'The picture could not be sent to Slack. Press "Send to crew" to try again.',
   };
 }

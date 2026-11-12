@@ -1,6 +1,5 @@
-/* What happened to the last Send: a strip across the foot of the header, in
-   a soft box of its own color (green for sent, red for not). Nothing is shown
-   until "Send to crew" has been pressed. The button itself is the shared
+/* A Send that failed: a red strip across the foot of the header. When it
+   was last Sent is a quiet line under the date (screen.css), not a strip. The button itself is the shared
    primary button, sized with the header's other buttons (screen.css). */
 
 .send-message p {
@@ -12,7 +11,6 @@
   font-weight: var(--weight-bold);
 }
 
-.send-sent,
 .send-failed {
   display: flex;
   flex-wrap: wrap;
@@ -25,14 +23,6 @@
   font-size: 1rem;
 }
 
-.send-sent {
-  background: var(--go-wash);
-}
-
-.send-sent .send-headline {
-  color: var(--go-dark);
-}
-
 .send-failed {
   border-color: var(--alert-line);
   background: var(--alert-wash);
@@ -43,7 +33,6 @@
 }
 
 @media (max-width: 700px) {
-  .send-sent,
   .send-failed {
     padding: var(--space-2) var(--space-3);
   }

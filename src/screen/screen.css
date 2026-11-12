@@ -48,14 +48,14 @@
   }
 }
 
-/* --- The header: the logo, the date and the gear; Change date and Send ---- */
+/* --- The header: the logo, the date and when it was last Sent; the day's buttons and Send; then TV view and Settings */
 
 .toolbar {
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1rem;
   padding: 0.625rem 1.25rem;
   border: var(--hairline);
   border-radius: var(--radius-card);
@@ -69,18 +69,39 @@
   width: auto;
 }
 
-/* The date and the gear: one line, the date giving way. */
+/* The date, and under it when it was last Sent. The date keeps one line;
+   when there is no room beside it, the buttons go to the next line. */
 .toolbar-date {
-  flex: 999 1 18.75rem;
+  flex: 999 1 auto;
   min-width: 0;
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.125rem;
+}
+
+.last-sent {
+  /* As wide as the date, never wider: it does not push the buttons away. */
+  width: 0;
+  min-width: 100%;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: var(--weight-medium);
+  line-height: 1.3;
+}
+
+.last-sent-step {
+  color: var(--ink-soft);
 }
 
 .date-heading {
   min-width: 0;
   margin: 0;
+  white-space: nowrap;
   font-family: var(--font-display);
   font-size: 1.875rem;
   font-weight: var(--weight-display);
@@ -95,33 +116,38 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .toolbar-button {
   flex: 0 0 auto;
   min-height: max(3rem, var(--touch-target));
-  padding: 0 1.125rem;
+  padding: 0 1rem;
   border-radius: var(--radius-chip);
   font-size: 1rem;
 }
 
-/* A button that is its icon alone: square, beside the date. */
-.toolbar-button-icon-only {
-  width: max(2.75rem, var(--touch-target));
-  min-height: max(2.75rem, var(--touch-target));
-  padding: 0;
+/* TV view and Settings: at the far right, set apart from the day's buttons
+   by a thin rule, each its icon and a word (the icon alone on a phone). */
+.toolbar-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-1);
+  padding-left: var(--space-3);
+  border-left: var(--hairline);
+}
+
+.toolbar-link {
+  gap: var(--space-2);
+  padding: 0 0.75rem;
+  color: var(--ink-soft);
 }
 
 .toolbar-button-svg {
-  width: 1.375rem;
-  height: 1.375rem;
-}
-
-/* The Settings gear: on the pale yellow. */
-.settings-link {
-  border-color: var(--line-strong);
-  background: var(--accent-wash);
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* Send: the yellow button, in Oswald capitals. */
@@ -1072,6 +1098,45 @@ body[data-name-dragging] .destination[data-drop-over] {
   .toolbar-actions .toolbar-button {
     flex: 1 1 auto;
     padding: 0 var(--space-3);
+  }
+
+  /* On a phone TV view and Settings are their icons alone, at the top
+     right beside the logo. */
+  .toolbar {
+    position: relative;
+  }
+
+  .toolbar-links {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .date-heading {
+    white-space: normal;
+  }
+
+  .last-sent {
+    width: auto;
+    white-space: normal;
+  }
+
+  .toolbar-links .toolbar-button {
+    flex: 0 0 auto;
+    width: max(2.75rem, var(--touch-target));
+    padding: 0;
+  }
+
+  .toolbar-link-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   .layout,
