@@ -18,6 +18,8 @@
   },
   // The Roster, the Daily Schedules and the access list. The schema is in
   // migrations/ (applied by CI before each deploy; see the README).
+  // Its name is "daily-schedule": use that in every command and in the
+  // dashboard. "DB" is only what the code calls it (env.DB).
   "d1_databases": [
     {
       "binding": "DB",

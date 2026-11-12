@@ -44,8 +44,8 @@ jobs:
       # shell) makes a failed migration fail the job before the deploy step.
       - name: Apply D1 migrations
         run: |
-          for binding in $(node .github/scripts/preview-config.mjs bindings wrangler.jsonc); do
-            npx wrangler d1 migrations apply "$binding" --remote
+          for database in $(node .github/scripts/preview-config.mjs databases wrangler.jsonc); do
+            npx wrangler d1 migrations apply "$database" --remote
           done
 
       - name: Deploy the Worker
