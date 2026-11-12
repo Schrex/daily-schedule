@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
 import {
   crewView,
+  fullDate,
   lastSentAt,
   type CrewView,
   type DailySchedule,
   type Roster,
 } from '../schedule-rules';
-import type { CrewDelivery } from '../send';
+import { DeliveryFailure, type CrewDelivery } from '../send';
 import { renderCrewPicture } from '../send/crewPicture';
 
 /** Where Send stands for the Daily Schedule on the screen: exactly one of these. */
@@ -31,6 +32,8 @@ export interface SendState {
 interface Outcome {
   kind: 'failed' | 'sent';
   schedule: DailySchedule;
+  /** For a failure: what to tell the Scheduler, if the delivery said. */
+  message?: string;
 }
 
 /**
@@ -77,10 +80,12 @@ export function useSend({
     inFlight.current = true;
     setSending(true);
     try {
-      await delivery.deliver(await renderCrewPicture(view, pressedAt, roster));
+      const title = `${view.updated ? 'UPDATED: ' : ''}Daily Schedule for ${fullDate(view.date)}`;
+      await delivery.deliver(await renderCrewPicture(view, pressedAt, roster), title);
     } catch (error) {
       console.error('Could not send the Daily Schedule', error);
-      setOutcome({ kind: 'failed', schedule });
+      const message = error instanceof DeliveryFailure ? error.plain : undefined;
+      setOutcome({ kind: 'failed', schedule, message });
       return;
     } finally {
       inFlight.current = false;
@@ -91,11 +96,12 @@ export function useSend({
   };
 
   const pressed = outcome?.schedule === schedule ? outcome.kind : null;
+  const failure = (pressed === 'failed' && outcome?.message) || delivery.failureMessage;
   const sentAt = lastSentAt(schedule);
 
   const status: SendStatus =
     pressed === 'failed'
-      ? { kind: 'failed', message: delivery.failureMessage }
+      ? { kind: 'failed', message: failure }
       : sending
         ? { kind: 'sending' }
         : sentAt === undefined
