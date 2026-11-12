@@ -158,11 +158,13 @@
 }
 
 /* What happened to the last Send: a strip across the foot of the header. */
-.send-message {
+.send-message,
+.not-saved-message {
   flex: 1 0 100%;
 }
 
-.send-message:empty {
+.send-message:empty,
+.not-saved-message:empty {
   display: none;
 }
 

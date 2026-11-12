@@ -11,14 +11,16 @@ import { loadSlackSettings, slackIsSetUp } from './send/slackSettings';
 import { showPageProblem } from './pageProblem';
 import { openStore } from './storage';
 import { apiStore } from './storage/apiStore';
+import { savedInOrder } from './storage/saveQueue';
 import './screen/screen.css';
 
 applyPalette();
 
 // The one place that chooses where things are saved: the Worker's database,
-// shared by every screen. On first ever open the store is filled from the seed
-// roster and seed Daily Schedule.
-const store = apiStore();
+// shared by every screen, through the save queue (saves in order, tried again
+// until they get through; `saves` says how it is going). On first ever open
+// the store is filled from the seed roster and seed Daily Schedule.
+const { store, saves } = savedInOrder(apiStore());
 
 // It opens on the Daily Schedule for the next working day after today.
 const today = scheduleDateOf(new Date());
@@ -32,7 +34,7 @@ openStore(store, { roster: seedRoster, schedule: seedSchedule }, today).then(
   (opened) => {
     createRoot(document.getElementById('root')!).render(
       <StrictMode>
-        <App store={store} opened={opened} delivery={delivery} />
+        <App store={store} saves={saves} opened={opened} delivery={delivery} />
       </StrictMode>,
     );
   },

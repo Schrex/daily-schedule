@@ -1,0 +1,19 @@
+/* "Not saved, trying again": a red strip, like a failed Send (screen/send.css). */
+
+.not-saved-message:empty {
+  display: none;
+}
+
+.not-saved {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--alert-line);
+  border-radius: var(--radius-control);
+  background: var(--alert-wash);
+  color: var(--ink-soft);
+  font-size: 1rem;
+}
+
+.not-saved strong {
+  color: var(--alert);
+}
