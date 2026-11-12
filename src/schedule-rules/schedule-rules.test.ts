@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dailyScheduleFor,
   fullDate,
+  sentStamp,
   nextWorkingDay,
   scheduleDateOf,
   onJob,
@@ -9,6 +10,7 @@ import {
   moveCrewMember,
   NOT_PLACED,
   placeCrewMember,
+  placeCrewMemberAt,
   returnToNotPlaced,
   scheduleView,
   setNote,
@@ -17,6 +19,7 @@ import {
   crewView,
   lastSentAt,
   markSent,
+  onTheTv,
   addCrewMember,
   addJob,
   changeCrewMember,
@@ -311,6 +314,155 @@ describe('moving a Crew Member', () => {
   });
 });
 
+describe('putting a Crew Member at a spot in a row', () => {
+  // Tower: Ann, Bob, Cal, in that order. Fay (a Foreman) is Not Placed.
+  const tower = schedule({
+    placements: [
+      placement('ann', onJob('tower'), 1),
+      placement('bob', onJob('tower'), 2),
+      placement('cal', onJob('tower'), 3, '1/2 Day'),
+    ],
+  });
+
+  it('moves a Crew Member within their row to just before the one named', () => {
+    const moved = placeCrewMemberAt(roster, tower, 'cal', onJob('tower'), 'ann');
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['cal', 'ann', 'bob']);
+  });
+
+  it('keeps their Note when they move within their row', () => {
+    const moved = placeCrewMemberAt(roster, tower, 'cal', onJob('tower'), 'bob');
+
+    const cal = scheduleView(roster, moved).rows[0]?.who[1];
+    expect(cal?.crewMember.id).toBe('cal');
+    expect(cal?.note).toBe('1/2 Day');
+  });
+
+  it('moves a Crew Member to the end of their row when no one is named', () => {
+    const moved = placeCrewMemberAt(roster, tower, 'ann', onJob('tower'), null);
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['bob', 'cal', 'ann']);
+  });
+
+  it('puts a Crew Member from another row at the spot, leaving their Note behind', () => {
+    const elsewhere = schedule({
+      placements: [...tower.placements, placement('bob', onJob('bridge'), 4, 'Late')].filter(
+        (p) => !(p.crewMemberId === 'bob' && p.destination.kind === 'job' && p.destination.jobId === 'tower'),
+      ),
+    });
+
+    const moved = placeCrewMemberAt(roster, elsewhere, 'bob', onJob('tower'), 'cal');
+
+    expect(whoIsOn('J100 Tower', moved)).toEqual(['ann', 'bob', 'cal']);
+    expect(whoIsOn('Bridge', moved)).toEqual([]);
+    expect(scheduleView(roster, moved).rows[0]?.who[1]?.note).toBeUndefined();
+    expect(moved.placements.filter((p) => p.crewMemberId === 'bob')).toHaveLength(1);
+  });
+
+  it('puts someone Not Placed at the spot', () => {
+    const moved = placeCrewMemberAt(roster, tower, 'fay', onStandingRow('shop'), null);
+    const between = placeCrewMemberAt(roster, moved, 'ann', onStandingRow('shop'), 'fay');
+
+    expect(whoIsOn('Shop', between)).toEqual(['ann', 'fay']);
+    expect(notPlaced(between)).toEqual([]);
+  });
+
+  describe('with a Foreman on the Job', () => {
+    const roster2: Roster = {
+      ...roster,
+      crewMembers: [...roster.crewMembers, crew('gus', { foreman: true })],
+    };
+    // Listed Fay, Gus (Foremen), then Ann, Bob. Fay was placed last of all.
+    const led = schedule({
+      placements: [
+        placement('ann', onJob('tower'), 1),
+        placement('gus', onJob('tower'), 2),
+        placement('bob', onJob('tower'), 3),
+        placement('fay', onJob('tower'), 4),
+      ],
+    });
+    const listed = (daily: DailySchedule) => whoIsOn('J100 Tower', daily, roster2);
+
+    it('lands someone let go above a Foreman just below the last Foreman', () => {
+      expect(listed(led)).toEqual(['gus', 'fay', 'ann', 'bob']);
+
+      expect(listed(placeCrewMemberAt(roster2, led, 'bob', onJob('tower'), 'gus'))).toEqual([
+        'gus',
+        'fay',
+        'bob',
+        'ann',
+      ]);
+      expect(listed(placeCrewMemberAt(roster2, led, 'cal', onJob('tower'), 'fay'))).toEqual([
+        'gus',
+        'fay',
+        'cal',
+        'ann',
+        'bob',
+      ]);
+    });
+
+    it('lets the Foremen be reordered among themselves', () => {
+      expect(listed(placeCrewMemberAt(roster2, led, 'fay', onJob('tower'), 'gus'))).toEqual([
+        'fay',
+        'gus',
+        'ann',
+        'bob',
+      ]);
+    });
+
+    it('keeps a Foreman let go among the others with the Foremen, last of them', () => {
+      expect(listed(placeCrewMemberAt(roster2, led, 'gus', onJob('tower'), null))).toEqual([
+        'fay',
+        'gus',
+        'ann',
+        'bob',
+      ]);
+    });
+
+    it('changes nothing when someone is let go above a Foreman and already sits just below the last one', () => {
+      expect(placeCrewMemberAt(roster2, led, 'ann', onJob('tower'), 'gus')).toBe(led);
+    });
+
+    it('has no Foreman rule in a Standing Row: a Foreman can go anywhere there', () => {
+      const shop = schedule({
+        placements: [placement('ann', onStandingRow('shop'), 1), placement('fay', onStandingRow('shop'), 2)],
+      });
+
+      expect(whoIsOn('Shop', placeCrewMemberAt(roster2, shop, 'ann', onStandingRow('shop'), null), roster2)).toEqual([
+        'fay',
+        'ann',
+      ]);
+      expect(whoIsOn('Shop', placeCrewMemberAt(roster2, shop, 'gus', onStandingRow('shop'), null), roster2)).toEqual([
+        'ann',
+        'fay',
+        'gus',
+      ]);
+    });
+  });
+
+  it('leaves the Placement of someone since removed from the roster where it is', () => {
+    const withGone = schedule({ placements: [...tower.placements, placement('zed', onJob('tower'), 9)] });
+
+    const moved = placeCrewMemberAt(roster, withGone, 'cal', onJob('tower'), 'ann');
+
+    expect(moved.placements.find((p) => p.crewMemberId === 'zed')).toEqual(placement('zed', onJob('tower'), 9));
+  });
+
+  it('is the order the crew sees, and a reorder after a Send is a change to send again', () => {
+    const sent = markSent(tower, crewView(roster, tower), '2026-11-09T23:00:00.000Z');
+    const reordered = placeCrewMemberAt(roster, sent, 'cal', onJob('tower'), 'ann');
+
+    const crewSees = crewView(roster, reordered);
+    expect(crewSees.rows[0]?.who.map((placed) => placed.crewMember.id)).toEqual(['cal', 'ann', 'bob']);
+    expect(crewSees.updated).toBe(true);
+  });
+
+  it('changes nothing when let go at the spot they are already in', () => {
+    expect(placeCrewMemberAt(roster, tower, 'bob', onJob('tower'), 'cal')).toBe(tower);
+    expect(placeCrewMemberAt(roster, tower, 'cal', onJob('tower'), null)).toBe(tower);
+  });
+});
+
 const tasksOf = (label: string, daily: DailySchedule): string[] =>
   scheduleView(roster, daily).rows.find((row) => row.label === label)?.tasks ?? [];
 
@@ -498,6 +650,18 @@ describe('the full date', () => {
   });
 });
 
+describe('the time on the crew picture', () => {
+  // Built in local time, as the Scheduler's clock reads it.
+  it('says when it was made: short weekday and month, day, and the clock time', () => {
+    expect(sentStamp(new Date(2026, 10, 11, 18, 42))).toBe('Sent Wed, Nov 11 · 6:42 PM');
+  });
+
+  it('pads the minutes and reads a morning or midnight time as AM, with a plain space', () => {
+    expect(sentStamp(new Date(2027, 0, 4, 7, 5))).toBe('Sent Mon, Jan 4 · 7:05 AM');
+    expect(sentStamp(new Date(2026, 11, 31, 0, 0))).toBe('Sent Thu, Dec 31 · 12:00 AM');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Send
 // ---------------------------------------------------------------------------
@@ -554,13 +718,61 @@ describe('marking a Daily Schedule as Sent', () => {
     expect(scheduleView(roster, sent)).toEqual(scheduleView(roster, before));
   });
 
-  it('does not count a Send of the same picture again as a new Send', () => {
+  it('records a Send of the same picture again with its new time, as the picture is stamped', () => {
     const once = send(everyonePlaced(), '2026-11-09T23:05:00.000Z');
 
     const again = send(once, '2026-11-09T23:06:00.000Z');
 
-    expect(again).toBe(once);
-    expect(lastSentAt(again)).toBe('2026-11-09T23:05:00.000Z');
+    expect(lastSentAt(again)).toBe('2026-11-09T23:06:00.000Z');
+    expect(again.sends.map((record) => record.sentAt)).toEqual([
+      '2026-11-09T23:05:00.000Z',
+      '2026-11-09T23:06:00.000Z',
+    ]);
+    expect(again.sends[1]?.sent).toEqual(once.sends[0]?.sent);
+  });
+});
+
+describe('what the office TV shows', () => {
+  const dated = (date: string) => schedule({ date, placements: [placement('ann', onJob('tower'), 1)] });
+
+  it('shows nothing when there is no Daily Schedule for today or later', () => {
+    expect(onTheTv(roster, [dated('2026-11-09')], '2026-11-10')).toBeNull();
+  });
+
+  it("shows today's Daily Schedule as it was Sent, not as it was changed since", () => {
+    const sent = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
+    const changedSince = placeCrewMember(sent, 'bob', onJob('bridge'));
+
+    expect(onTheTv(roster, [changedSince], '2026-11-10')).toEqual(sent.sends[0]!.sent);
+  });
+
+  it("shows today's Daily Schedule as the board stands when it has not been Sent", () => {
+    const notSent = dated('2026-11-10');
+
+    expect(onTheTv(roster, [notSent], '2026-11-10')).toEqual(crewView(roster, notSent));
+  });
+
+  it("keeps showing today's while tomorrow's is Sent, and tomorrow's from midnight", () => {
+    const today = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
+    const tomorrow = send(dated('2026-11-11'), '2026-11-10T23:05:00.000Z');
+
+    expect(onTheTv(roster, [tomorrow, today], '2026-11-10')?.date).toBe('2026-11-10');
+    expect(onTheTv(roster, [tomorrow, today], '2026-11-11')?.date).toBe('2026-11-11');
+  });
+
+  it('on a day with no Daily Schedule of its own, shows the next one Sent', () => {
+    const notSentYet = dated('2026-11-17');
+    const monday = send(dated('2026-11-16'), '2026-11-13T23:05:00.000Z');
+
+    expect(onTheTv(roster, [notSentYet, monday], '2026-11-14')?.date).toBe('2026-11-16');
+    expect(onTheTv(roster, [notSentYet], '2026-11-14')).toBeNull();
+  });
+
+  it('shows the latest Send when there were several', () => {
+    const once = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
+    const twice = send(placeCrewMember(once, 'bob', onJob('bridge')), '2026-11-09T23:40:00.000Z');
+
+    expect(onTheTv(roster, [twice], '2026-11-10')).toEqual(twice.sends[1]!.sent);
   });
 });
 
@@ -659,7 +871,7 @@ describe('the send record', () => {
     ]);
 
     expect(crewView(later, sent).updated).toBe(false);
-    expect(send(sent, '2026-11-10T08:00:00.000Z', later)).toBe(sent);
+    expect(send(sent, '2026-11-10T08:00:00.000Z', later).sends.at(-1)?.sent).toEqual(sent.sends[0]?.sent);
   });
 
   it('drops a removed Crew Member and Job from a Daily Schedule that was never sent', () => {
@@ -683,7 +895,7 @@ describe('the send record', () => {
 
     const resent = send(old, '2026-11-09T23:40:00.000Z');
     expect(lastSentAt(resent)).toBe('2026-11-09T23:40:00.000Z');
-    expect(send(resent, '2026-11-09T23:41:00.000Z')).toBe(resent);
+    expect(send(resent, '2026-11-09T23:41:00.000Z').sends.at(-1)?.sent).toEqual(resent.sends.at(-1)?.sent);
   });
 });
 
@@ -751,7 +963,7 @@ describe('the crew view', () => {
     const sentTwice = send(setNote(sentOnce, 'ann', '1/2 Day'), '2026-11-09T23:40:00.000Z');
 
     expect(crewView(roster, sentTwice).updated).toBe(true);
-    expect(send(sentTwice, '2026-11-09T23:41:00.000Z')).toBe(sentTwice);
+    expect(crewView(roster, send(sentTwice, '2026-11-09T23:41:00.000Z')).updated).toBe(true);
   });
 
   it('tells a changed Daily Schedule from the one sent after it was saved and read back', () => {
@@ -760,7 +972,7 @@ describe('the crew view', () => {
     ) as DailySchedule;
 
     expect(crewView(roster, reloaded).updated).toBe(false);
-    expect(send(reloaded, '2026-11-09T23:06:00.000Z')).toBe(reloaded);
+    expect(send(reloaded, '2026-11-09T23:06:00.000Z').sends.at(-1)?.sent).toEqual(reloaded.sends[0]?.sent);
     expect(crewView(roster, setNote(setNote(reloaded, 'ann', 'x'), 'ann', '')).updated).toBe(false);
     expect(crewView(roster, placeCrewMember(reloaded, 'bob', onJob('bridge'))).updated).toBe(true);
   });
@@ -1173,6 +1385,16 @@ describe('an edit from the screen', () => {
   // Each edit does exactly what its rule does.
   const cases: [ScheduleEdit, DailySchedule, DailySchedule][] = [
     [{ kind: 'move', crewMemberId: 'cal', to: onJob('tower') }, before, moveCrewMember(before, 'cal', onJob('tower'))],
+    [
+      { kind: 'move', crewMemberId: 'ann', to: onJob('bridge'), before: 'cal' },
+      before,
+      placeCrewMemberAt(roster, before, 'ann', onJob('bridge'), 'cal'),
+    ],
+    [
+      { kind: 'move', crewMemberId: 'ann', to: NOT_PLACED, before: 'cal' },
+      withTask,
+      withTask,
+    ],
     [{ kind: 'set-tasks', destination: onJob('tower'), text: 'Dig' }, before, setTasks(before, onJob('tower'), 'Dig')],
     [{ kind: 'set-note', crewMemberId: 'cal', text: '' }, before, setNote(before, 'cal', '')],
     [{ kind: 'add-person-task', crewMemberId: 'cal', text: 'Bring the laser' }, before, withTask],
@@ -1188,10 +1410,10 @@ describe('an edit from the screen', () => {
   ];
 
   it.each(cases)('%o', (edit, from, expected) => {
-    expect(applyEdit(from, edit)).toEqual(expected);
+    expect(applyEdit(from, edit, roster)).toEqual(expected);
   });
 
   it('returns the same Daily Schedule when the edit changes nothing', () => {
-    expect(applyEdit(before, { kind: 'set-note', crewMemberId: 'cal', text: '1/2 Day' })).toBe(before);
+    expect(applyEdit(before, { kind: 'set-note', crewMemberId: 'cal', text: '1/2 Day' }, roster)).toBe(before);
   });
 });

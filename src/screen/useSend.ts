@@ -42,7 +42,9 @@ interface Outcome {
  * What a press came to is remembered only for the Daily Schedule it was
  * about: as soon as the schedule changes, the failure or the "paste it"
  * instruction goes away. The "Sent" time itself comes from the send record,
- * so it is still there after a reload.
+ * so it is still there after a reload. Every delivered Send is recorded, a
+ * re-Send of an unchanged picture too, so that time is always the one stamped
+ * on the picture the crew got last.
  */
 export function useSend({
   roster,
@@ -54,8 +56,10 @@ export function useSend({
   schedule: DailySchedule;
   delivery: CrewDelivery;
   /**
-   * The delivery worked: the crew view the crew got, and when. Records the
-   * Send on the Daily Schedule as it stands by then, and returns the result.
+   * The delivery worked: the crew view the crew got, and when (the time
+   * stamped on the picture). Records the Send on the Daily Schedule as it
+   * stands by then, even if it is the same picture as the last Send, and
+   * returns the result.
    */
   onDelivered: (sent: CrewView, sentAt: string) => DailySchedule;
 }): SendState {
@@ -68,10 +72,12 @@ export function useSend({
     if (inFlight.current) return;
 
     const view = crewView(roster, schedule);
+    // The moment Send was pressed: the time on the picture and in the send record.
+    const pressedAt = new Date();
     inFlight.current = true;
     setSending(true);
     try {
-      await delivery.deliver(await renderCrewPicture(view, roster));
+      await delivery.deliver(await renderCrewPicture(view, pressedAt, roster));
     } catch (error) {
       console.error('Could not send the Daily Schedule', error);
       setOutcome({ kind: 'failed', schedule });
@@ -81,7 +87,7 @@ export function useSend({
       setSending(false);
     }
 
-    setOutcome({ kind: 'sent', schedule: onDelivered(view, new Date().toISOString()) });
+    setOutcome({ kind: 'sent', schedule: onDelivered(view, pressedAt.toISOString()) });
   };
 
   const pressed = outcome?.schedule === schedule ? outcome.kind : null;

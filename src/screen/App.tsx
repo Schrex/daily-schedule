@@ -14,6 +14,7 @@ import { ChangeDate } from './ChangeDate';
 import { PreviewPicture } from './PreviewPicture';
 import { nextOpenJobs, type OpenJobs, type OpenJobsEvent } from './openJobs';
 import { SettingsLink } from './SettingsLink';
+import { TvLink } from './TvLink';
 import { ScheduleScreen } from './ScheduleScreen';
 import { SendButton, SendMessage } from './SendBar';
 import { emptyHistory, remember, undo, type UndoHistory } from './undoHistory';
@@ -120,7 +121,7 @@ export function App({
    */
   const edit = (scheduleEdit: ScheduleEdit) => {
     const before = latest.current;
-    const after = change((current) => applyEdit(current, scheduleEdit));
+    const after = change((current) => applyEdit(current, scheduleEdit, roster));
     if (after !== before) setHistory(remember(history.current, before));
     if (scheduleEdit.kind === 'move') deselect();
   };
@@ -177,7 +178,12 @@ export function App({
       onPutAwayEmptyJobs={() =>
         openJobsAfter({ kind: 'put-away', view: scheduleView(roster, latest.current) })
       }
-      dateButtons={<SettingsLink />}
+      dateButtons={
+        <>
+          <SettingsLink />
+          <TvLink />
+        </>
+      }
       toolbarButtons={
         <>
           <button

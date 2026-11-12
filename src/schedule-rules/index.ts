@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 /** The fixed palette. Color carries no meaning in the rules. */
-export const COLORS = ['grey', 'blue', 'orange', 'yellow', 'red'] as const;
+export const COLORS = ['grey', 'blue', 'orange', 'yellow', 'red', 'gunmetal'] as const;
 export type Color = (typeof COLORS)[number];
 
 export interface CrewMember {
@@ -151,28 +151,11 @@ export interface ScheduleView {
  * who was where. On one never sent, they are simply gone.
  */
 export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleView {
-  const sentRows = lastSend(schedule)?.sent?.rows ?? [];
+  const sentRows = sentRowsOf(schedule);
+  const crewMembersById = crewMembersOf(roster, sentRows);
 
-  const crewMembersById = new Map(
-    [...sentRows.flatMap((row) => row.who.map((placed) => placed.crewMember)), ...roster.crewMembers].map(
-      (crewMember) => [crewMember.id, crewMember],
-    ),
-  );
-
-  // Foreman first applies within a Job only; a Standing Row is plain placement order.
   const whoIsOn = (destination: Destination): PlacedCrewMember[] =>
-    schedule.placements
-      .filter((placement) => destinationKey(placement.destination) === destinationKey(destination))
-      .flatMap((placement) => {
-        const crewMember = crewMembersById.get(placement.crewMemberId);
-        return crewMember ? [{ placement, crewMember }] : [];
-      })
-      .sort(
-        (a, b) =>
-          (destination.kind === 'job'
-            ? Number(b.crewMember.foreman) - Number(a.crewMember.foreman)
-            : 0) || a.placement.order - b.placement.order,
-      )
+    listedOn(crewMembersById, schedule.placements, destination)
       .map(({ placement, crewMember }) => ({
         crewMember,
         ...(placement.note ? { note: placement.note } : {}),
@@ -211,6 +194,45 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
   const notPlaced = roster.crewMembers.filter((crewMember) => !placed.has(crewMember.id));
 
   return { date: schedule.date, rows, notPlaced, dayNotes: dayNotesOf(schedule) };
+}
+
+/** The rows of the last Send's picture: none if never sent, or if that picture is unknown. */
+const sentRowsOf = (schedule: DailySchedule): ScheduleRow[] => lastSend(schedule)?.sent?.rows ?? [];
+
+/**
+ * Every Crew Member a Placement can name, by id: the roster's, and on a
+ * Daily Schedule that has been sent, those since removed as they were last
+ * sent (`sentRows`, from `sentRowsOf`).
+ */
+function crewMembersOf(roster: Roster, sentRows: readonly ScheduleRow[]): Map<string, CrewMember> {
+  return new Map(
+    [...sentRows.flatMap((row) => row.who.map((placed) => placed.crewMember)), ...roster.crewMembers].map(
+      (crewMember) => [crewMember.id, crewMember],
+    ),
+  );
+}
+
+/**
+ * The Placements on one Job or Standing Row in the order they are listed:
+ * on a Job, Foremen first, then placement order; on a Standing Row, plain
+ * placement order. A Placement naming no known Crew Member is left out.
+ */
+function listedOn(
+  crewMembersById: Map<string, CrewMember>,
+  placements: Placement[],
+  destination: Destination,
+): { placement: Placement; crewMember: CrewMember }[] {
+  return placements
+    .filter((placement) => destinationKey(placement.destination) === destinationKey(destination))
+    .flatMap((placement) => {
+      const crewMember = crewMembersById.get(placement.crewMemberId);
+      return crewMember ? [{ placement, crewMember }] : [];
+    })
+    .sort(
+      (a, b) =>
+        (destination.kind === 'job' ? Number(b.crewMember.foreman) - Number(a.crewMember.foreman) : 0) ||
+        a.placement.order - b.placement.order,
+    );
 }
 
 /**
@@ -258,6 +280,62 @@ export function placeCrewMember(
   return {
     ...schedule,
     placements: [...withoutCrewMember(schedule, crewMemberId), placement],
+  };
+}
+
+/**
+ * Puts a Crew Member at a spot in a Job or Standing Row: just before the
+ * Crew Member named by `before`, or at the end of the row when it is null (or
+ * names nobody there). This is a drop at the spot where the name was let go;
+ * a tap still places last (`placeCrewMember`).
+ *
+ * Moving within their own row keeps their Note; coming from elsewhere, the
+ * Placement is new, as with `placeCrewMember`. The whole row is renumbered so
+ * its placement order is the order it is listed in.
+ */
+export function placeCrewMemberAt(
+  roster: Roster,
+  schedule: DailySchedule,
+  crewMemberId: string,
+  destination: Destination,
+  before: string | null,
+): DailySchedule {
+  const key = destinationKey(destination);
+  const crewMembersById = crewMembersOf(roster, sentRowsOf(schedule));
+  const current = schedule.placements.find((placement) => placement.crewMemberId === crewMemberId);
+  const sameRow = current !== undefined && destinationKey(current.destination) === key;
+
+  const moved: Placement = sameRow
+    ? current
+    : current?.personTasks?.length
+      ? { crewMemberId, destination, order: 0, personTasks: current.personTasks }
+      : { crewMemberId, destination, order: 0 };
+
+  // The row as it is listed now, with the moved Crew Member put in at the spot.
+  const listedNow = listedOn(crewMembersById, schedule.placements, destination).map(({ placement }) => placement);
+  const others = listedNow.filter((placement) => placement.crewMemberId !== crewMemberId);
+  const at = others.findIndex((placement) => placement.crewMemberId === before);
+  const spliced = [...others];
+  spliced.splice(at === -1 ? spliced.length : at, 0, moved);
+
+  // On a Job the Foremen stay first: someone let go among them lands just
+  // below the last one, a Foreman let go among the others just after them.
+  const isForeman = (placement: Placement) =>
+    destination.kind === 'job' && crewMembersById.get(placement.crewMemberId)?.foreman === true;
+  const row = [...spliced.filter(isForeman), ...spliced.filter((placement) => !isForeman(placement))];
+
+  // Let go at the spot they are already in: nothing changes.
+  if (sameRow && listedNow.every((placement, index) => placement === row[index])) return schedule;
+
+  // The row renumbered in the order it is listed; everyone else as they were.
+  return {
+    ...schedule,
+    placements: [
+      ...schedule.placements.filter(
+        (placement) => placement.crewMemberId !== crewMemberId && !listedNow.includes(placement),
+      ),
+      ...row.map((placement, index) => ({ ...placement, order: index + 1 })),
+    ],
   };
 }
 
@@ -471,7 +549,11 @@ export const removeDayNote = (schedule: DailySchedule, index: number): DailySche
 
 /** One change the Scheduler made, as the screen reports it. */
 export type ScheduleEdit =
-  | { kind: 'move'; crewMemberId: string; to: MoveTo }
+  /**
+   * A move. A drop says where in the row it was let go (`before`: just before
+   * that Crew Member, or null for the end); a tap says nothing, and lands last.
+   */
+  | { kind: 'move'; crewMemberId: string; to: MoveTo; before?: string | null }
   | { kind: 'set-tasks'; destination: Destination; text: string }
   | { kind: 'set-note'; crewMemberId: string; text: string }
   | { kind: 'add-person-task'; crewMemberId: string; text: string }
@@ -483,12 +565,15 @@ export type ScheduleEdit =
 
 /**
  * The Daily Schedule after one edit, by the rule for it. Returns the same
- * Daily Schedule when the edit changes nothing.
+ * Daily Schedule when the edit changes nothing. The roster says who is a
+ * Foreman, for a drop at a spot on a Job.
  */
-export function applyEdit(schedule: DailySchedule, edit: ScheduleEdit): DailySchedule {
+export function applyEdit(schedule: DailySchedule, edit: ScheduleEdit, roster: Roster): DailySchedule {
   switch (edit.kind) {
     case 'move':
-      return moveCrewMember(schedule, edit.crewMemberId, edit.to);
+      return edit.before === undefined || edit.to === NOT_PLACED
+        ? moveCrewMember(schedule, edit.crewMemberId, edit.to)
+        : placeCrewMemberAt(roster, schedule, edit.crewMemberId, edit.to, edit.before);
     case 'set-tasks':
       return setTasks(schedule, edit.destination, edit.text);
     case 'set-note':
@@ -524,6 +609,18 @@ export function fullDate(date: ScheduleDate): string {
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
+/**
+ * When the crew picture was made, as its quiet line in the head says it:
+ * "Sent Wed, Nov 11 · 6:42 PM", on the Scheduler's own clock. Sending the
+ * same date again just gets a new time.
+ */
+export function sentStamp(when: Date): string {
+  const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(when);
+  const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(when);
+  // Some clocks put a narrow no-break space before AM/PM: a plain one reads the same everywhere.
+  return `Sent ${day} · ${time}`.replace(/\s/g, ' ');
+}
+
 const destinationKey = (destination: Destination): string =>
   destination.kind === 'job'
     ? `job:${destination.jobId}`
@@ -540,7 +637,11 @@ const destinationKey = (destination: Destination): string =>
  */
 export interface CrewView {
   date: ScheduleDate;
-  /** True when the picture replaces a different one sent earlier for this date. */
+  /**
+   * True when the picture replaces a different one sent earlier for this date.
+   * Kept in the send record as it always was; nothing draws it any more (the
+   * picture's time says which one is latest).
+   */
   updated: boolean;
   /** Only the Jobs and Standing Rows with someone on them, in the Scheduler's order. */
   rows: ScheduleRow[];
@@ -551,7 +652,7 @@ export interface CrewView {
 /**
  * The crew view of the Daily Schedule as it would be sent now.
  *
- * It is marked UPDATED when the Daily Schedule has been sent before and has
+ * It is marked `updated` when the Daily Schedule has been sent before and has
  * changed since. With nothing changed since the last Send it is that Send's
  * picture again, marked (or not) exactly as it was then.
  */
@@ -577,13 +678,12 @@ export function crewView(roster: Roster, schedule: DailySchedule): CrewView {
  *
  * `sent` is what the crew actually got, which is recorded as it is even if the
  * Daily Schedule has been changed since it was drawn. Sending the same picture
- * as the last Send again is not a new Send, and a picture of another date is
- * not this Daily Schedule's: both return the same Daily Schedule unchanged.
+ * as the last Send again is a Send too: the crew got it stamped with the new
+ * time, so the record's latest time is that one. A picture of another date is
+ * not this Daily Schedule's: that returns the same Daily Schedule unchanged.
  */
 export function markSent(schedule: DailySchedule, sent: CrewView, sentAt: string): DailySchedule {
   if (sent.date !== schedule.date) return schedule;
-  const last = lastSend(schedule);
-  if (last?.sent && sameData(last.sent, sent)) return schedule;
   return { ...schedule, sends: [...schedule.sends, { sentAt, sent }] };
 }
 
@@ -598,6 +698,28 @@ export const lastSentAt = (schedule: DailySchedule): string | undefined =>
 function lastSend(schedule: DailySchedule): (Pick<SendRecord, 'sentAt'> & Partial<SendRecord>) | undefined {
   const last: SendRecord | string | undefined = schedule.sends.at(-1);
   return typeof last === 'string' ? { sentAt: last } : last;
+}
+
+/**
+ * What the office TV shows on `today`: today's Daily Schedule.
+ *
+ * If it has been Sent, it is the last Send, exactly as the crew got it,
+ * whatever has been changed on the board since. If it has not, it is the crew
+ * view as the board stands now (anyone Not Placed left out); so is one Sent
+ * before send records held the picture, since what was sent is not known. On a day with no
+ * Daily Schedule of its own (a weekend), it is the next one that has been
+ * Sent, so Monday's shows from Saturday. Nothing to show gives null.
+ */
+export function onTheTv(
+  roster: Roster,
+  saved: readonly DailySchedule[],
+  today: ScheduleDate,
+): CrewView | null {
+  const schedule = saved
+    .filter((candidate) => candidate.date === today || (candidate.date > today && lastSend(candidate) !== undefined))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))[0];
+  if (!schedule) return null;
+  return lastSend(schedule)?.sent ?? crewView(roster, schedule);
 }
 
 /** Whether two pieces of plain data say the same thing, however they were built. */

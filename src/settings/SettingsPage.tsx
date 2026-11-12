@@ -226,7 +226,7 @@ function Field({
   );
 }
 
-/** The fixed palette as five large swatches; the chosen one is ringed. */
+/** The fixed palette as six large swatches; the chosen one is ringed. */
 function ColorPicker({ value, onPick }: { value: Color; onPick: (color: Color) => void }) {
   return (
     <div className="settings-field">

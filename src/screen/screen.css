@@ -371,11 +371,7 @@
   border-radius: 50%;
 }
 
-.dot-grey { background: var(--dot-grey); }
-.dot-blue { background: var(--dot-blue); }
-.dot-orange { background: var(--dot-orange); }
-.dot-yellow { background: var(--dot-yellow); }
-.dot-red { background: var(--dot-red); }
+/* The dot's color is a .dot-<color> class (src/look.css). */
 
 .name-head {
   display: flex;

@@ -4,10 +4,11 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   plugins: [react()],
   build: {
-    // Two pages: the Scheduler's screen (index.html) and the office's settings
-    // page (settings.html), which is reached only by its own address.
+    // Three pages: the Scheduler's screen (index.html), the office's settings
+    // page (settings.html) and the office TV (tv.html), each reached by its own
+    // address.
     rollupOptions: {
-      input: ['index.html', 'settings.html'],
+      input: ['index.html', 'settings.html', 'tv.html'],
     },
   },
   test: {
