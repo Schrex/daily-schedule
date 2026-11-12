@@ -31,6 +31,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      # Fails first, with a plain message, while wrangler.jsonc still has the
+      # placeholder database_id (README: "Setting up the database (once)").
+      - name: Check the Worker's config
+        run: node .github/scripts/check-config.mjs wrangler.jsonc
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
