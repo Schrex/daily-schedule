@@ -12,7 +12,7 @@ import { whoIsCalling } from './signIn';
  * (src/storage): the bodies are the Roster and Daily Schedule JSON as the
  * pages hold them, kept whole in D1 (migrations/).
  *
- *   GET /me                 { email, role }                anyone on the list
+ *   GET /me                 { email, role }                anyone signed in
  *   GET /roster             the Roster, or null           editors and viewers
  *   PUT /roster             saves the Roster              editors
  *   GET /schedules          the saved dates, earliest first
@@ -21,14 +21,16 @@ import { whoIsCalling } from './signIn';
  *   POST /import            replaces everything from an Export file  editors
  *                           (409 once a Send is recorded; import.ts)
  *
- * 401: nobody signed in. 403: not on the access list, or a viewer writing.
+ * Editors are the people listed as `editor`; everyone else signed in to the
+ * hub is a viewer, sent to the Office TV by the pages.
+ *
+ * 401: nobody signed in. 403: a viewer writing.
  * 400: a malformed body or date. Errors are `{ error }` in plain words.
  */
 export async function handleApi(request: Request, env: Env, path: string): Promise<Response> {
   const email = await whoIsCalling(request, env);
   if (email === null) return refuse(401, 'You are not signed in.');
   const role = await roleOf(env.DB, email);
-  if (role === null) return refuse(403, 'You don\'t have access to the Daily Schedule. Ask the Scheduler.');
 
   if (path === 'import' && request.method === 'POST') {
     if (role !== 'editor') return refuse(403, 'Only an Editor can change the Daily Schedule.');
@@ -76,13 +78,14 @@ export async function handleApi(request: Request, env: Env, path: string): Promi
   return refuse(404, 'Not found.');
 }
 
-async function roleOf(db: D1Database, email: string): Promise<Role | null> {
+/** `editor` for the people listed as editors; everyone else signed in is a viewer. */
+async function roleOf(db: D1Database, email: string): Promise<Role> {
   // Emails are compared without regard to case, as sign-in providers do.
   const row = await db
     .prepare('SELECT role FROM people WHERE lower(email) = lower(?)')
     .bind(email)
     .first<{ role: Role }>();
-  return row?.role ?? null;
+  return row?.role === 'editor' ? 'editor' : 'viewer';
 }
 
 /** The stored JSON of the row found, or null. */

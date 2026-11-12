@@ -142,13 +142,13 @@ describe.each(stores)('%s', (_name, makeStore) => {
 
 describe('the API-backed store', () => {
   it('fails a save the Worker refuses, with the Worker\'s reason', async () => {
-    const notOnTheList = apiStore('http://localhost:8787/daily-schedule/api', (input, init) =>
+    const viewer = apiStore('http://localhost:8787/daily-schedule/api', (input, init) =>
       handle(new Request(input, init), d1.env({ DEV_AUTH_EMAIL: 'stranger@example.test' })),
     );
 
-    await expect(notOnTheList.saveRoster(roster)).rejects.toMatchObject({
+    await expect(viewer.saveRoster(roster)).rejects.toMatchObject({
       status: 403,
-      message: expect.stringContaining('access'),
+      message: expect.stringContaining('Editor'),
     });
   });
 });

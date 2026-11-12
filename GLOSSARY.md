@@ -15,11 +15,11 @@ The company app at app.schreiberexcavating.com. People sign in there, and the Da
 _Avoid_: Portal, intranet, main app
 
 **Editor**:
-Someone on the Daily Schedule's access list who may change it: the Scheduler's screen and Settings.
+Someone listed as an editor on the Daily Schedule's access list, who may change it: the Scheduler's screen and Settings.
 _Avoid_: Admin, owner
 
 **Viewer**:
-Someone on the Daily Schedule's access list who may only look at it, on the Office TV page.
+Anyone signed in to the Hub who isn't an Editor. They may only look at the Daily Schedule, on the Office TV page.
 _Avoid_: Guest, read-only user
 
 **Crew Member**:

@@ -96,14 +96,20 @@ describe('the API: who may call it', () => {
     expect(await response.json()).toEqual({ error: expect.any(String) });
   });
 
-  it('answers 403 to someone signed in but not on the list, saving nothing', async () => {
-    expect((await call(STRANGER, '/roster')).status).toBe(403);
-    expect((await call(STRANGER, '/schedules')).status).toBe(403);
-    const response = await call(STRANGER, '/roster', put(roster));
+  it('treats someone signed in but not on the list as a viewer: they read, and save nothing', async () => {
+    await call(EDITOR, '/roster', put(roster));
 
+    expect(await (await call(STRANGER, '/me')).json()).toEqual({ email: STRANGER, role: 'viewer' });
+    expect(await (await call(STRANGER, '/roster')).json()).toEqual(roster);
+    expect((await call(STRANGER, '/schedules')).status).toBe(200);
+
+    const response = await call(STRANGER, '/roster', put({ ...roster, jobs: [] }));
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: expect.any(String) });
-    expect(await (await call(EDITOR, '/roster')).json()).toBeNull();
+    expect(
+      (await call(STRANGER, '/import', { method: 'POST', body: '{}' })).status,
+    ).toBe(403);
+    expect(await (await call(EDITOR, '/roster')).json()).toEqual(roster);
   });
 
   it('answers 403 to a viewer\'s save, saving nothing', async () => {

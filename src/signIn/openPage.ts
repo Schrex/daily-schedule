@@ -2,6 +2,7 @@ import { showPageMessage } from '../pageMessage';
 import { browserFetch, type Fetch } from '../storage/apiStore';
 import { HUB_HOME, HUB_SIGN_IN } from './hubConfig';
 import { hubToken } from './hubSession';
+import type { Role } from '../../shared';
 import { askWhoIsCalling, openingFor, type Page } from './opening';
 import { withToken } from './withToken';
 
@@ -10,17 +11,18 @@ export const signedInFetch: Fetch = withToken(browserFetch, hubToken);
 
 /**
  * Opens a page for whoever is calling (see `openingFor`): `start` runs only
- * when the page is theirs to open. A Viewer on the board or Settings is sent
+ * when the page is theirs to open, and is told their role. A Viewer on the board or Settings is sent
  * to the Office TV; anyone else gets a plain message. If anything fails, the
  * page says so (`what`) and is never left blank.
  */
-export function openPage(page: Page, what: string, start: () => unknown): void {
+export function openPage(page: Page, what: string, start: (role: Role) => unknown): void {
   askWhoIsCalling(signedInFetch)
     .then(async (caller) => {
       const opening = openingFor(page, caller);
       switch (opening.kind) {
         case 'open':
-          await start();
+          // Only someone on the list (an Editor or a Viewer) is let in.
+          if (caller.kind === 'on-the-list') await start(caller.role);
           return;
         case 'go-to-tv':
           window.location.replace('tv.html');

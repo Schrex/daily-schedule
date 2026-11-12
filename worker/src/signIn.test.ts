@@ -56,11 +56,11 @@ describe('the hub sign-in', () => {
     expect(await (await call(await hub.token(VIEWER), '/roster')).json()).toEqual(roster);
   });
 
-  it('answers 403 to someone signed in to the hub but not on the list', async () => {
+  it('takes someone signed in to the hub but not on the list as a viewer', async () => {
     const response = await call(await hub.token(STRANGER), '/me');
 
-    expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({ error: expect.any(String) });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ email: STRANGER, role: 'viewer' });
   });
 
   it.each<[string, () => Promise<string | undefined>]>([
