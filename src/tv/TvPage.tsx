@@ -32,6 +32,9 @@ async function read(store: ScheduleStore): Promise<Shown> {
   return { roster, view: onTheTv(roster, saved, today), today };
 }
 
+/** Whether two reads say the same thing (they are plain data, as stored). */
+const sameShown = (a: Shown, b: Shown): boolean => JSON.stringify(a) === JSON.stringify(b);
+
 /**
  * Today's Daily Schedule, made to be read from across the office: the same
  * cards the crew is sent, side by side in columns across a wide screen,
@@ -41,9 +44,20 @@ async function read(store: ScheduleStore): Promise<Shown> {
  */
 export function TvPage({ store }: { store: ScheduleStore }) {
   const [shown, setShown] = useState<Shown | null>(null);
+  /** Counts the reads begun, so only the latest one's result is shown. */
+  const reads = useRef(0);
 
   const refresh = useCallback(() => {
-    read(store).then(setShown, (error) => console.error('Could not read the Daily Schedule', error));
+    const thisRead = ++reads.current;
+    read(store).then(
+      (next) => {
+        // A read begun later has already been (or will be) shown: this one is stale.
+        if (thisRead !== reads.current) return;
+        // The same as what is shown: keep it, so nothing is drawn or fitted again.
+        setShown((current) => (current !== null && sameShown(current, next) ? current : next));
+      },
+      (error) => console.error('Could not read the Daily Schedule', error),
+    );
   }, [store]);
 
   useEffect(() => {
@@ -88,20 +102,21 @@ function Board({ roster, view }: { roster: Roster; view: CrewView }) {
         <img className="tv-logo" src={logoUrl} alt="Schreiber Excavating" />
         <h1 className="tv-date">{fullDate(view.date)}</h1>
       </header>
+      {/* The Notes for the day first, across the board, as on the crew picture. */}
+      {view.dayNotes && view.dayNotes.length > 0 && (
+        <section className="tv-card tv-day-notes">
+          <h2 className="tv-card-name tv-card-name-yard">Notes for the day</h2>
+          {view.dayNotes.map((note, index) => (
+            <p key={index} className="tv-day-note">
+              {note}
+            </p>
+          ))}
+        </section>
+      )}
       <main className="tv-cards">
         {view.rows.map((row) => (
           <Card key={row.key} roster={roster} row={row} />
         ))}
-        {view.dayNotes && view.dayNotes.length > 0 && (
-          <section className="tv-card tv-day-notes">
-            <h2 className="tv-card-name tv-card-name-yard">Notes for the day</h2>
-            {view.dayNotes.map((note, index) => (
-              <p key={index} className="tv-day-note">
-                {note}
-              </p>
-            ))}
-          </section>
-        )}
       </main>
     </div>
   );
@@ -130,7 +145,7 @@ function Card({ roster, row }: { roster: Roster; row: ScheduleRow }) {
         {row.who.map(({ crewMember, note, personTasks = [] }) => (
           <li key={crewMember.id} className={`tv-name${crewMember.foreman ? ' tv-name-foreman' : ''}`}>
             <div className="tv-name-head">
-              <span className="tv-dot" style={{ background: `var(--dot-${crewMember.color})` }} />
+              <span className={`tv-dot dot-${crewMember.color}`} />
               <span className="tv-name-text">{crewMember.name}</span>
             </div>
             {personTasks.length > 0 && (
@@ -171,7 +186,8 @@ function useFit(dependencies: unknown[]) {
       };
       // The largest size that fits, to half a pixel.
       let low = SMALLEST;
-      let high = Math.min(LARGEST, window.innerWidth / 48);
+      // Never below the smallest, so a narrow window still gets the search.
+      let high = Math.max(SMALLEST, Math.min(LARGEST, window.innerWidth / 48));
       if (fits(high)) return;
       while (high - low > 0.5) {
         const middle = (low + high) / 2;

@@ -167,7 +167,7 @@ body {
 }
 
 .tv-name-foreman .tv-dot {
-  background: var(--paper) !important;
+  background: var(--paper);
 }
 
 .tv-name-text {
@@ -216,7 +216,8 @@ body {
   line-height: 1.3;
 }
 
-/* The Notes for the day: each on a soft ground of its own. */
+/* The Notes for the day: first, across the whole board above the card columns
+   (as on the crew picture), each on a soft ground of its own. */
 .tv-day-notes .tv-card-name {
   margin-bottom: 0.625rem;
 }

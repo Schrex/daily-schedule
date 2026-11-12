@@ -209,3 +209,13 @@ body {
   background: var(--crew-gunmetal);
   color: var(--crew-gunmetal-ink);
 }
+
+/* The dot of a Crew Member's color beside their name, on the board and on the
+   office TV. */
+
+.dot-grey { background: var(--dot-grey); }
+.dot-blue { background: var(--dot-blue); }
+.dot-orange { background: var(--dot-orange); }
+.dot-yellow { background: var(--dot-yellow); }
+.dot-red { background: var(--dot-red); }
+.dot-gunmetal { background: var(--dot-gunmetal); }
