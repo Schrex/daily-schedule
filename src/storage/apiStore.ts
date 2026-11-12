@@ -6,6 +6,9 @@ export const API_BASE = '/daily-schedule/api';
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
+/** The browser's own fetch: the default wherever a Fetch can be passed in (the tests pass their own). */
+export const browserFetch: Fetch = (input, init) => fetch(input, init);
+
 /** A request to the API that was refused or failed; `status` is the HTTP status (0 when unreachable). */
 export class ApiError extends Error {
   constructor(
@@ -18,25 +21,32 @@ export class ApiError extends Error {
 }
 
 /**
+ * One request to the API: the answer when it is OK, or else an ApiError with
+ * the server's own `{ error }` words (status 0 when it could not be reached).
+ * Every request the pages make to the API goes through here.
+ */
+export async function apiRequest(fetchFn: Fetch, url: string, init?: RequestInit): Promise<Response> {
+  let response: Response;
+  try {
+    response = await fetchFn(url, init);
+  } catch (error) {
+    throw new ApiError(`Could not reach the Daily Schedule's server (${String(error)}).`, 0);
+  }
+  if (!response.ok) {
+    const answer = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new ApiError(answer?.error ?? `The server answered ${response.status}.`, response.status);
+  }
+  return response;
+}
+
+/**
  * The ScheduleStore kept by the Worker in its database (D1), shared by every
  * computer, phone and the Office TV. Each call is one request to the API
  * (worker/src/api.ts), and a refused or failed one rejects with an ApiError.
  * The Worker decides who is calling (worker/src/signIn.ts).
  */
-export function apiStore(base: string = API_BASE, fetchFn: Fetch = (input, init) => fetch(input, init)): ScheduleStore {
-  const request = async (path: string, init?: RequestInit): Promise<Response> => {
-    let response: Response;
-    try {
-      response = await fetchFn(base + path, init);
-    } catch (error) {
-      throw new ApiError(`Could not reach the Daily Schedule's server (${String(error)}).`, 0);
-    }
-    if (!response.ok) {
-      const answer = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new ApiError(answer?.error ?? `The server answered ${response.status}.`, response.status);
-    }
-    return response;
-  };
+export function apiStore(base: string = API_BASE, fetchFn: Fetch = browserFetch): ScheduleStore {
+  const request = (path: string, init?: RequestInit) => apiRequest(fetchFn, base + path, init);
   const get = async <T>(path: string): Promise<T> => (await request(path)).json() as Promise<T>;
   const put = async (path: string, body: unknown): Promise<void> => {
     await request(path, {

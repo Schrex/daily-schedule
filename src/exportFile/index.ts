@@ -11,15 +11,11 @@
  * The Slack settings never go to the server.
  */
 
+import { EXPORT_FILE_KIND, EXPORT_FILE_VERSION, NOT_AN_EXPORT_FILE } from '../../shared';
 import type { DailySchedule, Roster } from '../schedule-rules';
 import { saveSlackSettings, slackIsSetUp, type SlackSettings } from '../send/slackSettings';
-import { API_BASE, ApiError, type Fetch } from '../storage/apiStore';
+import { API_BASE, apiRequest, browserFetch, type Fetch } from '../storage/apiStore';
 import type { ScheduleStore } from '../storage';
-
-/** Which file this is, so an unrelated JSON file is never uploaded. */
-export const EXPORT_FILE_KIND = 'daily-schedule-export';
-/** The file's format version; the Worker refuses one it doesn't know. */
-export const EXPORT_FILE_VERSION = 1;
 
 export interface ExportFile {
   kind: typeof EXPORT_FILE_KIND;
@@ -65,28 +61,20 @@ export interface Uploaded {
  * or an Error for a file that isn't an Export file; nothing is changed then.
  */
 export async function uploadExportFile(text: string, options: UploadOptions = {}): Promise<Uploaded> {
-  const { base = API_BASE, fetch: fetchFn = (input, init) => fetch(input, init) } = options;
+  const { base = API_BASE, fetch: fetchFn = browserFetch } = options;
   const file = readExportFile(text);
 
-  let response: Response;
-  try {
-    response = await fetchFn(`${base}/import`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // The Slack settings (with the send key) stay in the browser.
-      body: JSON.stringify({ kind: file.kind, version: file.version, roster: file.roster, schedules: file.schedules }),
-    });
-  } catch (error) {
-    throw new ApiError(`Could not reach the Daily Schedule's server (${String(error)}).`, 0);
-  }
-  const answer = (await response.json().catch(() => null)) as { error?: string; schedules?: number } | null;
-  if (!response.ok) throw new ApiError(answer?.error ?? `The server answered ${response.status}.`, response.status);
+  const response = await apiRequest(fetchFn, `${base}/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // The Slack settings (with the send key) stay in the browser.
+    body: JSON.stringify({ kind: file.kind, version: file.version, roster: file.roster, schedules: file.schedules }),
+  });
+  const answer = (await response.json().catch(() => null)) as { schedules?: number } | null;
 
   if (slackIsSetUp(file.slack)) saveSlackSettings(file.slack, options.storage ?? window.localStorage);
   return { schedules: answer?.schedules ?? file.schedules.length };
 }
-
-const NOT_AN_EXPORT_FILE = 'That is not a Daily Schedule export file.';
 
 function readExportFile(text: string): ExportFile {
   let parsed: unknown;
@@ -100,7 +88,7 @@ function readExportFile(text: string): ExportFile {
     throw new Error(NOT_AN_EXPORT_FILE);
   }
   if (file.version !== EXPORT_FILE_VERSION) {
-    throw new Error(`That export file is format ${String(file.version)}; this page reads format ${EXPORT_FILE_VERSION}.`);
+    throw new Error(`That Export file is format ${String(file.version)}; this page reads format ${EXPORT_FILE_VERSION}.`);
   }
   const slack = (typeof file.slack === 'object' && file.slack) || { relayUrl: '', sendKey: '', channel: '' };
   return { ...(file as ExportFile), slack };

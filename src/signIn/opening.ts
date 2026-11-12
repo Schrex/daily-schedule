@@ -1,9 +1,8 @@
-import { API_BASE, ApiError, type Fetch } from '../storage/apiStore';
+import type { Role } from '../../shared';
+import { API_BASE, ApiError, apiRequest, type Fetch } from '../storage/apiStore';
 
 /** The pages: the Scheduler's screen (the board), Settings, and the Office TV. */
 export type Page = 'board' | 'settings' | 'tv';
-
-export type Role = 'editor' | 'viewer';
 
 /** Who opened the page, as the API sees them (GET /api/me). */
 export type Caller =
@@ -41,14 +40,13 @@ export function openingFor(page: Page, caller: Caller): Opening {
 export async function askWhoIsCalling(fetchFn: Fetch, base: string = API_BASE): Promise<Caller> {
   let response: Response;
   try {
-    response = await fetchFn(`${base}/me`);
+    response = await apiRequest(fetchFn, `${base}/me`);
   } catch (error) {
-    throw new ApiError(`Could not reach the Daily Schedule's server (${String(error)}).`, 0);
+    if (error instanceof ApiError && error.status === 401) return { kind: 'not-signed-in' };
+    if (error instanceof ApiError && error.status === 403) return { kind: 'not-on-the-list' };
+    throw error;
   }
-  if (response.status === 401) return { kind: 'not-signed-in' };
-  if (response.status === 403) return { kind: 'not-on-the-list' };
-  const answer = (await response.json().catch(() => null)) as { email?: unknown; role?: unknown; error?: string } | null;
-  if (!response.ok) throw new ApiError(answer?.error ?? `The server answered ${response.status}.`, response.status);
+  const answer = (await response.json().catch(() => null)) as { email?: unknown; role?: unknown } | null;
   if (typeof answer?.email !== 'string' || (answer.role !== 'editor' && answer.role !== 'viewer')) {
     throw new ApiError('The server did not say who you are.', response.status);
   }

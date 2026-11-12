@@ -10,8 +10,8 @@ export function HubLink() {
     <a
       className="button toolbar-button toolbar-icon hub-link"
       href={HUB_HOME}
-      aria-label="Back to the hub"
-      title="Back to the hub"
+      aria-label="Back to the Hub"
+      title="Back to the Hub"
     >
       <svg
         className="toolbar-button-svg"

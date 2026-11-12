@@ -2,9 +2,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { applyPalette } from '../palette';
 import { seedRoster } from '../seed/seedRoster';
-import { openPage, signedInFetch } from '../signIn/openPage';
-import { API_BASE, apiStore } from '../storage/apiStore';
-import { savedInOrder } from '../storage/saveQueue';
+import { sharedStore } from '../sharedStore';
+import { openPage } from '../signIn/openPage';
 import '../look.css'; // the look of the Scheduler's screen, Crew Member colors and all
 import './settings.css';
 import { SettingsPage } from './SettingsPage';
@@ -15,10 +14,9 @@ applyPalette();
 // button on the Scheduler's screen. It reads and saves the roster in the
 // same store (the Worker's database), so every screen has the changes the
 // next time it loads.
-// Every call carries the hub sign-in, and saves go through the save queue.
-const { store, saves } = savedInOrder(apiStore(API_BASE, signedInFetch));
+const { store, saves } = sharedStore();
 
-// Only an editor opens it; a viewer is sent to the Office TV.
+// Only an Editor opens it; a Viewer is sent to the Office TV.
 openPage('settings', 'Could not open Settings', () =>
   store.loadRoster().then((saved) => {
     createRoot(document.getElementById('root')!).render(
