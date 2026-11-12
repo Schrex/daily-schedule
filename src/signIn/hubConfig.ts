@@ -1,16 +1,17 @@
 /**
  * The hub's Supabase project, used by the pages for sign-in only (never for
  * data). The publishable (anon) key is public by design: the hub's own pages
- * carry it. Both come from the hub repository (Schrex/schreiber-hub-central,
- * `.env`: VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY).
+ * carry it. Both are the live hub's: its build-info.json names the project
+ * (acgqjjbrnkmeazswdnzp), and its page code carries the key. (The hub
+ * repository's `.env` still names the old Lovable project; don't copy from it.)
  *
  * The Worker checks tokens against the same project (HUB_AUTH_URL in
  * wrangler.jsonc).
  */
-export const HUB_SUPABASE_URL = 'https://bitogpfplcquovpdjprk.supabase.co';
+export const HUB_SUPABASE_URL = 'https://acgqjjbrnkmeazswdnzp.supabase.co';
 
 export const HUB_SUPABASE_PUBLISHABLE_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpdG9ncGZwbGNxdW92cGRqcHJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1ODYxNjcsImV4cCI6MjA5MjE2MjE2N30.RM9sEili7tOEq1n0cW1zLvnYs4DjJNnul4gva3h02Qo';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjZ3FqamJybmttZWF6c3dkbnpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MDU2MzUsImV4cCI6MjEwNzk4MTYzNX0.02pALBB44NeQ3vyRD8sWH1k3L-aNjMAUY7ZG00ejx64';
 
 /** The hub itself, for the way back. */
 export const HUB_HOME = 'https://app.schreiberexcavating.com/';
