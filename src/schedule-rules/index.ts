@@ -151,8 +151,8 @@ export interface ScheduleView {
  * who was where. On one never sent, they are simply gone.
  */
 export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleView {
-  const sentRows = lastSend(schedule)?.sent?.rows ?? [];
-  const crewMembersById = crewMembersOf(roster, schedule);
+  const sentRows = sentRowsOf(schedule);
+  const crewMembersById = crewMembersOf(roster, sentRows);
 
   const whoIsOn = (destination: Destination): PlacedCrewMember[] =>
     listedOn(crewMembersById, schedule.placements, destination)
@@ -196,12 +196,15 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
   return { date: schedule.date, rows, notPlaced, dayNotes: dayNotesOf(schedule) };
 }
 
+/** The rows of the last Send's picture: none if never sent, or if that picture is unknown. */
+const sentRowsOf = (schedule: DailySchedule): ScheduleRow[] => lastSend(schedule)?.sent?.rows ?? [];
+
 /**
  * Every Crew Member a Placement can name, by id: the roster's, and on a
- * Daily Schedule that has been sent, those since removed as they were last sent.
+ * Daily Schedule that has been sent, those since removed as they were last
+ * sent (`sentRows`, from `sentRowsOf`).
  */
-function crewMembersOf(roster: Roster, schedule: DailySchedule): Map<string, CrewMember> {
-  const sentRows = lastSend(schedule)?.sent?.rows ?? [];
+function crewMembersOf(roster: Roster, sentRows: readonly ScheduleRow[]): Map<string, CrewMember> {
   return new Map(
     [...sentRows.flatMap((row) => row.who.map((placed) => placed.crewMember)), ...roster.crewMembers].map(
       (crewMember) => [crewMember.id, crewMember],
@@ -298,7 +301,7 @@ export function placeCrewMemberAt(
   before: string | null,
 ): DailySchedule {
   const key = destinationKey(destination);
-  const crewMembersById = crewMembersOf(roster, schedule);
+  const crewMembersById = crewMembersOf(roster, sentRowsOf(schedule));
   const current = schedule.placements.find((placement) => placement.crewMemberId === crewMemberId);
   const sameRow = current !== undefined && destinationKey(current.destination) === key;
 
@@ -702,7 +705,8 @@ function lastSend(schedule: DailySchedule): (Pick<SendRecord, 'sentAt'> & Partia
  *
  * If it has been Sent, it is the last Send, exactly as the crew got it,
  * whatever has been changed on the board since. If it has not, it is the crew
- * view as the board stands now (anyone Not Placed left out). On a day with no
+ * view as the board stands now (anyone Not Placed left out); so is one Sent
+ * before send records held the picture, since what was sent is not known. On a day with no
  * Daily Schedule of its own (a weekend), it is the next one that has been
  * Sent, so Monday's shows from Saturday. Nothing to show gives null.
  */
