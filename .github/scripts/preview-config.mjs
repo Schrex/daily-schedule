@@ -86,6 +86,9 @@ export function previewConfig(config, { previewDatabaseId }) {
   const previewName = `${config.name}${PREVIEW_NAME_SUFFIX}`;
   out.name = previewName;
   if (out.topLevelName) out.topLevelName = previewName;
+  // Production has no workers.dev address (only the hub forwards to it); a
+  // preview is reached only at its own workers.dev address, so it keeps one.
+  out.workers_dev = true;
   const dbs = out.d1_databases ?? [];
   if (dbs.length > 1) {
     throw new Error('The preview supports one D1 database; add a preview database id per binding first.');

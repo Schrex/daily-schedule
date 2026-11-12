@@ -18,6 +18,11 @@ test('reads wrangler.jsonc with comments, trailing commas and URLs in strings', 
   });
 });
 
+test('the preview keeps its own workers.dev address even when production has none', () => {
+  const out = previewConfig({ name: 'daily-schedule', workers_dev: false }, {});
+  assert.equal(out.workers_dev, true);
+});
+
 test('the preview Worker has its own name', () => {
   const out = previewConfig({ name: 'daily-schedule', workers_dev: true }, {});
   assert.equal(out.name, 'daily-schedule-preview');

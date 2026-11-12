@@ -65,9 +65,12 @@ npm run preview   # then open http://localhost:8787/daily-schedule/
 The local database lives in `.wrangler/state/`. On first open, an editor gets the starter Roster and
 Daily Schedule.
 
-The Worker refuses to answer at all on `app.schreiberexcavating.com` or
-`daily-schedule.schrex.workers.dev` if `DEV_AUTH_EMAIL` (or `HUB_JWKS`, the tests' own sign-in
-keys) is set, so neither can ever reach production.
+The Worker refuses to answer at all on `app.schreiberexcavating.com` if `DEV_AUTH_EMAIL` (or
+`HUB_JWKS`, the tests' own sign-in keys) is set, so neither can ever reach production.
+
+The Worker has no workers.dev address (`"workers_dev": false`): the old one,
+`daily-schedule.schrex.workers.dev`, is switched off, and the app is reached only through the hub.
+PR previews keep their own workers.dev address.
 
 ### Tests
 

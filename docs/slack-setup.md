@@ -84,11 +84,11 @@ It prints the relay's address, like
 `https://daily-schedule-slack.<your-name>.workers.dev`.
 
 `ALLOWED_ORIGIN` in `worker/wrangler.toml` lists the addresses the Scheduler's
-screen may send from, separated by commas. It lists both the old address and
-the new one, so **Send to crew** works from either while the screen moves:
+screen may send from, separated by commas. It lists only the hub's address,
+where the Daily Schedule lives (the old address is switched off):
 
 ```toml
-ALLOWED_ORIGIN = "https://daily-schedule.schrex.workers.dev, https://app.schreiberexcavating.com"
+ALLOWED_ORIGIN = "https://app.schreiberexcavating.com"
 ```
 
 A screen at any other address is turned away, even with the right send key.
