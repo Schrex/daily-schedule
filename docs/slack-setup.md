@@ -57,21 +57,27 @@ cd worker
 npx wrangler login
 ```
 
+Every command below names the relay's own configuration (`--config
+wrangler.toml`). Without it, once the screen has been built, Wrangler finds the
+screen's configuration in the folder above (`.wrangler/deploy/config.json`) and
+acts on the screen instead: it says "Using redirected Wrangler configuration"
+and `daily-schedule` rather than `daily-schedule-slack`.
+
 ```bash
-npx wrangler secret put SLACK_BOT_TOKEN
+npx wrangler secret put SLACK_BOT_TOKEN --config wrangler.toml
 ```
 
 Paste the `xoxb-…` token when asked.
 
 ```bash
-npx wrangler secret put SEND_KEY
+npx wrangler secret put SEND_KEY --config wrangler.toml
 ```
 
 Type a long random password (for example, generate one in a password manager)
 and keep it: Settings needs the same one.
 
 ```bash
-npx wrangler deploy
+npx wrangler deploy --config wrangler.toml
 ```
 
 It prints the relay's address, like
@@ -103,8 +109,15 @@ Tap to see it full size ▾                ← Slack's grey line over the pictur
 A resend for the same day starts with `UPDATED: `. The day is said once, in the
 message; the grey line over the picture does not repeat it.
 
-After a change to `worker/src/relay.ts`, deploy the relay again from `worker/`
-with `npx wrangler deploy`.
+After a change to `worker/src/relay.ts`, deploy the relay again. From the main
+folder:
+
+```bash
+npm run deploy:relay
+```
+
+It should say `Uploaded daily-schedule-slack`. (`npm run deploy` is the screen,
+`daily-schedule`; the two are deployed separately.)
 
 To change the channel later, invite the bot to the new channel
 (`/invite @Daily Schedule`) and put its ID in Settings.

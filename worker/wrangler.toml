@@ -1,5 +1,7 @@
 # The Slack relay for the Daily Schedule (see worker/src/relay.ts and docs/slack-setup.md).
-# Deploy from this folder with:  npx wrangler deploy
+# Deploy from the main folder with:  npm run deploy:relay
+# (or from this folder: npx wrangler deploy --config wrangler.toml; without --config,
+# Wrangler picks up the screen's built configuration and deploys the screen instead)
 name = "daily-schedule-slack"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
