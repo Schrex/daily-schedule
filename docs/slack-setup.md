@@ -94,13 +94,19 @@ ALLOWED_ORIGIN = "https://app.schreiberexcavating.com"
 A screen at any other address is turned away, even with the right send key.
 `"*"` allows any address. After changing the list, deploy again.
 
-## 3. Settings on the Scheduler's computer
+## 3. Settings on each computer that Sends
 
-Open **Settings** on the Daily Schedule and fill in the **Slack** box:
+The Slack settings are kept **in each browser**, not in the shared database. So do this once on every
+computer an editor sends from.
 
-- **Slack relay address:** the address `wrangler deploy` printed
-- **Send key:** the same password as `SEND_KEY`
-- **Slack channel ID:** `C0CHSMJFFPS`, or another channel's ID. Leave it empty to use the relay's default.
+Open **Settings** on the Daily Schedule, press **expand** on the **Slack** box, and fill in:
+
+- **Slack relay address:** `https://daily-schedule-slack.schrex.workers.dev` (what `wrangler deploy`
+  printed)
+- **Send key:** the same password as `SEND_KEY`. If nobody has it any more, set a new one (step 2)
+  and enter it everywhere.
+- **Slack channel ID:** `C0CHSMJFFPS`, or another channel's ID. Leave it empty to use the relay's
+  default.
 
 Reload the Daily Schedule. **Send to crew** now posts to that channel.
 
