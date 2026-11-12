@@ -47,26 +47,44 @@ jobs:
       PREVIEW_D1_DATABASE_ID: ${{ vars.PREVIEW_D1_DATABASE_ID }}
       ALIAS: pr-${{ github.event.pull_request.number }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      # Until the Cloudflare secrets are set (see the README's "CI" section),
+      # the preview is skipped with a notice instead of failing every PR.
+      - name: Check the Cloudflare secrets are set
+        id: secrets
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::notice::Preview skipped: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not set. See the README's CI section."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.secrets.outputs.ready == 'true'
+        uses: actions/checkout@v5
+      - if: steps.secrets.outputs.ready == 'true'
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - if: steps.secrets.outputs.ready == 'true'
+        run: npm ci
 
       # Migrations go to the preview database only. The preview config is
       # written next to wrangler.jsonc so its paths (migrations_dir) still
       # resolve. Skipped while the config has no D1 binding.
       - name: Apply D1 migrations to the preview database
+        if: steps.secrets.outputs.ready == 'true'
         run: |
           node .github/scripts/preview-config.mjs write wrangler.jsonc wrangler.preview.json
           for binding in $(node .github/scripts/preview-config.mjs bindings wrangler.preview.json); do
             npx wrangler d1 migrations apply "$binding" --remote --config wrangler.preview.json
           done
 
-      - run: npm run build
+      - if: steps.secrets.outputs.ready == 'true'
+        run: npm run build
 
       - name: Upload the preview version
+        if: steps.secrets.outputs.ready == 'true'
         id: upload
         env:
           WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.json
