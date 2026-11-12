@@ -112,14 +112,13 @@ describe('the Slack relay', () => {
       expect(preflightResponse.status).toBe(403);
     });
 
-    it('as deployed, accepts the screen at both the old and the new address', async () => {
+    it('as deployed, accepts the screen at the new address only; the old one is switched off', async () => {
       const configured = /^ALLOWED_ORIGIN\s*=\s*"([^"]*)"/m.exec(wranglerToml)?.[1];
       const deployed: Env = { ...env, ALLOWED_ORIGIN: configured };
-      for (const address of [OLD, NEW]) {
-        const response = await handle(preflight(address), deployed);
-        expect(response.status).toBe(204);
-        expect(response.headers.get('Access-Control-Allow-Origin')).toBe(address);
-      }
+      const atNew = await handle(preflight(NEW), deployed);
+      expect(atNew.status).toBe(204);
+      expect(atNew.headers.get('Access-Control-Allow-Origin')).toBe(NEW);
+      expect((await handle(preflight(OLD), deployed)).status).toBe(403);
     });
 
     it('still allows any address when the list is "*"', async () => {

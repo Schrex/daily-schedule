@@ -106,9 +106,17 @@ describe('the API: who may call it', () => {
     const response = await call(STRANGER, '/roster', put({ ...roster, jobs: [] }));
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: expect.any(String) });
-    expect(
-      (await call(STRANGER, '/import', { method: 'POST', body: '{}' })).status,
-    ).toBe(403);
+    expect(await (await call(EDITOR, '/roster')).json()).toEqual(roster);
+  });
+
+  it('has no import any more: an Export file upload is refused for everyone, changing nothing', async () => {
+    await call(EDITOR, '/roster', put(roster));
+    const file = { kind: 'daily-schedule-export', version: 1, roster: { ...roster, jobs: [] }, schedules: [] };
+
+    for (const email of [EDITOR, STRANGER]) {
+      const response = await call(email, '/import', { method: 'POST', body: JSON.stringify(file) });
+      expect(response.ok).toBe(false);
+    }
     expect(await (await call(EDITOR, '/roster')).json()).toEqual(roster);
   });
 
@@ -120,7 +128,7 @@ describe('the API: who may call it', () => {
     expect(await (await call(EDITOR, '/schedules')).json()).toEqual([]);
   });
 
-  it.each(['https://app.schreiberexcavating.com', 'https://daily-schedule.schrex.workers.dev'])(
+  it.each(['https://app.schreiberexcavating.com'])(
     'refuses to answer on %s when the development sign-in is set, saving nothing',
     async (origin) => {
       const response = await call(EDITOR, '/roster', put(roster), `${origin}/daily-schedule/api`);
@@ -131,7 +139,7 @@ describe('the API: who may call it', () => {
     },
   );
 
-  it.each(['https://app.schreiberexcavating.com/daily-schedule/', 'https://daily-schedule.schrex.workers.dev/'])(
+  it.each(['https://app.schreiberexcavating.com/daily-schedule/'])(
     'serves no page on %s either when the development sign-in is set',
     async (url) => {
       const response = await handle(new Request(url), d1.env({ DEV_AUTH_EMAIL: EDITOR }));

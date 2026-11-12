@@ -6,8 +6,11 @@
   // address, at the root. Later the API under /daily-schedule/api/.
   "main": "worker/src/app-index.ts",
   "compatibility_date": "2026-11-10",
-  // The old address, daily-schedule.schrex.workers.dev, stays on.
-  "workers_dev": true,
+  // No workers.dev address: the old one (daily-schedule.schrex.workers.dev) is
+  // switched off, so the app is reached only through the hub, at
+  // app.schreiberexcavating.com/daily-schedule/. PR previews keep their own
+  // address (.github/scripts/preview-config.mjs).
+  "workers_dev": false,
   // The hub's Supabase sign-in: the Worker checks each request's token against
   // the keys published here (worker/src/signIn.ts). Sign-in only, never data.
   "vars": {

@@ -2,9 +2,8 @@
  * Storage: where the roster and the Daily Schedules are kept between visits.
  *
  * `ScheduleStore` is the whole interface. The pages use the Worker's database
- * through its API (apiStore.ts). Browser storage on one computer
- * (browserStore.ts) was the store before that, and is kept to read the old
- * data. Tests use the in-memory fake (memoryStore.ts). No rules live here: the
+ * through its API (apiStore.ts). Tests use the in-memory fake
+ * (memoryStore.ts). No rules live here: the
  * store only keeps and returns what it is given.
  */
 

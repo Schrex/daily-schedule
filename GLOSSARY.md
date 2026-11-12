@@ -80,10 +80,6 @@ _Avoid_: Announcement, comment
 The Scheduler's act of delivering the finished Daily Schedule to the crew.
 _Avoid_: Publish, post, share
 
-**Export file**:
-The one-time file that carries a computer's saved schedules (the Roster and every Daily Schedule) and its Slack settings from the old address to the new one: downloaded on the old address's export page, uploaded in Settings at the new address. Refused once a Daily Schedule has been Sent from the new address.
-_Avoid_: Backup, dump, migration file
-
 **Office TV**:
 The page (tv.html) that shows today's Daily Schedule full screen on the TV in the office: as it was last Sent, or as the board stands if it was never Sent. On a day with no Daily Schedule (a weekend), the next one Sent.
 _Avoid_: Display, dashboard, kiosk
