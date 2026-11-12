@@ -1,6 +1,7 @@
 import { handleApi } from './api';
 import type { D1Database } from './d1';
 import { refuse } from './refuse';
+import { CSP_REPORT_PATH, handleCspReport, withSafetyHeaders } from './safetyHeaders';
 
 /** The path the Daily Schedule owns on the hub's address. */
 export const BASE = '/daily-schedule';
@@ -48,8 +49,17 @@ export interface Options {
   devServer?: boolean;
 }
 
-/** Answers every request the Daily Schedule Worker gets. */
+/**
+ * Answers every request the Daily Schedule Worker gets, with the browser
+ * safety headers (safetyHeaders.ts). Not under Vite's dev server, whose own
+ * page scripts the policy would report.
+ */
 export async function handle(request: Request, env: Env, options: Options = {}): Promise<Response> {
+  const response = await answer(request, env, options);
+  return options.devServer ? response : withSafetyHeaders(response);
+}
+
+async function answer(request: Request, env: Env, options: Options): Promise<Response> {
   const url = new URL(request.url);
   if (PRODUCTION_HOSTS.includes(url.hostname)) {
     // The development sign-in lets anyone in as that email, and the tests' key
@@ -62,6 +72,9 @@ export async function handle(request: Request, env: Env, options: Options = {}):
   if (url.pathname === BASE) {
     url.pathname = `${BASE}/`;
     return Response.redirect(url.toString(), 301);
+  }
+  if (url.pathname === CSP_REPORT_PATH) {
+    return handleCspReport(request);
   }
   if (url.pathname.startsWith(API)) {
     return handleApi(request, env, url.pathname.slice(API.length));
