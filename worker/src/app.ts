@@ -1,5 +1,6 @@
 import { handleApi } from './api';
 import type { D1Database } from './d1';
+import { refuse } from './refuse';
 
 /** The path the Daily Schedule owns on the hub's address. */
 export const BASE = '/daily-schedule';
@@ -58,10 +59,7 @@ export async function handle(request: Request, env: Env, options: Options = {}):
     // set trusts tokens signed by keys that are not the hub's: never in production.
     const unsafe = (['DEV_AUTH_EMAIL', 'HUB_JWKS'] as const).filter((name) => env[name]);
     if (unsafe.length > 0) {
-      return Response.json(
-        { error: `${unsafe.join(' and ')} is set on a production address; refusing to answer.` },
-        { status: 500 },
-      );
+      return refuse(500, `${unsafe.join(' and ')} is set on a production address; refusing to answer.`);
     }
   }
   if (url.hostname === OLD_HOST) return oldAddress(request, env);

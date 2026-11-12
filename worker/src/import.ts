@@ -1,5 +1,8 @@
-import { isDailySchedule, isRecord, isRoster } from './api';
+import { EXPORT_FILE_KIND, EXPORT_FILE_VERSION, NOT_AN_EXPORT_FILE } from '../../shared';
 import type { D1Database } from './d1';
+import { refuse } from './refuse';
+import { saveRoster } from './roster';
+import { isDailySchedule, isRecord, isRoster } from './shapes';
 
 /**
  * `POST /api/import`: replaces the Roster and every Daily Schedule with those
@@ -16,17 +19,19 @@ export async function handleImport(request: Request, db: D1Database, email: stri
   try {
     file = await request.json();
   } catch {
-    return refuse(400, 'That is not a Daily Schedule export file.');
+    return refuse(400, NOT_AN_EXPORT_FILE);
   }
-  if (!isRecord(file) || file.kind !== 'daily-schedule-export' || !Array.isArray(file.schedules)) {
-    return refuse(400, 'That is not a Daily Schedule export file.');
+  if (!isRecord(file) || file.kind !== EXPORT_FILE_KIND || !Array.isArray(file.schedules)) {
+    return refuse(400, NOT_AN_EXPORT_FILE);
   }
-  if (file.version !== 1) return refuse(400, `Export file format ${String(file.version)} is not one this server reads.`);
-  if (!isRoster(file.roster)) return refuse(400, 'The export file has no Roster.');
+  if (file.version !== EXPORT_FILE_VERSION) {
+    return refuse(400, `Export file format ${String(file.version)} is not one this server reads.`);
+  }
+  if (!isRoster(file.roster)) return refuse(400, 'The Export file has no Roster.');
   const schedules = file.schedules;
-  if (!schedules.every(isDailySchedule)) return refuse(400, 'The export file holds something that is not a Daily Schedule.');
+  if (!schedules.every(isDailySchedule)) return refuse(400, 'The Export file holds something that is not a Daily Schedule.');
   if (new Set(schedules.map((schedule) => schedule.date)).size !== schedules.length) {
-    return refuse(400, 'The export file has two Daily Schedules for the same date.');
+    return refuse(400, 'The Export file has two Daily Schedules for the same date.');
   }
 
   const sent = await db
@@ -35,7 +40,7 @@ export async function handleImport(request: Request, db: D1Database, email: stri
   if (sent !== null) {
     return refuse(
       409,
-      `The Daily Schedule for ${sent.date} has already been Sent from here, so an export file can no longer replace the saved schedules.`,
+      `The Daily Schedule for ${sent.date} has already been Sent from here, so an Export file can no longer replace the saved schedules.`,
     );
   }
 
@@ -43,12 +48,7 @@ export async function handleImport(request: Request, db: D1Database, email: stri
   // One batch: all of it is saved, or none of it.
   await db.batch([
     db.prepare('DELETE FROM schedules'),
-    db
-      .prepare(
-        'INSERT INTO roster (id, body, saved_at, saved_by) VALUES (1, ?, ?, ?) ' +
-          'ON CONFLICT (id) DO UPDATE SET body = excluded.body, saved_at = excluded.saved_at, saved_by = excluded.saved_by',
-      )
-      .bind(JSON.stringify(file.roster), now, email),
+    saveRoster(db, file.roster, now, email),
     ...schedules.map((schedule) =>
       db
         .prepare('INSERT INTO schedules (date, body, saved_at, saved_by) VALUES (?, ?, ?, ?)')
@@ -57,5 +57,3 @@ export async function handleImport(request: Request, db: D1Database, email: stri
   ]);
   return Response.json({ schedules: schedules.length });
 }
-
-const refuse = (status: number, error: string) => Response.json({ error }, { status });
