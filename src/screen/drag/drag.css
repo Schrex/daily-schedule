@@ -23,13 +23,13 @@ body[data-name-dragging] * {
 
 /* The dragged name's own place on the page, drawn as an empty slot the size
    of the name: where it came from, or, over a destination, the gap the other
-   names open up for it, where it would land if let go now. Each time the slot
-   appears somewhere new it opens out. */
+   names open up for it, where it would land if let go now. As in Windows 11:
+   no outline, just a soft recess in the surface. Each time the slot appears
+   somewhere new it opens out. */
 [data-crew-member][data-dragging] {
-  background: color-mix(in srgb, var(--select) 7%, transparent) !important;
-  box-shadow: none !important;
-  outline: 2px dashed color-mix(in srgb, var(--select) 55%, transparent);
-  outline-offset: -2px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  outline: none;
   animation: name-slot-open var(--move-duration) var(--move-ease);
 }
 
@@ -44,8 +44,9 @@ body[data-name-dragging] * {
   }
 }
 
-/* The lifted copy that follows the pointer: raised off the page (a little
-   larger, with a shadow under it), ringed as the name in hand. It lets the
+/* The lifted copy that follows the pointer: raised straight off the page (a
+   little larger, with a soft wide shadow under it, no tilt), as a tile picked
+   up in Windows 11. It lets the
    pointer through, so what is under it can be found. Its place is set from
    the pointer, in script, as `translate`; the lift animates only `transform`.
    Inside it is the name drawn just as on the board. */
@@ -56,8 +57,8 @@ body[data-name-dragging] * {
   z-index: var(--z-dragged);
   border-radius: var(--radius-chip);
   pointer-events: none;
-  box-shadow: var(--ring-selected);
-  transform: scale(1.04) rotate(-1.5deg);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  transform: scale(1.03);
   animation: name-lift var(--move-duration) var(--lift-ease);
   will-change: translate, transform;
 }

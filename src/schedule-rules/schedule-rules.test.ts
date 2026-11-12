@@ -11,6 +11,7 @@ import {
   NOT_PLACED,
   placeCrewMember,
   placeCrewMemberAt,
+  putInNotPlacedAt,
   returnToNotPlaced,
   scheduleView,
   setNote,
@@ -465,6 +466,53 @@ describe('putting a Crew Member at a spot in a row', () => {
 
 const tasksOf = (label: string, daily: DailySchedule): string[] =>
   scheduleView(roster, daily).rows.find((row) => row.label === label)?.tasks ?? [];
+
+describe('arranging the Not Placed list', () => {
+  const notPlacedIds = (from: DailySchedule) => scheduleView(roster, from).notPlaced.map((each) => each.id);
+  // ann, bob, fay and cal are all Not Placed, listed in roster order.
+  const nobody = schedule();
+
+  it('lists Not Placed in roster order to begin with', () => {
+    expect(notPlacedIds(nobody)).toEqual(['ann', 'bob', 'fay', 'cal']);
+  });
+
+  it('moves someone within the list, just before another', () => {
+    expect(notPlacedIds(putInNotPlacedAt(roster, nobody, 'cal', 'bob'))).toEqual(['ann', 'cal', 'bob', 'fay']);
+  });
+
+  it('moves someone to the end of the list', () => {
+    expect(notPlacedIds(putInNotPlacedAt(roster, nobody, 'ann', null))).toEqual(['bob', 'fay', 'cal', 'ann']);
+  });
+
+  it('takes someone off their place and puts them at the spot', () => {
+    const placed = schedule({ placements: [placement('fay', onJob('tower'), 1)] });
+
+    const back = putInNotPlacedAt(roster, placed, 'fay', 'ann');
+
+    expect(back.placements).toEqual([]);
+    expect(notPlacedIds(back)).toEqual(['fay', 'ann', 'bob', 'cal']);
+  });
+
+  it('keeps the arrangement as people are placed and come back', () => {
+    const arranged = putInNotPlacedAt(roster, nobody, 'cal', 'ann');
+    const bobPlaced = placeCrewMember(arranged, 'bob', onJob('tower'));
+    const bobBack = returnToNotPlaced(bobPlaced, 'bob');
+
+    expect(notPlacedIds(bobPlaced)).toEqual(['cal', 'ann', 'fay']);
+    // Back without a spot (a tap): at the end.
+    expect(notPlacedIds(bobBack)).toEqual(['cal', 'ann', 'fay', 'bob']);
+  });
+
+  it('changes nothing when let go at the spot they are already in', () => {
+    expect(putInNotPlacedAt(roster, nobody, 'bob', 'fay')).toBe(nobody);
+  });
+
+  it('carries the arrangement to the next day', () => {
+    const arranged = putInNotPlacedAt(roster, nobody, 'cal', 'ann');
+
+    expect(notPlacedIds(dailyScheduleFor(roster, [arranged], '2026-11-11'))).toEqual(['cal', 'ann', 'bob', 'fay']);
+  });
+});
 
 describe("setting a Job's Tasks", () => {
   it('makes one Task of each line of the text', () => {
@@ -1391,9 +1439,9 @@ describe('an edit from the screen', () => {
       placeCrewMemberAt(roster, before, 'ann', onJob('bridge'), 'cal'),
     ],
     [
-      { kind: 'move', crewMemberId: 'ann', to: NOT_PLACED, before: 'cal' },
+      { kind: 'move', crewMemberId: 'cal', to: NOT_PLACED, before: 'bob' },
       withTask,
-      withTask,
+      putInNotPlacedAt(roster, withTask, 'cal', 'bob'),
     ],
     [{ kind: 'set-tasks', destination: onJob('tower'), text: 'Dig' }, before, setTasks(before, onJob('tower'), 'Dig')],
     [{ kind: 'set-note', crewMemberId: 'cal', text: '' }, before, setNote(before, 'cal', '')],

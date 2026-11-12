@@ -74,6 +74,12 @@ export interface DailySchedule {
    * Missing on a Daily Schedule saved before Day Notes existed.
    */
   dayNotes?: string[];
+  /**
+   * How the Scheduler arranged the Not Placed list: Crew Member ids, first
+   * first. Anyone Not Placed who is not in it comes after, in roster order.
+   * Placing someone takes them out of it. Missing until the list is arranged.
+   */
+  notPlacedOrder?: string[];
 }
 
 /** One Send: when it happened and exactly what the crew was sent. */
@@ -191,7 +197,10 @@ export function scheduleView(roster: Roster, schedule: DailySchedule): ScheduleV
   ];
 
   const placed = new Set(rows.flatMap((r) => r.who.map((p) => p.crewMember.id)));
-  const notPlaced = roster.crewMembers.filter((crewMember) => !placed.has(crewMember.id));
+  const notPlaced = arrangedNotPlaced(
+    roster.crewMembers.filter((crewMember) => !placed.has(crewMember.id)),
+    schedule.notPlacedOrder,
+  );
 
   return { date: schedule.date, rows, notPlaced, dayNotes: dayNotesOf(schedule) };
 }
@@ -233,6 +242,27 @@ function listedOn(
         (destination.kind === 'job' ? Number(b.crewMember.foreman) - Number(a.crewMember.foreman) : 0) ||
         a.placement.order - b.placement.order,
     );
+}
+
+/**
+ * The Not Placed list as arranged: those in `order` first, in its order, then
+ * everyone else as given (roster order).
+ */
+function arrangedNotPlaced(notPlaced: CrewMember[], order: readonly string[] = []): CrewMember[] {
+  const rank = (crewMember: CrewMember) => {
+    const at = order.indexOf(crewMember.id);
+    return at === -1 ? order.length : at;
+  };
+  return notPlaced
+    .map((crewMember, index) => ({ crewMember, index }))
+    .sort((a, b) => rank(a.crewMember) - rank(b.crewMember) || a.index - b.index)
+    .map(({ crewMember }) => crewMember);
+}
+
+/** The Daily Schedule with a Crew Member taken out of the Not Placed arrangement (they have a place now). */
+function outOfNotPlacedOrder(schedule: DailySchedule, crewMemberId: string): DailySchedule {
+  if (!schedule.notPlacedOrder?.includes(crewMemberId)) return schedule;
+  return { ...schedule, notPlacedOrder: schedule.notPlacedOrder.filter((id) => id !== crewMemberId) };
 }
 
 /**
@@ -278,7 +308,7 @@ export function placeCrewMember(
     : { crewMemberId, destination, order };
 
   return {
-    ...schedule,
+    ...outOfNotPlacedOrder(schedule, crewMemberId),
     placements: [...withoutCrewMember(schedule, crewMemberId), placement],
   };
 }
@@ -329,7 +359,7 @@ export function placeCrewMemberAt(
 
   // The row renumbered in the order it is listed; everyone else as they were.
   return {
-    ...schedule,
+    ...outOfNotPlacedOrder(schedule, crewMemberId),
     placements: [
       ...schedule.placements.filter(
         (placement) => placement.crewMemberId !== crewMemberId && !listedNow.includes(placement),
@@ -346,6 +376,32 @@ export function placeCrewMemberAt(
 export function returnToNotPlaced(schedule: DailySchedule, crewMemberId: string): DailySchedule {
   const placements = withoutCrewMember(schedule, crewMemberId);
   return placements.length === schedule.placements.length ? schedule : { ...schedule, placements };
+}
+
+/**
+ * Puts a Crew Member at a spot in the Not Placed list: just before the Crew
+ * Member named by `before`, or at the end when it is null (or names nobody
+ * there). Anyone placed loses their Placement, as with `returnToNotPlaced`.
+ * The arrangement is kept on the Daily Schedule (and carried to the next day);
+ * the roster is not touched. Let go at the spot they are already in, nothing
+ * changes.
+ */
+export function putInNotPlacedAt(
+  roster: Roster,
+  schedule: DailySchedule,
+  crewMemberId: string,
+  before: string | null,
+): DailySchedule {
+  const unplaced = returnToNotPlaced(schedule, crewMemberId);
+  const listedNow = scheduleView(roster, unplaced).notPlaced.map((crewMember) => crewMember.id);
+  const others = listedNow.filter((id) => id !== crewMemberId);
+  const at = others.indexOf(before ?? '');
+  const arranged = [...others];
+  arranged.splice(at === -1 ? arranged.length : at, 0, crewMemberId);
+
+  const wasListed = scheduleView(roster, schedule).notPlaced.map((crewMember) => crewMember.id);
+  if (unplaced === schedule && wasListed.every((id, index) => id === arranged[index])) return schedule;
+  return { ...unplaced, notPlacedOrder: arranged };
 }
 
 /** Where a move can take a Crew Member, besides a Job or Standing Row: back to Not Placed. */
@@ -571,8 +627,9 @@ export type ScheduleEdit =
 export function applyEdit(schedule: DailySchedule, edit: ScheduleEdit, roster: Roster): DailySchedule {
   switch (edit.kind) {
     case 'move':
-      return edit.before === undefined || edit.to === NOT_PLACED
-        ? moveCrewMember(schedule, edit.crewMemberId, edit.to)
+      if (edit.before === undefined) return moveCrewMember(schedule, edit.crewMemberId, edit.to);
+      return edit.to === NOT_PLACED
+        ? putInNotPlacedAt(roster, schedule, edit.crewMemberId, edit.before)
         : placeCrewMemberAt(roster, schedule, edit.crewMemberId, edit.to, edit.before);
     case 'set-tasks':
       return setTasks(schedule, edit.destination, edit.text);
@@ -767,7 +824,8 @@ const toScheduleDate = (utcMidnight: number): ScheduleDate =>
  * is created from the most recent earlier Daily Schedule: Placements and Tasks
  * are copied, except that Crew Members who were in Off Work become Not Placed,
  * every Note, Person Task and Day Note is dropped, and anything for a Crew Member or Job no longer in the
- * roster is dropped. A new Daily Schedule has no send record. With no earlier
+ * roster is dropped. The Not Placed list keeps its arrangement (those who were
+ * in Off Work come after it). A new Daily Schedule has no send record. With no earlier
  * Daily Schedule to copy, everyone is Not Placed and there are no Tasks.
  *
  * Nothing in `saved` is changed; saving the result is the caller's business.
@@ -813,6 +871,10 @@ export function dailyScheduleFor(
         .map(([key, tasks]) => [key, [...tasks]]),
     ),
     sends: [],
+    // The Not Placed list stays arranged as it was.
+    ...(previous.notPlacedOrder?.length
+      ? { notPlacedOrder: previous.notPlacedOrder.filter((id) => crewMemberIds.has(id)) }
+      : {}),
   };
 }
 
