@@ -9,6 +9,7 @@ import {
   type Roster,
   type ScheduleRow,
 } from '../schedule-rules';
+import { crewPictureColumns, YARD_SHARE, type PictureColumns } from '../send/crewPicture';
 import type { ScheduleStore } from '../storage';
 
 /** How often the TV looks again, besides whenever the Scheduler's screen saves. */
@@ -143,8 +144,28 @@ function NothingYet({ today }: { today: string }) {
   );
 }
 
+/**
+ * The board in the crew picture's columns: two of Jobs and a narrower one at
+ * the right for Shop, Trucking and Off Work, each card in the same column as
+ * on the picture (worked out by the picture itself). Until that is known, the
+ * Jobs and the rest stand in the same columns in order.
+ */
 function Board({ roster, view }: { roster: Roster; view: CrewView }) {
-  const fitRef = useFit([view]);
+  const [columns, setColumns] = useState<PictureColumns | null>(null);
+  useEffect(() => {
+    let current = true;
+    crewPictureColumns(view, roster).then(
+      (worked) => current && setColumns(worked),
+      (error) => console.error('Could not work out the columns', error),
+    );
+    return () => {
+      current = false;
+    };
+  }, [view, roster]);
+
+  const fitRef = useFit([view, columns]);
+  const byKey = new Map(view.rows.map((row) => [row.key, row]));
+  const shown = columns ?? firstGuess(view);
 
   return (
     <div className="tv-fit" ref={fitRef}>
@@ -155,7 +176,7 @@ function Board({ roster, view }: { roster: Roster; view: CrewView }) {
       {/* The Notes for the day first, across the board, as on the crew picture. */}
       {view.dayNotes && view.dayNotes.length > 0 && (
         <section className="tv-card tv-day-notes">
-          <h2 className="tv-card-name tv-card-name-yard">Notes for the day</h2>
+          <h2 className="tv-card-name tv-card-name-yard">Notes</h2>
           {view.dayNotes.map((note, index) => (
             <p key={index} className="tv-day-note">
               {note}
@@ -163,20 +184,41 @@ function Board({ roster, view }: { roster: Roster; view: CrewView }) {
           ))}
         </section>
       )}
-      <main className="tv-cards">
-        {view.rows.map((row) => (
-          <Card key={row.key} roster={roster} row={row} />
+      <main
+        className="tv-cards"
+        style={{ gridTemplateColumns: shown.columns.map(({ share }) => `minmax(0, ${share}fr)`).join(' ') }}
+      >
+        {shown.columns.map(({ keys }, index) => (
+          <div key={index} className="tv-column">
+            {keys.flatMap((key) => {
+              const row = byKey.get(key);
+              return row ? [<Card key={key} roster={roster} row={row} />] : [];
+            })}
+          </div>
         ))}
       </main>
     </div>
   );
 }
 
+/** Jobs shared out over two columns in order, and the rest in a narrower third: until the picture's own columns are known. */
+function firstGuess(view: CrewView): PictureColumns {
+  const jobs = view.rows.filter((row) => row.destination.kind === 'job').map((row) => row.key);
+  const yard = view.rows.filter((row) => row.destination.kind !== 'job').map((row) => row.key);
+  const jobColumns = Math.max(1, Math.min(2, jobs.length));
+  const columns = Array.from({ length: jobColumns }, (_, index) => ({
+    share: 1,
+    keys: jobs.filter((_, at) => at % jobColumns === index),
+  }));
+  return { columns: yard.length > 0 ? [...columns, { share: YARD_SHARE, keys: yard }] : columns };
+}
+
 function Card({ roster, row }: { roster: Roster; row: ScheduleRow }) {
   const isJob = row.destination.kind === 'job';
+  const quiet = row.destination.kind === 'standing-row' && row.destination.standingRow === 'off-work';
   const { name, number } = cardTitle(roster, row);
   return (
-    <section className="tv-card">
+    <section className={`tv-card${quiet ? ' tv-card-quiet' : ''}`}>
       <div className="tv-card-head">
         <h2 className={`tv-card-name${isJob ? '' : ' tv-card-name-yard'}`}>
           {name}
@@ -213,6 +255,9 @@ function Card({ roster, row }: { roster: Roster; row: ScheduleRow }) {
   );
 }
 
+/** Narrower than this (a phone), the board is one column that scrolls instead of fitting the screen. */
+const NARROW = 700;
+
 /** The largest and smallest text the TV is set in, in CSS pixels. */
 const LARGEST = 40;
 const SMALLEST = 8;
@@ -230,6 +275,11 @@ function useFit(dependencies: unknown[]) {
     const fit = () => {
       const board = ref.current;
       if (!board) return;
+      // On a phone the board is one column that scrolls, at the usual size.
+      if (window.innerWidth < NARROW) {
+        root.style.fontSize = '';
+        return;
+      }
       const fits = (size: number) => {
         root.style.fontSize = `${size}px`;
         return board.scrollHeight <= window.innerHeight && board.scrollWidth <= window.innerWidth;

@@ -128,7 +128,7 @@
 }
 
 /* TV view and Settings: at the far right, set apart from the day's buttons
-   by a thin rule, each its icon and a word (the icon alone on a phone). */
+   by a thin rule, two plain square icons the size of the other buttons. */
 .toolbar-links {
   display: flex;
   align-items: center;
@@ -138,10 +138,10 @@
   border-left: var(--hairline);
 }
 
-.toolbar-link {
-  gap: var(--space-2);
-  padding: 0 0.75rem;
-  color: var(--ink-soft);
+.toolbar-icon {
+  width: max(3rem, var(--touch-target));
+  padding: 0;
+  color: var(--ink);
 }
 
 .toolbar-button-svg {
@@ -150,15 +150,11 @@
   height: 1.25rem;
 }
 
-/* Send: the yellow button, in Oswald capitals. */
+/* Send: the one yellow button, in the same type as the others. */
 .send-button {
-  padding: 0 1.5rem;
+  padding: 0 1.25rem;
   border: 0;
-  font-family: var(--font-display);
-  font-size: 1.1875rem;
-  font-weight: var(--weight-display);
-  letter-spacing: var(--tracking-button);
-  text-transform: uppercase;
+  font-weight: var(--weight-strong);
 }
 
 /* What happened to the last Send: a strip across the foot of the header. */
@@ -1127,16 +1123,7 @@ body[data-name-dragging] .destination[data-drop-over] {
   .toolbar-links .toolbar-button {
     flex: 0 0 auto;
     width: max(2.75rem, var(--touch-target));
-    padding: 0;
-  }
-
-  .toolbar-link-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
+    min-height: max(2.75rem, var(--touch-target));
   }
 
   .layout,
