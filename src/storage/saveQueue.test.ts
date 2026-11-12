@@ -3,7 +3,8 @@ import { handle } from '../../worker/src/app';
 import { localD1 } from '../../worker/src/testing/localD1';
 import { onStandingRow, placeCrewMember, type DailySchedule, type Roster } from '../schedule-rules';
 import { apiStore } from './apiStore';
-import { savedInOrder, type SaveState } from './saveQueue';
+import { openDate, openStore } from './index';
+import { savedInOrder, type SaveState, type Saves } from './saveQueue';
 
 const EDITOR = 'editor@example.test';
 const d1 = localD1({ [EDITOR]: 'editor' });
@@ -25,11 +26,19 @@ const annOffWork = placeCrewMember(tuesday, 'ann', onStandingRow('off-work'));
 function network() {
   const saves: { path: string; body: unknown }[] = [];
   const held: (() => void)[] = [];
-  const net = { down: false, holding: false, saves, letThrough: () => held.splice(0).forEach((go) => go()) };
+  const net = {
+    down: false,
+    holding: false,
+    /** Saves are answered with this status (401, 403, 400) instead of reaching the Worker. */
+    refusing: null as number | null,
+    saves,
+    letThrough: () => held.splice(0).forEach((go) => go()),
+  };
   const store = apiStore('http://localhost:8787/daily-schedule/api', async (input, init) => {
     if (init?.method === 'PUT') {
       if (net.holding) await new Promise<void>((go) => held.push(go));
       if (net.down) throw new TypeError('Failed to fetch');
+      if (net.refusing !== null) return Response.json({ error: 'Refused' }, { status: net.refusing });
       saves.push({ path: new URL(input).pathname.replace('/daily-schedule/api', ''), body: JSON.parse(String(init.body)) });
     }
     return handle(new Request(input, init), d1.env({ DEV_AUTH_EMAIL: EDITOR }));
@@ -57,23 +66,43 @@ function manualClock() {
 /** Lets every promise that can settle, settle. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
+/** Resolves once the queue reports everything saved. */
+const allSaved = (saves: Saves) =>
+  new Promise<void>((done) => {
+    if (saves.state() === 'saved') return done();
+    const stop = saves.subscribe(() => {
+      if (saves.state() !== 'saved') return;
+      stop();
+      done();
+    });
+  });
+
+/** Whether a promise has settled by the time everything that can settle has. */
+const settles = async (promise: Promise<unknown>) => {
+  let settled = false;
+  void promise.then(
+    () => (settled = true),
+    () => (settled = true),
+  );
+  await settle();
+  return settled;
+};
+
 describe('saving in order', () => {
   it('sends saves one at a time in order, and only the latest waiting save for a date', async () => {
     const net = network();
-    const { store } = savedInOrder(net.store);
+    const { store, saves } = savedInOrder(net.store);
 
     net.holding = true;
-    const first = store.saveRoster(roster);
+    void store.saveRoster(roster);
     await settle();
-    const later = [
-      store.saveSchedule(tuesday),
-      store.saveSchedule(annInShop),
-      store.saveRoster({ ...roster, jobs: [] }),
-      store.saveSchedule(annOffWork),
-    ];
+    void store.saveSchedule(tuesday);
+    void store.saveSchedule(annInShop);
+    void store.saveRoster({ ...roster, jobs: [] });
+    void store.saveSchedule(annOffWork);
     net.holding = false;
     net.letThrough();
-    await Promise.all([first, ...later]);
+    await allSaved(saves);
 
     expect(net.saves).toEqual([
       { path: '/roster', body: roster },
@@ -94,7 +123,7 @@ describe('a failed save', () => {
     expect(saves.state()).toBe('saved');
 
     net.down = true;
-    const saved = store.saveSchedule(annInShop);
+    void store.saveSchedule(annInShop);
     await settle();
     expect(saves.state()).toBe('not-saved');
 
@@ -104,7 +133,7 @@ describe('a failed save', () => {
 
     net.down = false;
     clock.next();
-    await saved;
+    await allSaved(saves);
 
     expect(clock.asked).toEqual([1000, 2000]);
     expect(saves.state()).toBe('saved');
@@ -118,12 +147,13 @@ describe('a failed save', () => {
     const { store, saves } = savedInOrder(net.store, { wait: clock.wait });
 
     net.down = true;
-    const saved = [store.saveSchedule(tuesday)];
+    void store.saveSchedule(tuesday);
     await settle();
-    saved.push(store.saveSchedule(annInShop), store.saveSchedule(annOffWork));
+    void store.saveSchedule(annInShop);
+    void store.saveSchedule(annOffWork);
     net.down = false;
     clock.next();
-    await Promise.all(saved);
+    await allSaved(saves);
 
     expect(net.saves).toEqual([{ path: '/schedules/2026-11-10', body: annOffWork }]);
     expect(saves.state()).toBe('saved');
@@ -142,5 +172,28 @@ describe('a failed save', () => {
     expect(await store.loadSchedule('2026-11-10')).toEqual(annInShop);
     expect(await store.loadRoster()).toEqual(roster);
     expect(await store.listScheduleDates()).toEqual(['2026-11-10']);
+  });
+});
+
+describe('opening while saves are failing', () => {
+  it('a save is done once it is queued, so nothing waits on the server taking it', async () => {
+    const net = network();
+    const { store, saves } = savedInOrder(net.store, { wait: manualClock().wait });
+
+    net.down = true;
+    expect(await settles(store.saveSchedule(annInShop))).toBe(true);
+    expect(saves.state()).toBe('not-saved');
+  });
+
+  it('still opens a working day that has to be created and saved', async () => {
+    const net = network();
+    const { store, saves } = savedInOrder(net.store, { wait: manualClock().wait });
+
+    net.down = true;
+    const opening = openStore(store, { roster, schedule: tuesday }, '2026-11-09');
+    expect(await settles(opening)).toBe(true);
+    expect((await opening).schedule.date).toBe('2026-11-10');
+    expect(await settles(openDate(store, roster, '2026-11-11'))).toBe(true);
+    expect(saves.state()).toBe('not-saved');
   });
 });

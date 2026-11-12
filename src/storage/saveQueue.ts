@@ -21,13 +21,16 @@ export interface SaveQueueOptions {
 /** How long to wait before trying again after the nth failure in a row: 1 s, 2 s, 4 s… up to 30 s. */
 export const retryAfter = (failures: number): number => Math.min(1000 * 2 ** (failures - 1), 30_000);
 
-/** A save waiting to be sent: what it saves (`key`, `value`), how to send it, and the callers waiting on it. */
+/** A save waiting to be sent: what it saves (`key`, `value`) and how to send it. */
 interface Waiting {
   key: string;
   value: unknown;
   send: () => Promise<void>;
-  done: (() => void)[];
 }
+
+/** The queue's key for a date's Daily Schedule: this prefix, then the date. */
+const SCHEDULE_KEY = 'schedule/';
+const scheduleKey = (date: ScheduleDate) => `${SCHEDULE_KEY}${date}`;
 
 /**
  * Puts a queue in front of a store's saves (the API-backed store, apiStore.ts),
@@ -39,9 +42,10 @@ interface Waiting {
  *   only the latest is sent.
  * - A failed save is tried again with back-off until it gets through.
  *
- * The store returned has the same `ScheduleStore` interface; a save resolves
- * once what it saved, or a later save of the same thing, is saved, and never
- * rejects. `saves` reports all saved / saving / not saved for the pages.
+ * The store returned has the same `ScheduleStore` interface. A save resolves
+ * as soon as the queue has it (loads already give it back) and never rejects,
+ * so opening a page or a date never waits on the server taking a save; how
+ * the saves are going is `saves`, which the pages show.
  */
 export function savedInOrder(
   inner: ScheduleStore,
@@ -80,22 +84,18 @@ export function savedInOrder(
       inFlight = false;
       failures = 0;
       queue.shift();
-      save.done.forEach((done) => done());
       setState(queue.length > 0 ? 'saving' : 'saved');
     }
     running = false;
   };
 
-  const enqueue = (key: string, value: unknown, send: () => Promise<void>): Promise<void> =>
-    new Promise((done) => {
-      const waiting = queue.find((save, i) => save.key === key && !(inFlight && i === 0));
-      if (waiting) {
-        Object.assign(waiting, { value, send });
-        waiting.done.push(done);
-      } else queue.push({ key, value, send, done: [done] });
-      if (state === 'saved') setState('saving');
-      void run();
-    });
+  const enqueue = async (key: string, value: unknown, send: () => Promise<void>): Promise<void> => {
+    const waiting = queue.find((save, i) => save.key === key && !(inFlight && i === 0));
+    if (waiting) Object.assign(waiting, { value, send });
+    else queue.push({ key, value, send });
+    if (state === 'saved') setState('saving');
+    void run();
+  };
 
   /**
    * The newest value waiting to be saved under `key`, if any. Loads give it
@@ -106,7 +106,6 @@ export function savedInOrder(
     const save = queue.filter((waiting) => waiting.key === key).at(-1);
     return save && structuredClone(save.value as T);
   };
-  const scheduleKey = (date: ScheduleDate) => `schedule/${date}`;
 
   const store: ScheduleStore = {
     loadRoster: async () => unsaved<Roster>('roster') ?? inner.loadRoster(),
@@ -115,7 +114,7 @@ export function savedInOrder(
       return enqueue('roster', copy, () => inner.saveRoster(copy));
     },
     listScheduleDates: async () => {
-      const waiting = queue.flatMap((save) => (save.key.startsWith('schedule/') ? [save.key.slice(9)] : []));
+      const waiting = queue.flatMap((save) => (save.key.startsWith(SCHEDULE_KEY) ? [save.key.slice(SCHEDULE_KEY.length)] : []));
       return [...new Set([...(await inner.listScheduleDates()), ...waiting])].sort();
     },
     loadSchedule: async (date) => unsaved<DailySchedule>(scheduleKey(date)) ?? inner.loadSchedule(date),
