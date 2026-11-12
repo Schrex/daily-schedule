@@ -675,13 +675,12 @@ export function crewView(roster: Roster, schedule: DailySchedule): CrewView {
  *
  * `sent` is what the crew actually got, which is recorded as it is even if the
  * Daily Schedule has been changed since it was drawn. Sending the same picture
- * as the last Send again is not a new Send, and a picture of another date is
- * not this Daily Schedule's: both return the same Daily Schedule unchanged.
+ * as the last Send again is a Send too: the crew got it stamped with the new
+ * time, so the record's latest time is that one. A picture of another date is
+ * not this Daily Schedule's: that returns the same Daily Schedule unchanged.
  */
 export function markSent(schedule: DailySchedule, sent: CrewView, sentAt: string): DailySchedule {
   if (sent.date !== schedule.date) return schedule;
-  const last = lastSend(schedule);
-  if (last?.sent && sameData(last.sent, sent)) return schedule;
   return { ...schedule, sends: [...schedule.sends, { sentAt, sent }] };
 }
 

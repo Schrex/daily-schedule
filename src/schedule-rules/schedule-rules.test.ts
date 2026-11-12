@@ -718,13 +718,17 @@ describe('marking a Daily Schedule as Sent', () => {
     expect(scheduleView(roster, sent)).toEqual(scheduleView(roster, before));
   });
 
-  it('does not count a Send of the same picture again as a new Send', () => {
+  it('records a Send of the same picture again with its new time, as the picture is stamped', () => {
     const once = send(everyonePlaced(), '2026-11-09T23:05:00.000Z');
 
     const again = send(once, '2026-11-09T23:06:00.000Z');
 
-    expect(again).toBe(once);
-    expect(lastSentAt(again)).toBe('2026-11-09T23:05:00.000Z');
+    expect(lastSentAt(again)).toBe('2026-11-09T23:06:00.000Z');
+    expect(again.sends.map((record) => record.sentAt)).toEqual([
+      '2026-11-09T23:05:00.000Z',
+      '2026-11-09T23:06:00.000Z',
+    ]);
+    expect(again.sends[1]?.sent).toEqual(once.sends[0]?.sent);
   });
 });
 
@@ -867,7 +871,7 @@ describe('the send record', () => {
     ]);
 
     expect(crewView(later, sent).updated).toBe(false);
-    expect(send(sent, '2026-11-10T08:00:00.000Z', later)).toBe(sent);
+    expect(send(sent, '2026-11-10T08:00:00.000Z', later).sends.at(-1)?.sent).toEqual(sent.sends[0]?.sent);
   });
 
   it('drops a removed Crew Member and Job from a Daily Schedule that was never sent', () => {
@@ -891,7 +895,7 @@ describe('the send record', () => {
 
     const resent = send(old, '2026-11-09T23:40:00.000Z');
     expect(lastSentAt(resent)).toBe('2026-11-09T23:40:00.000Z');
-    expect(send(resent, '2026-11-09T23:41:00.000Z')).toBe(resent);
+    expect(send(resent, '2026-11-09T23:41:00.000Z').sends.at(-1)?.sent).toEqual(resent.sends.at(-1)?.sent);
   });
 });
 
@@ -959,7 +963,7 @@ describe('the crew view', () => {
     const sentTwice = send(setNote(sentOnce, 'ann', '1/2 Day'), '2026-11-09T23:40:00.000Z');
 
     expect(crewView(roster, sentTwice).updated).toBe(true);
-    expect(send(sentTwice, '2026-11-09T23:41:00.000Z')).toBe(sentTwice);
+    expect(crewView(roster, send(sentTwice, '2026-11-09T23:41:00.000Z')).updated).toBe(true);
   });
 
   it('tells a changed Daily Schedule from the one sent after it was saved and read back', () => {
@@ -968,7 +972,7 @@ describe('the crew view', () => {
     ) as DailySchedule;
 
     expect(crewView(roster, reloaded).updated).toBe(false);
-    expect(send(reloaded, '2026-11-09T23:06:00.000Z')).toBe(reloaded);
+    expect(send(reloaded, '2026-11-09T23:06:00.000Z').sends.at(-1)?.sent).toEqual(reloaded.sends[0]?.sent);
     expect(crewView(roster, setNote(setNote(reloaded, 'ann', 'x'), 'ann', '')).updated).toBe(false);
     expect(crewView(roster, placeCrewMember(reloaded, 'bob', onJob('bridge'))).updated).toBe(true);
   });

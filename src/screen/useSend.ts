@@ -42,7 +42,9 @@ interface Outcome {
  * What a press came to is remembered only for the Daily Schedule it was
  * about: as soon as the schedule changes, the failure or the "paste it"
  * instruction goes away. The "Sent" time itself comes from the send record,
- * so it is still there after a reload.
+ * so it is still there after a reload. Every delivered Send is recorded, a
+ * re-Send of an unchanged picture too, so that time is always the one stamped
+ * on the picture the crew got last.
  */
 export function useSend({
   roster,
@@ -54,8 +56,10 @@ export function useSend({
   schedule: DailySchedule;
   delivery: CrewDelivery;
   /**
-   * The delivery worked: the crew view the crew got, and when. Records the
-   * Send on the Daily Schedule as it stands by then, and returns the result.
+   * The delivery worked: the crew view the crew got, and when (the time
+   * stamped on the picture). Records the Send on the Daily Schedule as it
+   * stands by then, even if it is the same picture as the last Send, and
+   * returns the result.
    */
   onDelivered: (sent: CrewView, sentAt: string) => DailySchedule;
 }): SendState {
