@@ -9,10 +9,13 @@ import {
   type ScheduleEdit,
 } from '../schedule-rules';
 import type { CrewDelivery } from '../send';
+import { NotSaved, useSaveState } from '../saving/NotSaved';
 import { openDate, type Opened, type ScheduleStore } from '../storage';
+import type { Saves } from '../storage/saveQueue';
 import { ChangeDate } from './ChangeDate';
 import { PreviewPicture } from './PreviewPicture';
 import { nextOpenJobs, type OpenJobs, type OpenJobsEvent } from './openJobs';
+import { HubLink } from './HubLink';
 import { SettingsLink } from './SettingsLink';
 import { TvLink } from './TvLink';
 import { ScheduleScreen } from './ScheduleScreen';
@@ -26,14 +29,16 @@ import { useSend } from './useSend';
  * change, a Send being recorded) goes through `change`, which works on the
  * schedule as it stands at that instant and saves the result. The screen
  * below only draws and reports clicks. `opened` is what the store held when
- * the page loaded.
+ * the page loaded. `saves` says whether everything is saved yet (saveQueue.ts).
  */
 export function App({
   store,
+  saves,
   opened,
   delivery,
 }: {
   store: ScheduleStore;
+  saves: Saves;
   opened: Opened;
   /** How the picture of the Daily Schedule reaches the crew. */
   delivery: CrewDelivery;
@@ -76,9 +81,8 @@ export function App({
       show(next);
       // Anyone put on a Job, by whatever means, opens it; nothing closes mid-edit.
       openJobsAfter({ kind: 'changed', view: scheduleView(roster, next) });
-      store
-        .saveSchedule(next)
-        .catch((error) => console.error('Could not save the Daily Schedule', error));
+      // The save queue tries again until it is saved; `saves` reports how it is going.
+      void store.saveSchedule(next);
     }
     return next;
   };
@@ -95,6 +99,7 @@ export function App({
     return after;
   };
   const send = useSend({ roster, schedule, delivery, onDelivered: recordSend });
+  const saveState = useSaveState(saves);
 
   /**
    * The schedules before each of the Scheduler's edits, for Undo (see
@@ -192,16 +197,22 @@ export function App({
           </button>
           <ChangeDate date={schedule.date} onChangeDate={changeDate} />
           <PreviewPicture roster={roster} schedule={schedule} />
-          <SendButton send={send} />
+          <SendButton send={send} allSaved={saveState === 'saved'} />
         </>
       }
       toolbarLinks={
         <>
           <TvLink />
           <SettingsLink />
+          <HubLink />
         </>
       }
-      sendMessage={<SendFailure send={send} />}
+      sendMessage={
+        <>
+          <NotSaved state={saveState} />
+          <SendFailure send={send} />
+        </>
+      }
     />
   );
 }

@@ -83,8 +83,16 @@ npx wrangler deploy --config wrangler.toml
 It prints the relay's address, like
 `https://daily-schedule-slack.<your-name>.workers.dev`.
 
-Optional: once you know where the Scheduler's screen is hosted, put its address
-in `ALLOWED_ORIGIN` in `worker/wrangler.toml` and deploy again.
+`ALLOWED_ORIGIN` in `worker/wrangler.toml` lists the addresses the Scheduler's
+screen may send from, separated by commas. It lists both the old address and
+the new one, so **Send to crew** works from either while the screen moves:
+
+```toml
+ALLOWED_ORIGIN = "https://daily-schedule.schrex.workers.dev, https://app.schreiberexcavating.com"
+```
+
+A screen at any other address is turned away, even with the right send key.
+`"*"` allows any address. After changing the list, deploy again.
 
 ## 3. Settings on the Scheduler's computer
 

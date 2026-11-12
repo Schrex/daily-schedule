@@ -10,6 +10,18 @@ The daily crew schedule for Schrex: who works where on the next working day, and
 The one person who builds and sends the Daily Schedule each evening.
 _Avoid_: Manager, project coordinator, admin
 
+**Hub**:
+The company app at app.schreiberexcavating.com. People sign in there, and the Daily Schedule reuses that sign-in; it never reads or writes the Hub's data.
+_Avoid_: Portal, intranet, main app
+
+**Editor**:
+Someone on the Daily Schedule's access list who may change it: the Scheduler's screen and Settings.
+_Avoid_: Admin, owner
+
+**Viewer**:
+Someone on the Daily Schedule's access list who may only look at it, on the Office TV page.
+_Avoid_: Guest, read-only user
+
 **Crew Member**:
 A person who can be placed on the Daily Schedule.
 _Avoid_: Employee, worker, resource
@@ -67,6 +79,10 @@ _Avoid_: Announcement, comment
 **Send**:
 The Scheduler's act of delivering the finished Daily Schedule to the crew.
 _Avoid_: Publish, post, share
+
+**Export file**:
+The one-time file that carries a computer's saved schedules (the Roster and every Daily Schedule) and its Slack settings from the old address to the new one: downloaded on the old address's export page, uploaded in Settings at the new address. Refused once a Daily Schedule has been Sent from the new address.
+_Avoid_: Backup, dump, migration file
 
 **Office TV**:
 The page (tv.html) that shows today's Daily Schedule full screen on the TV in the office: as it was last Sent, or as the board stands if it was never Sent. On a day with no Daily Schedule (a weekend), the next one Sent.

@@ -1,0 +1,74 @@
+# A merge to main: typecheck and tests, apply D1 migrations, deploy the
+# daily-schedule Worker. A failed migration stops the deploy. The Slack relay
+# (worker/wrangler.toml) is deployed only when its own files changed.
+# See the README's "CI" section for the secrets.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time, in order; never cancel one halfway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    name: Migrate and deploy the Worker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      # Fails first, with a plain message, while wrangler.jsonc still has the
+      # placeholder database_id (README: "Setting up the database (once)").
+      - name: Check the Worker's config
+        run: node .github/scripts/check-config.mjs wrangler.jsonc
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      # Every D1 binding in wrangler.jsonc, in turn. Nothing to do (and the
+      # step passes) while the config has no D1 binding. `set -e` (the default
+      # shell) makes a failed migration fail the job before the deploy step.
+      - name: Apply D1 migrations
+        run: |
+          for binding in $(node .github/scripts/preview-config.mjs bindings wrangler.jsonc); do
+            npx wrangler d1 migrations apply "$binding" --remote
+          done
+
+      - name: Deploy the Worker
+        run: npm run deploy
+
+  relay:
+    name: Deploy the Slack relay (when it changed)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Did the relay change?
+        id: changed
+        run: echo "relay=$(node .github/scripts/relay-changed.mjs '${{ github.event.before }}' '${{ github.sha }}')" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v5
+        if: steps.changed.outputs.relay == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - if: steps.changed.outputs.relay == 'true'
+        run: npm ci
+      - if: steps.changed.outputs.relay == 'true'
+        run: npx vitest run worker/src/relay.test.ts
+      - if: steps.changed.outputs.relay == 'true'
+        run: npm run deploy:relay

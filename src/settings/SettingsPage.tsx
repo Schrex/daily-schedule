@@ -15,7 +15,9 @@ import {
   type Roster,
 } from '../schedule-rules';
 import { COLOR_NAMES } from '../palette';
+import { NotSaved, useSaveState } from '../saving/NotSaved';
 import type { ScheduleStore } from '../storage';
+import type { Saves } from '../storage/saveQueue';
 import {
   channelLooksRight,
   cleanSlackSettings,
@@ -24,6 +26,7 @@ import {
   slackIsSetUp,
   type SlackSettings,
 } from '../send/slackSettings';
+import { UploadSchedules } from './UploadSchedules';
 
 /** What is open over the page: one Crew Member, one Job, or a new one of either. */
 type Open =
@@ -41,8 +44,9 @@ type Open =
  * roster rule and saves the result straight away, so there is no Save button.
  * `roster` is what the store held when the page loaded.
  */
-export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; roster: Roster }) {
+export function SettingsPage({ store, saves, roster: loaded }: { store: ScheduleStore; saves: Saves; roster: Roster }) {
   const [roster, setRoster] = useState<Roster>(loaded);
+  const saveState = useSaveState(saves);
   const [open, setOpen] = useState<Open>(null);
   const close = () => setOpen(null);
 
@@ -51,7 +55,8 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
     const next = rule(roster);
     if (next === roster) return;
     setRoster(next);
-    store.saveRoster(next).catch((error) => console.error('Could not save the roster', error));
+    // The save queue tries again until it is saved; `saves` reports how it is going.
+    void store.saveRoster(next);
   };
 
   const openCrewMember =
@@ -68,6 +73,7 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
       <p className="settings-intro">
         Click a name to change it. Everything is saved by itself.
       </p>
+      <NotSaved state={saveState} />
 
       <section aria-labelledby="crew-heading">
         <h2 id="crew-heading">Crew Members</h2>
@@ -117,6 +123,8 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
       </section>
 
       <SlackSection />
+
+      <UploadSchedules />
 
       {openCrewMember && (
         <CrewMemberPanel

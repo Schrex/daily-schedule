@@ -1,11 +1,34 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "daily-schedule",
+  // The script (worker/src/app.ts) answers every request first: it serves the
+  // pages under /daily-schedule/ (where the hub forwards them) and, on the old
+  // address, at the root. Later the API under /daily-schedule/api/.
+  "main": "worker/src/app-index.ts",
   "compatibility_date": "2026-11-10",
+  // The old address, daily-schedule.schrex.workers.dev, stays on.
+  "workers_dev": true,
+  // The hub's Supabase sign-in: the Worker checks each request's token against
+  // the keys published here (worker/src/signIn.ts). Sign-in only, never data.
+  "vars": {
+    "HUB_AUTH_URL": "https://bitogpfplcquovpdjprk.supabase.co/auth/v1"
+  },
   "observability": {
     "enabled": true
   },
+  // The Roster, the Daily Schedules and the access list. The schema is in
+  // migrations/ (applied by CI before each deploy; see the README).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "daily-schedule",
+      "database_id": "ce405ebb-eeac-4ea4-88c0-6cc22aa8b79b",
+      "migrations_dir": "migrations"
+    }
+  ],
   "assets": {
+    "binding": "ASSETS",
+    "run_worker_first": true,
     "not_found_handling": "single-page-application"
   }
 }

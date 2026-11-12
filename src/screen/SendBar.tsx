@@ -5,13 +5,16 @@ import './send.css';
 /**
  * "Send to crew": the one main action, at the right end of the header, the
  * same place every evening. Stateless: it draws the `SendState` it is given.
+ * It waits while anything is not saved yet (`allSaved` false), so the crew
+ * never gets a picture that differs from the saved Daily Schedule.
  */
-export function SendButton({ send }: { send: SendState }) {
+export function SendButton({ send, allSaved }: { send: SendState; allSaved: boolean }) {
   return (
     <button
       type="button"
       className="button button-primary toolbar-button send-button"
-      disabled={send.status.kind === 'sending'}
+      disabled={send.status.kind === 'sending' || !allSaved}
+      title={allSaved ? undefined : 'Send waits until every change is saved'}
       onClick={send.send}
     >
       {send.status.kind === 'sending' ? 'Sending…' : 'Send to crew'}
