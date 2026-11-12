@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import notFoundPage from '../../public/404.html?raw';
+import wranglerConfig from '../../wrangler.jsonc?raw';
 import { handle, type Env } from './app';
 
 const HUB = 'https://app.schreiberexcavating.com';
@@ -98,5 +100,28 @@ describe('the Daily Schedule Worker', () => {
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({ error: expect.any(String) });
     expect(asked).toEqual([]);
+  });
+
+  it('passes the page files\' 404 for an unknown page through, never the board', async () => {
+    const { env, asked } = fakeAssets((path) =>
+      path === '/expor' ? new Response('Page not found', { status: 404 }) : new Response(`file ${path}`),
+    );
+    const response = await handle(new Request(`${HUB}/daily-schedule/expor`), env);
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe('Page not found');
+    expect(asked).toEqual(['/expor']);
+  });
+});
+
+describe('an unknown address under /daily-schedule/', () => {
+  it('gets the Page not found page (404-page), not the board (single-page-application)', () => {
+    expect(wranglerConfig).toMatch(/"not_found_handling":\s*"404-page"/);
+    expect(wranglerConfig).not.toMatch(/single-page-application/);
+  });
+
+  it('says the page was not found and links back to the board', () => {
+    expect(notFoundPage).toMatch(/Page not found/);
+    expect(notFoundPage).toMatch(/href="\/daily-schedule\/"/);
   });
 });
