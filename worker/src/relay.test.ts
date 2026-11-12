@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { handle, type Env } from './relay';
+import wranglerToml from '../wrangler.toml?raw';
 
 const env: Env = { SLACK_BOT_TOKEN: 'xoxb-test', SEND_KEY: 'secret-key', SLACK_CHANNEL: 'C0CHSMJFFPS' };
 const png = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
@@ -85,5 +86,47 @@ describe('the Slack relay', () => {
     const response = await handle(new Request('https://relay.example/send', { method: 'OPTIONS' }), env);
     expect(response.status).toBe(204);
     expect(response.headers.get('Access-Control-Allow-Headers')).toContain('X-Channel');
+  });
+
+  describe('the allowed addresses', () => {
+    const OLD = 'https://daily-schedule.schrex.workers.dev';
+    const NEW = 'https://app.schreiberexcavating.com';
+    const both: Env = { ...env, ALLOWED_ORIGIN: `${OLD}, ${NEW}` };
+    const preflight = (origin: string) =>
+      new Request('https://relay.example/send', { method: 'OPTIONS', headers: { Origin: origin } });
+
+    it('lets a screen at a listed address send, and tells its browser so', async () => {
+      const { fetchImpl } = fakeSlack();
+      const response = await handle(send({ Origin: NEW }), both, fetchImpl);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe(NEW);
+    });
+
+    it('refuses a screen at any other address, even with the right send key, without touching Slack', async () => {
+      const { fetchImpl } = fakeSlack();
+      const response = await handle(send({ Origin: 'https://elsewhere.example' }), both, fetchImpl);
+      expect(response.status).toBe(403);
+      expect(response.headers.get('Access-Control-Allow-Origin')).not.toBe('https://elsewhere.example');
+      expect(fetchImpl).not.toHaveBeenCalled();
+      const preflightResponse = await handle(preflight('https://elsewhere.example'), both);
+      expect(preflightResponse.status).toBe(403);
+    });
+
+    it('as deployed, accepts the screen at both the old and the new address', async () => {
+      const configured = /^ALLOWED_ORIGIN\s*=\s*"([^"]*)"/m.exec(wranglerToml)?.[1];
+      const deployed: Env = { ...env, ALLOWED_ORIGIN: configured };
+      for (const address of [OLD, NEW]) {
+        const response = await handle(preflight(address), deployed);
+        expect(response.status).toBe(204);
+        expect(response.headers.get('Access-Control-Allow-Origin')).toBe(address);
+      }
+    });
+
+    it('still allows any address when the list is "*"', async () => {
+      const { fetchImpl } = fakeSlack();
+      const response = await handle(send({ Origin: 'https://elsewhere.example' }), { ...env, ALLOWED_ORIGIN: '*' }, fetchImpl);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    });
   });
 });

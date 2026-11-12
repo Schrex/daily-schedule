@@ -22,7 +22,10 @@ export interface Env {
   SEND_KEY: string;
   /** The channel ID posted to when the screen names none. */
   SLACK_CHANNEL?: string;
-  /** The address of the Scheduler's screen, for the browser; "*" if unset. */
+  /**
+   * The addresses the Scheduler's screen may send from, separated by commas,
+   * e.g. "https://a.example, https://b.example". "*" (or unset) allows any.
+   */
   ALLOWED_ORIGIN?: string;
 }
 
@@ -30,8 +33,12 @@ export interface Env {
 const MAX_BYTES = 20 * 1024 * 1024;
 const CHANNEL_ID = /^[CGD][A-Z0-9]{6,}$/;
 export async function handle(request: Request, env: Env, fetchImpl: typeof fetch = fetch): Promise<Response> {
+  const allowed = (env.ALLOWED_ORIGIN ?? '').split(',').map((address) => address.trim()).filter(Boolean);
+  const origin = request.headers.get('Origin');
+  const anyOrigin = allowed.length === 0 || allowed.includes('*');
   const cors = {
-    'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
+    'Access-Control-Allow-Origin': anyOrigin ? '*' : origin && allowed.includes(origin) ? origin : (allowed[0] ?? ''),
+    Vary: 'Origin',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Title, X-Channel',
     'Access-Control-Max-Age': '86400',
@@ -43,6 +50,10 @@ export async function handle(request: Request, env: Env, fetchImpl: typeof fetch
     });
   const refuse = (status: number, error: string) => answer(status, { ok: false, error });
 
+  // A browser always says where the page is; a page at an address not listed is turned away.
+  if (origin && !anyOrigin && !allowed.includes(origin)) {
+    return refuse(403, 'This screen\'s address is not one the Slack relay accepts. Add it to ALLOWED_ORIGIN.');
+  }
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   if (new URL(request.url).pathname !== '/send') return refuse(404, 'Nothing here.');
   if (request.method !== 'POST') return refuse(405, 'Use POST.');
