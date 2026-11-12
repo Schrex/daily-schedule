@@ -10,6 +10,10 @@ The daily crew schedule for Schrex: who works where on the next working day, and
 The one person who builds and sends the Daily Schedule each evening.
 _Avoid_: Manager, project coordinator, admin
 
+**Hub**:
+The company app at app.schreiberexcavating.com. People sign in there, and the Daily Schedule reuses that sign-in; it never reads or writes the Hub's data.
+_Avoid_: Portal, intranet, main app
+
 **Editor**:
 Someone on the Daily Schedule's access list who may change it: the Scheduler's screen and Settings.
 _Avoid_: Admin, owner

@@ -30,6 +30,13 @@ export interface Env {
    * email. Only ever set in local configuration (.dev.vars).
    */
   DEV_AUTH_EMAIL?: string;
+  /**
+   * The hub's Supabase sign-in (`https://<project>.supabase.co/auth/v1`): the
+   * issuer of its tokens, and where its public keys are published.
+   */
+  HUB_AUTH_URL?: string;
+  /** The hub's public keys as a JWKS, in place of fetching them (the tests). */
+  HUB_JWKS?: string;
 }
 
 export interface Options {

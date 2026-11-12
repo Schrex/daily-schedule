@@ -8,6 +8,11 @@
   "compatibility_date": "2026-11-10",
   // The old address, daily-schedule.schrex.workers.dev, stays on.
   "workers_dev": true,
+  // The hub's Supabase sign-in: the Worker checks each request's token against
+  // the keys published here (worker/src/signIn.ts). Sign-in only, never data.
+  "vars": {
+    "HUB_AUTH_URL": "https://bitogpfplcquovpdjprk.supabase.co/auth/v1"
+  },
   "observability": {
     "enabled": true
   },

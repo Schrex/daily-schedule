@@ -8,9 +8,9 @@ import { seedSchedule } from './seed/seedSchedule';
 import { clipboardDelivery } from './send/clipboardDelivery';
 import { slackDelivery } from './send/slackDelivery';
 import { loadSlackSettings, slackIsSetUp } from './send/slackSettings';
-import { showPageProblem } from './pageProblem';
 import { openStore } from './storage';
-import { apiStore } from './storage/apiStore';
+import { openPage, signedInFetch } from './signIn/openPage';
+import { API_BASE, apiStore } from './storage/apiStore';
 import { savedInOrder } from './storage/saveQueue';
 import './screen/screen.css';
 
@@ -19,8 +19,9 @@ applyPalette();
 // The one place that chooses where things are saved: the Worker's database,
 // shared by every screen, through the save queue (saves in order, tried again
 // until they get through; `saves` says how it is going). On first ever open
-// the store is filled from the seed roster and seed Daily Schedule.
-const { store, saves } = savedInOrder(apiStore());
+// the store is filled from the seed roster and seed Daily Schedule. Every call
+// carries the hub sign-in.
+const { store, saves } = savedInOrder(apiStore(API_BASE, signedInFetch));
 
 // It opens on the Daily Schedule for the next working day after today.
 const today = scheduleDateOf(new Date());
@@ -30,13 +31,14 @@ const today = scheduleDateOf(new Date());
 const slack = loadSlackSettings();
 const delivery = slackIsSetUp(slack) ? slackDelivery(slack) : clipboardDelivery();
 
-openStore(store, { roster: seedRoster, schedule: seedSchedule }, today).then(
-  (opened) => {
+// Only an editor opens it (and so only an editor ever creates or saves
+// anything); a viewer is sent to the Office TV.
+openPage('board', 'Could not open the Daily Schedule', () =>
+  openStore(store, { roster: seedRoster, schedule: seedSchedule }, today).then((opened) => {
     createRoot(document.getElementById('root')!).render(
       <StrictMode>
         <App store={store} saves={saves} opened={opened} delivery={delivery} />
       </StrictMode>,
     );
-  },
-  (error) => showPageProblem('Could not open the Daily Schedule', error),
+  }),
 );

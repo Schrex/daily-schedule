@@ -8,6 +8,7 @@ import { whoIsCalling } from './signIn';
  * (src/storage): the bodies are the Roster and Daily Schedule JSON as the
  * pages hold them, kept whole in D1 (migrations/).
  *
+ *   GET /me                 { email, role }                anyone on the list
  *   GET /roster             the Roster, or null           editors and viewers
  *   PUT /roster             saves the Roster              editors
  *   GET /schedules          the saved dates, earliest first
@@ -34,6 +35,8 @@ export async function handleApi(request: Request, env: Env, path: string): Promi
   const writing = request.method === 'PUT';
   if (!reading && !writing) return refuse(405, 'That method is not allowed here.');
   if (writing && role !== 'editor') return refuse(403, 'Only an editor can change the Daily Schedule.');
+
+  if (path === 'me' && reading) return Response.json({ email, role });
 
   if (path === 'roster') {
     if (reading) return Response.json(await readBody(env.DB.prepare('SELECT body FROM roster WHERE id = 1')));

@@ -15,6 +15,7 @@ import type { Saves } from '../storage/saveQueue';
 import { ChangeDate } from './ChangeDate';
 import { PreviewPicture } from './PreviewPicture';
 import { nextOpenJobs, type OpenJobs, type OpenJobsEvent } from './openJobs';
+import { HubLink } from './HubLink';
 import { SettingsLink } from './SettingsLink';
 import { TvLink } from './TvLink';
 import { ScheduleScreen } from './ScheduleScreen';
@@ -203,6 +204,7 @@ export function App({
         <>
           <TvLink />
           <SettingsLink />
+          <HubLink />
         </>
       }
       sendMessage={
