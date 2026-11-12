@@ -5,7 +5,8 @@
 The Roster and every Daily Schedule are kept in the Worker's D1 database (binding `DB`), and the
 pages read and save them through the Worker's API under `/daily-schedule/api/`
 (`worker/src/api.ts`). The schema is in `migrations/`. The database also holds the access list,
-`people`: each email is an `editor` (the Scheduler's screen and Settings) or a `viewer`.
+`people`: the **editors** (the Scheduler's screen and Settings). Everyone else signed in to the hub
+is a **viewer**: the pages send them to the Office TV, and they can't change anything.
 
 ### Setting up the database (once)
 
@@ -19,7 +20,7 @@ pages read and save them through the Worker's API under `/daily-schedule/api/`
    npx wrangler d1 execute DB --remote --command "INSERT INTO people (email, role) VALUES ('name@example.com', 'editor')"
    ```
 
-   The same command with `'viewer'` adds a viewer. To remove someone:
+   Viewers need no line: anyone else signed in to the hub is one. To remove an editor:
    `--command "DELETE FROM people WHERE email = 'name@example.com'"`. To see the list:
    `--command "SELECT * FROM people"`. Never write anyone's email in this repository.
 
@@ -32,7 +33,7 @@ sign-in only**: a test fails if anything in `src/` asks the hub's Supabase for d
 send the sign-in's token with every API call, and the Worker checks it itself
 (`worker/src/signIn.ts`) against the hub's published ES256 keys (`HUB_AUTH_URL` in
 `wrangler.jsonc`), then looks the email up in `people`. Each page first asks `GET /api/me`: an
-editor gets the page, a viewer is sent to the Office TV, anyone else gets a plain message.
+editor gets the page, and everyone else signed in is a viewer, sent to the Office TV.
 
 ## Running it locally
 

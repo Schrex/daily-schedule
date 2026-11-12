@@ -23,7 +23,9 @@ export type Opening =
 
 /**
  * What a page shows to whoever opened it. Only editors open the board and
- * Settings; anyone on the list opens the Office TV.
+ * Settings; everyone else signed in is a viewer and opens the Office TV. (The
+ * API no longer answers `/me` with 403; 'not-on-the-list' stays as a safe
+ * answer if it ever does.)
  */
 export function openingFor(page: Page, caller: Caller): Opening {
   if (caller.kind === 'not-signed-in') return { kind: 'sign-in' };

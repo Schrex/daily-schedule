@@ -44,10 +44,11 @@ const sameShown = (a: Shown, b: Shown): boolean => JSON.stringify(a) === JSON.st
  *
  * Left alone it is the schedule and nothing else: no pointer, no buttons.
  * Moving the mouse brings back the pointer and a small bar with Full screen
- * and Back to board; both fade away again after a few seconds of stillness.
+ * and (for an Editor) Back to board; both fade away again after a few seconds
+ * of stillness.
  * A click anywhere else also puts it full screen (or back).
  */
-export function TvPage({ store }: { store: ScheduleStore }) {
+export function TvPage({ store, boardLink = true }: { store: ScheduleStore; boardLink?: boolean }) {
   const [shown, setShown] = useState<Shown | null>(null);
   /** Counts the reads begun, so only the latest one's result is shown. */
   const reads = useRef(0);
@@ -91,9 +92,11 @@ export function TvPage({ store }: { store: ScheduleStore }) {
         <button type="button" className="tv-control" onClick={toggleFullScreen}>
           {fullScreen ? 'Exit full screen' : 'Full screen'}
         </button>
-        <a className="tv-control" href="index.html">
-          Back to board
-        </a>
+        {boardLink && (
+          <a className="tv-control" href="index.html">
+            Back to board
+          </a>
+        )}
       </nav>
     </div>
   );
