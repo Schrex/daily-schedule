@@ -104,7 +104,7 @@ body {
 }
 
 /* --- The cards, in the crew picture's columns -----------------------------
-   Two columns of Jobs and a narrower one at the right for Shop, Trucking and
+   Two columns of Jobs and one at the right, as wide, for Shop, Trucking and
    Off Work; which card goes where is the picture's (set in script). */
 
 .tv-cards {
