@@ -172,7 +172,7 @@ body {
   color: var(--muted);
   font-family: var(--font);
   font-weight: var(--weight-strong);
-  font-size: 0.975rem;
+  font-size: 0.875rem;
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -265,7 +265,7 @@ body {
 }
 
 .tv-name-text {
-  font-weight: var(--weight-strong);
+  font-weight: var(--weight-medium);
   font-size: 1.125rem;
   line-height: 1.2;
   overflow-wrap: anywhere;

@@ -424,7 +424,7 @@ body[data-name-dragging] .destination[data-drop-over] {
 
 .name-text {
   font-size: 0.9375rem;
-  font-weight: var(--weight-strong);
+  font-weight: var(--weight-medium);
   line-height: 1.2;
 }
 

@@ -180,12 +180,13 @@ function readLook(): Look {
       stamp: type(text, 'medium', 19),
       job: type(display, 'display', 42, 'heading'),
       yard: type(display, 'display', 32, 'heading'),
-      count: type(text, 'strong', 23),
-      number: type(text, 'strong', 23, 'small'),
+      count: type(text, 'strong', 19),
+      number: type(text, 'strong', 19, 'small'),
       // Tasks in regular weight so the names lead, as on the board; a Note medium.
       task: type(text, 'body', 24),
       yardTask: type(text, 'body', 22),
-      name: type(text, 'strong', 27, 'name'),
+      // Names in medium: clear, without the weight of the places' capitals.
+      name: type(text, 'medium', 27, 'name'),
       personTask: type(text, 'body', 22),
       note: type(text, 'medium', 22),
       notesTitle: type(display, 'display', 32, 'heading'),
