@@ -76,8 +76,8 @@ jobs:
         if: steps.secrets.outputs.ready == 'true'
         run: |
           node .github/scripts/preview-config.mjs write wrangler.jsonc wrangler.preview.json
-          for binding in $(node .github/scripts/preview-config.mjs bindings wrangler.preview.json); do
-            npx wrangler d1 migrations apply "$binding" --remote --config wrangler.preview.json
+          for database in $(node .github/scripts/preview-config.mjs databases wrangler.preview.json); do
+            npx wrangler d1 migrations apply "$database" --remote --config wrangler.preview.json
           done
 
       - if: steps.secrets.outputs.ready == 'true'

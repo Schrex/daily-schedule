@@ -2,22 +2,37 @@
 
 ## Where things are saved
 
-The Roster and every Daily Schedule are kept in the Worker's D1 database (binding `DB`), and the
+The Roster and every Daily Schedule are kept in the Worker's D1 database, `daily-schedule`, and the
 pages read and save them through the Worker's API under `/daily-schedule/api/`
 (`worker/src/api.ts`). The schema is in `migrations/`. The database also holds the access list,
 `people`: the **editors** (the Scheduler's screen and Settings). Everyone else signed in to the hub
 is a **viewer**: the pages send them to the Office TV, and they can't change anything.
+
+### The database's name
+
+Use the real name everywhere: in commands, in the Cloudflare dashboard (Storage & databases → D1)
+and in CI.
+
+| Database | Used by |
+| --- | --- |
+| `daily-schedule` | production (app.schreiberexcavating.com/daily-schedule/) |
+| `daily-schedule-preview` | PR previews only, never real data |
+
+The code reaches it as `env.DB` (the binding in `wrangler.jsonc`); that name is only for the code,
+which can't use a dash. Don't type `DB` in commands: it works only inside this folder, and
+elsewhere Wrangler offers to create a new, empty database called `DB`. Say no to that. Commands with
+`daily-schedule` work from any folder.
 
 ### Setting up the database (once)
 
 1. `npx wrangler d1 create daily-schedule`, and put the `database_id` it prints in `wrangler.jsonc`
    in place of `REPLACE_WITH_DATABASE_ID`. Deploys fail until this is done.
 2. The tables are created by CI before the next deploy (or by hand:
-   `npx wrangler d1 migrations apply DB --remote`).
+   `npx wrangler d1 migrations apply daily-schedule --remote`).
 3. Add the first editor (use the email they sign in to the hub with):
 
    ```sh
-   npx wrangler d1 execute DB --remote --command "INSERT INTO people (email, role) VALUES ('name@example.com', 'editor')"
+   npx wrangler d1 execute daily-schedule --remote --command "INSERT INTO people (email, role) VALUES ('name@example.com', 'editor')"
    ```
 
    Viewers need no line: anyone else signed in to the hub is one. To remove an editor:
@@ -42,8 +57,8 @@ email in `DEV_AUTH_EMAIL`. Put it in `.dev.vars` (git-ignored; never in `wrangle
 
 ```sh
 echo "DEV_AUTH_EMAIL=you@example.com" > .dev.vars
-npx wrangler d1 migrations apply DB --local
-npx wrangler d1 execute DB --local --command "INSERT INTO people (email, role) VALUES ('you@example.com', 'editor')"
+npx wrangler d1 migrations apply daily-schedule --local
+npx wrangler d1 execute daily-schedule --local --command "INSERT INTO people (email, role) VALUES ('you@example.com', 'editor')"
 npm run preview   # then open http://localhost:8787/daily-schedule/
 ```
 

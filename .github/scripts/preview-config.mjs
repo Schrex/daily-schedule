@@ -7,8 +7,9 @@
 //     Writes the preview config (plain JSON) to <out>. Put <out> in the same
 //     folder as <in>, since paths in the config are relative to it.
 //     Needs PREVIEW_D1_DATABASE_ID once the config has a D1 binding.
-//   node .github/scripts/preview-config.mjs bindings <in>
-//     Prints each D1 binding name, one per line (nothing before D1 exists).
+//   node .github/scripts/preview-config.mjs databases <in>
+//     Prints each D1 database's real name (database_name), one per line
+//     (nothing before D1 exists). Commands use these names, never the binding.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -67,9 +68,16 @@ function stripTrailingCommas(json) {
   return out;
 }
 
-/** The D1 binding names in a config ([] before D1 is added). */
-export function d1Bindings(config) {
-  return (config.d1_databases ?? []).map((db) => db.binding);
+/**
+ * The real names of the D1 databases in a config ([] before D1 is added).
+ * Every command uses these (e.g. `daily-schedule`), never the binding (`DB`),
+ * so the same name works everywhere: here, in the dashboard and in a terminal.
+ */
+export function d1Databases(config) {
+  return (config.d1_databases ?? []).map((db) => {
+    if (!db.database_name) throw new Error(`The D1 binding ${db.binding} has no database_name; give it its real name.`);
+    return db.database_name;
+  });
 }
 
 /** A copy of the config for the preview Worker and the preview database. */
@@ -98,14 +106,14 @@ export function previewConfig(config, { previewDatabaseId }) {
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const [command, input, output] = process.argv.slice(2);
   const config = parseJsonc(readFileSync(input, 'utf8'));
-  if (command === 'bindings') {
-    for (const b of d1Bindings(config)) console.log(b);
+  if (command === 'databases') {
+    for (const name of d1Databases(config)) console.log(name);
   } else if (command === 'write') {
     const preview = previewConfig(config, { previewDatabaseId: process.env.PREVIEW_D1_DATABASE_ID });
     writeFileSync(output, JSON.stringify(preview, null, 2));
     console.log(`Wrote ${output} for the Worker "${preview.name}".`);
   } else {
-    console.error('usage: preview-config.mjs write <in> <out> | bindings <in>');
+    console.error('usage: preview-config.mjs write <in> <out> | databases <in>');
     process.exit(2);
   }
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseJsonc, previewConfig, d1Bindings } from './preview-config.mjs';
+import { parseJsonc, previewConfig, d1Databases } from './preview-config.mjs';
 
 test('reads wrangler.jsonc with comments, trailing commas and URLs in strings', () => {
   const text = `{
@@ -55,8 +55,15 @@ test('a config with more than one D1 binding is refused (one preview database on
   assert.throws(() => previewConfig(config, { previewDatabaseId: 'p' }), /one D1/);
 });
 
-test('lists the D1 bindings to migrate, or none before D1 is added', () => {
-  assert.deepEqual(d1Bindings({ name: 'x' }), []);
-  assert.deepEqual(d1Bindings({ d1_databases: [] }), []);
-  assert.deepEqual(d1Bindings({ d1_databases: [{ binding: 'DB', database_id: '1' }] }), ['DB']);
+test('lists the D1 databases to migrate by their real names, or none before D1 is added', () => {
+  assert.deepEqual(d1Databases({ name: 'x' }), []);
+  assert.deepEqual(d1Databases({ d1_databases: [] }), []);
+  assert.deepEqual(
+    d1Databases({ d1_databases: [{ binding: 'DB', database_name: 'daily-schedule', database_id: '1' }] }),
+    ['daily-schedule'],
+  );
+});
+
+test('refuses a D1 database with no name, so commands never fall back to the binding', () => {
+  assert.throws(() => d1Databases({ d1_databases: [{ binding: 'DB', database_id: '1' }] }), /database_name/);
 });
