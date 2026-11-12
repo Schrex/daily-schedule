@@ -77,16 +77,18 @@ const allSaved = (saves: Saves) =>
     });
   });
 
-/** Whether a promise has settled by the time everything that can settle has. */
-const settles = async (promise: Promise<unknown>) => {
-  let settled = false;
-  void promise.then(
-    () => (settled = true),
-    () => (settled = true),
-  );
-  await settle();
-  return settled;
-};
+/**
+ * Whether a promise settles within a second: plenty for a few requests to the
+ * local D1, while a promise waiting on a failing save never settles.
+ */
+const settles = (promise: Promise<unknown>) =>
+  Promise.race([
+    promise.then(
+      () => true,
+      () => true,
+    ),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1000)),
+  ]);
 
 describe('saving in order', () => {
   it('sends saves one at a time in order, and only the latest waiting save for a date', async () => {
