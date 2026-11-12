@@ -1,6 +1,7 @@
 import logoUrl from '../assets/schreiber-logo.png';
 import { CREW_DOTS, PALETTE } from '../palette';
 import { cardTitle, fullDate, sentStamp, type CrewView, type Roster, type ScheduleRow } from '../schedule-rules';
+import { titlePlace } from './titleFit';
 
 /**
  * Draws the crew view as a picture (a PNG) of the Daily Schedule, laid out as
@@ -259,6 +260,8 @@ const JOB_LINE = 50;
 const YARD_LINE = 42;
 /** The space between a Job's name and its number. */
 const NUMBER_GAP = 14;
+/** The small line under a long title that holds its Job number. */
+const NUMBER_LINE = 26;
 /** Text made smaller to fit its room never goes under this much of its size. */
 const MIN_FIT = 0.6;
 
@@ -332,6 +335,8 @@ interface CardLayout {
   width: number;
   height: number;
   titleLines: string[];
+  /** The Job number is on a small line of its own under the title (a long title keeps one line). */
+  numberBelow: boolean;
   /** The type of the title: the usual, or smaller for a name too long to fit beside its number. */
   titleType: Type;
   /** The Job number, drawn small after the name, if it has one. */
@@ -483,19 +488,29 @@ function layOutCard(
   setType(ctx, look.type.number);
   const numberWidth = number ? Math.ceil(ctx.measureText(number).width) + NUMBER_GAP : 0;
 
-  // A word too long for the room beside the number and count makes the title
-  // smaller, as much as it takes; a long name of several words wraps instead.
-  const room = Math.max(inner / 2, inner - countWidth - numberWidth - 16);
+  // A title too long for the room beside the number and count is made smaller
+  // to keep it on one line (BISHOP KEARNEY, COBBLESTONE alike); if even that is
+  // not enough, the number goes on a small line under it and the title has the
+  // room to itself. Only a name too long for that wraps (titlePlace).
+  const beside = Math.max(inner / 2, inner - countWidth - numberWidth - 16);
+  const alone = inner - countWidth - 16;
   const title = name.toUpperCase();
   let titleType = isJob ? look.type.job : look.type.yard;
   setType(ctx, titleType);
-  const widest = Math.max(...title.split(/\s+/).map((word) => ctx.measureText(word).width));
-  if (widest > room) {
-    titleType = scaled(titleType, Math.max(MIN_FIT, room / widest));
+  const place = titlePlace({
+    title: ctx.measureText(title).width,
+    widestWord: Math.max(...title.split(/\s+/).map((word) => ctx.measureText(word).width)),
+    beside,
+    alone: number ? alone : beside,
+    floor: MIN_FIT,
+    hasNumber: number !== undefined,
+  });
+  if (place.scale < 1) {
+    titleType = scaled(titleType, place.scale);
     setType(ctx, titleType);
   }
-  const titleLines = wrap(ctx, title, room);
-  const headHeight = titleLines.length * (isJob ? JOB_LINE : YARD_LINE);
+  const titleLines = place.oneLine ? [title] : wrap(ctx, title, beside);
+  const headHeight = titleLines.length * (isJob ? JOB_LINE : YARD_LINE) + (place.numberBelow ? NUMBER_LINE : 0);
 
   setType(ctx, isJob ? look.type.task : look.type.yardTask);
   const taskLines = row.tasks.flatMap((task) => bulletLines(ctx, task, inner - TEXT_INDENT));
@@ -516,6 +531,7 @@ function layOutCard(
     width,
     height: namesTop + namesHeight + CARD_PAD,
     titleLines,
+    numberBelow: place.numberBelow,
     titleType,
     ...(number ? { number } : {}),
     countText,
@@ -721,7 +737,12 @@ function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
   ctx.fillStyle = PALETTE.muted;
   setType(ctx, look.type.count);
   const countWidth = ctx.measureText(card.countText).width;
-  if (card.number) {
+  if (card.number && card.numberBelow) {
+    // Under a long title, on a small line of its own, where the title starts.
+    setType(ctx, fitType(ctx, look.type.number, card.number, innerWidth));
+    ctx.fillText(card.number, inner, headTop + line + NUMBER_LINE / 2 - 2);
+    setType(ctx, look.type.count);
+  } else if (card.number) {
     const lastMiddle = headTop + (card.titleLines.length - 0.5) * line + 4;
     const numberRoom = inner + innerWidth - countWidth - 12 - (titleEnd + NUMBER_GAP);
     setType(ctx, fitType(ctx, look.type.number, card.number, Math.max(0, numberRoom)));
@@ -735,7 +756,7 @@ function drawCard(ctx: CanvasRenderingContext2D, card: CardLayout, look: Look) {
   // The Tasks: plain lines, then a rule above the names.
   if (card.taskLines.length > 0) {
     const taskLine = isJob ? TASK_LINE : YARD_TASK_LINE;
-    const tasksTop = headTop + card.titleLines.length * line + PART_GAP;
+    const tasksTop = headTop + card.titleLines.length * line + (card.numberBelow ? NUMBER_LINE : 0) + PART_GAP;
     setType(ctx, isJob ? look.type.task : look.type.yardTask);
     card.taskLines.forEach((task, index) =>
       drawBulletLine(ctx, task, inner, tasksTop + (index + 0.5) * taskLine + 1),
