@@ -90,6 +90,22 @@ Open **Settings** on the Daily Schedule and fill in the **Slack** box:
 
 Reload the Daily Schedule. **Send to crew** now posts to that channel.
 
+## What the crew sees
+
+One message per send:
+
+```
+Schedule for Thursday, Nov 12            ← the message, also what a phone's notification shows
+Tap to see it full size ▾                ← Slack's grey line over the picture
+[the picture]
+```
+
+A resend for the same day starts with `UPDATED: `. The day is said once, in the
+message; the grey line over the picture does not repeat it.
+
+After a change to `worker/src/relay.ts`, deploy the relay again from `worker/`
+with `npx wrangler deploy`.
+
 To change the channel later, invite the bot to the new channel
 (`/invite @Daily Schedule`) and put its ID in Settings.
 
