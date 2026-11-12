@@ -1,11 +1,18 @@
 import type { DailySchedule, Roster, ScheduleDate } from '../schedule-rules';
+import { ApiError } from './apiStore';
 import type { ScheduleStore } from './index';
 
 /**
  * Where the saves stand: everything saved, saving (nothing has failed), or not
- * saved (a save failed and is being tried again).
+ * saved (a save failed and is being tried again). Or the server refused a
+ * save, and trying again would only be refused again, so the queue stops:
+ * the sign-in has run out (`sign-in-again`), the caller may not save
+ * (`no-access`), or the server would not take what was sent (`refused`).
  */
-export type SaveState = 'saved' | 'saving' | 'not-saved';
+export type SaveState = 'saved' | 'saving' | 'not-saved' | 'sign-in-again' | 'no-access' | 'refused';
+
+/** The refusals that stop the queue, by HTTP status. */
+const REFUSED: Partial<Record<number, SaveState>> = { 400: 'refused', 401: 'sign-in-again', 403: 'no-access' };
 
 /** The save queue's state, for the pages to show; `subscribe` returns how to stop listening. */
 export interface Saves {
@@ -40,7 +47,9 @@ const scheduleKey = (date: ScheduleDate) => `${SCHEDULE_KEY}${date}`;
  *   change never overwrites a newer one.
  * - If several saves for the same date (or several Roster saves) are waiting,
  *   only the latest is sent.
- * - A failed save is tried again with back-off until it gets through.
+ * - A failed save is tried again with back-off until it gets through, unless
+ *   the server refused it (400, 401, 403): then nothing more is sent, and
+ *   `saves` says why.
  *
  * The store returned has the same `ScheduleStore` interface. A save resolves
  * as soon as the queue has it (loads already give it back) and never rejects,
@@ -55,6 +64,8 @@ export function savedInOrder(
   /** The save at the head of the queue is on its way to the server: it can no longer be replaced. */
   let inFlight = false;
   let running = false;
+  /** A save was refused (see SaveState): nothing more is sent. */
+  let stopped = false;
 
   let state: SaveState = 'saved';
   const listeners = new Set<() => void>();
@@ -65,7 +76,7 @@ export function savedInOrder(
   };
 
   const run = async () => {
-    if (running) return;
+    if (running || stopped) return;
     running = true;
     let failures = 0;
     while (queue.length > 0) {
@@ -75,6 +86,15 @@ export function savedInOrder(
         await save.send();
       } catch (error) {
         inFlight = false;
+        const refused = error instanceof ApiError ? REFUSED[error.status] : undefined;
+        if (refused) {
+          // Trying again would be refused again: stop, keeping every change for the page.
+          console.error('The server refused a save; not trying again', error);
+          stopped = true;
+          running = false;
+          setState(refused);
+          return;
+        }
         failures += 1;
         console.error('Could not save; trying again', error);
         setState('not-saved');

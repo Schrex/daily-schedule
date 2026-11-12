@@ -175,6 +175,33 @@ describe('a failed save', () => {
   });
 });
 
+describe('a save the server refuses', () => {
+  it.each([
+    [401, 'sign-in-again'],
+    [403, 'no-access'],
+    [400, 'refused'],
+  ] as const)('stops trying again on %i and says so (%s)', async (status, state) => {
+    const net = network();
+    const clock = manualClock();
+    const { store, saves } = savedInOrder(net.store, { wait: clock.wait });
+
+    net.refusing = status;
+    void store.saveSchedule(annInShop);
+    void store.saveRoster(roster);
+    await settle();
+
+    expect(saves.state()).toBe(state);
+    expect(clock.asked).toEqual([]);
+    // Nothing is lost from the page: the change is still given back.
+    expect(await store.loadSchedule('2026-11-10')).toEqual(annInShop);
+
+    void store.saveSchedule(annOffWork);
+    await settle();
+    expect(saves.state()).toBe(state);
+    expect(net.saves).toEqual([]);
+  });
+});
+
 describe('opening while saves are failing', () => {
   it('a save is done once it is queued, so nothing waits on the server taking it', async () => {
     const net = network();
