@@ -9,8 +9,8 @@ import { titlePlace } from './titleFit';
  * "SCHEDULE FOR" and the date in the middle of that row, and a quiet line at
  * the right saying when it was made ("Sent Wed, Nov 11 · 6:42 PM"), the Notes
  * across the top, then the Job cards in two columns and Shop, Trucking and
- * Off Work in a narrower third (with Jobs carrying on under them on a busy
- * day).
+ * Off Work in a third (with Jobs carrying on under them on a busy day). All
+ * three columns are the same width, so every card is the same size.
  *
  * It is always the same square (`PICTURE_SIZE`): a busy day is drawn smaller
  * and a quiet one larger, so the whole day fits and fills it (`fit`). Text
@@ -80,7 +80,7 @@ export interface PictureColumns {
 /**
  * Which card goes in which column of the picture, worked out exactly as the
  * picture does (Jobs into the shorter of two columns, by their drawn heights;
- * Shop, Trucking and Off Work at the top of a narrower third). For the office
+ * Shop, Trucking and Off Work at the top of a third). For the office
  * TV, so its columns line up with the picture's.
  */
 export async function crewPictureColumns(view: CrewView, roster?: Roster): Promise<PictureColumns> {
@@ -250,8 +250,6 @@ const CARD_EDGE = 2;
 const CARD_PAD = 20;
 /** The columns of Jobs. */
 const JOB_COLUMNS = 2;
-/** The right column (Shop, Trucking, Off Work) is this much as wide as a Job column. */
-export const YARD_SHARE = 0.75;
 /** The space between the parts of a card: the head, the Tasks, the names. */
 const PART_GAP = 12;
 
@@ -392,31 +390,6 @@ function fit(
   return { scale: SMALLEST, layout: layOut(view, roster, ctx, look, PICTURE_SIZE / SMALLEST) };
 }
 
-/**
- * How wide the right column (Shop, Trucking, Off Work) is, as a share of a
- * Job column: `YARD_SHARE`, or wider when a name in it would not fit at its
- * full size (on a quiet day the picture is drawn larger, so the sheet, and the
- * column, is narrower). Never wider than a Job column.
- */
-function yardShare(
-  yardRows: ScheduleRow[],
-  ctx: CanvasRenderingContext2D,
-  look: Look,
-  jobColumns: number,
-  /** The width the columns share, the gaps between them taken out. */
-  room: number,
-): number {
-  setType(ctx, look.type.name);
-  const widestName = Math.max(
-    0,
-    ...yardRows.flatMap((row) => row.who.map(({ crewMember }) => ctx.measureText(crewMember.name).width)),
-  );
-  const needed = Math.ceil(widestName) + 2 * NAME_PAD_X + DOT + DOT_GAP + 2 * CARD_PAD;
-  // The column is share × room / (jobColumns + share) wide; the share at which that is `needed`:
-  const share = room > needed ? (jobColumns * needed) / (room - needed) : 1;
-  return Math.min(1, Math.max(YARD_SHARE, share));
-}
-
 /** Everything laid out on a sheet `sheetWidth` wide, at the usual sizes. */
 function layOut(
   view: CrewView,
@@ -436,16 +409,14 @@ function layOut(
     top += notes.height + CARD_GAP;
   }
 
-  // Two Job columns and a narrower one at the right for Shop, Trucking and
-  // Off Work, which carries on with Jobs under them on a busy day.
+  // Two Job columns and one at the right for Shop, Trucking and Off Work,
+  // which carries on with Jobs under them on a busy day. All the same width,
+  // so a Job that lands in the right column is the same size as the others.
   const jobRows = view.rows.filter((row) => row.destination.kind === 'job');
   const yardRows = view.rows.filter((row) => row.destination.kind !== 'job');
   const jobColumns = Math.max(1, Math.min(JOB_COLUMNS, jobRows.length));
   const gaps = (jobColumns + (yardRows.length > 0 ? 1 : 0) - 1) * COLUMN_GAP;
-  const shares = [
-    ...Array<number>(jobColumns).fill(1),
-    ...(yardRows.length > 0 ? [yardShare(yardRows, ctx, look, jobColumns, contentWidth - gaps)] : []),
-  ];
+  const shares = Array<number>(jobColumns + (yardRows.length > 0 ? 1 : 0)).fill(1);
   const unit = (contentWidth - gaps) / shares.reduce((sum, share) => sum + share, 0);
   let left = MARGIN;
   const columns = shares.map((share) => {
@@ -453,9 +424,11 @@ function layOut(
     left += column.width + COLUMN_GAP;
     return column;
   });
+  // One size for every name in the picture: the longest of the day sets it.
+  const allNames = view.rows.flatMap((row) => row.who.map(({ crewMember }) => crewMember.name));
   const cards: CardLayout[] = [];
   const put = (row: ScheduleRow, column: { left: number; width: number; bottom: number }) => {
-    const card = layOutCard(row, roster, ctx, look, column.width);
+    const card = layOutCard(row, roster, ctx, look, column.width, allNames);
     card.left = column.left;
     card.top = column.bottom;
     column.bottom += card.height + CARD_GAP;
@@ -477,6 +450,8 @@ function layOutCard(
   ctx: CanvasRenderingContext2D,
   look: Look,
   width: number,
+  /** Every name in the picture, so all names are one size. */
+  allNames: readonly string[],
 ): CardLayout {
   const inner = width - 2 * CARD_PAD;
   const isJob = row.destination.kind === 'job';
@@ -520,7 +495,7 @@ function layOutCard(
       : 0;
 
   const namesTop = CARD_PAD + headHeight + PART_GAP + tasksHeight;
-  const { names, height: namesHeight } = stackNames(ctx, row, look, inner);
+  const { names, height: namesHeight } = stackNames(ctx, row, look, inner, allNames);
 
   return {
     key: row.key,
@@ -542,14 +517,20 @@ function layOutCard(
 }
 
 /** Names one under the other, each with its Person Tasks in its chip and its Note under it. */
-function stackNames(ctx: CanvasRenderingContext2D, row: ScheduleRow, look: Look, inner: number) {
+function stackNames(
+  ctx: CanvasRenderingContext2D,
+  row: ScheduleRow,
+  look: Look,
+  inner: number,
+  /** Every name in the picture: one size for all of them, set by the longest. */
+  allNames: readonly string[],
+) {
   const names: NameBox[] = [];
   const textWidth = inner - 2 * NAME_PAD_X - DOT - DOT_GAP;
-  // One size for every name in the card: a name too long for its line makes
-  // them all a little smaller together, so no one name looks smaller than the rest.
+  // One size for every name in the picture: a name too long for its line makes
+  // them all a little smaller together, so no card's names look smaller than another's.
   setType(ctx, look.type.name);
-  const widest = row.who
-    .map(({ crewMember }) => crewMember.name)
+  const widest = allNames
     .reduce((longest, name) => (ctx.measureText(name).width > ctx.measureText(longest).width ? name : longest), '');
   const nameType = fitType(ctx, look.type.name, widest, textWidth);
   let y = 0;
