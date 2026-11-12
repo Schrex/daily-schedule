@@ -39,8 +39,12 @@ const sameShown = (a: Shown, b: Shown): boolean => JSON.stringify(a) === JSON.st
  * Today's Daily Schedule, made to be read from across the office: the same
  * cards the crew is sent, side by side in columns across a wide screen,
  * sized to fill it with nothing to scroll. It changes by itself when the
- * Scheduler Sends or changes today's, and at midnight. Nothing on it is pressed, except that a
- * click anywhere puts it full screen (or back).
+ * Scheduler Sends or changes today's, and at midnight.
+ *
+ * Left alone it is the schedule and nothing else: no pointer, no buttons.
+ * Moving the mouse brings back the pointer and a small bar with Full screen
+ * and Back to board; both fade away again after a few seconds of stillness.
+ * A click anywhere else also puts it full screen (or back).
  */
 export function TvPage({ store }: { store: ScheduleStore }) {
   const [shown, setShown] = useState<Shown | null>(null);
@@ -71,16 +75,62 @@ export function TvPage({ store }: { store: ScheduleStore }) {
     };
   }, [refresh]);
 
+  const awake = useMouseAwake();
+  const fullScreen = useFullScreen();
+
   const toggleFullScreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void document.documentElement.requestFullscreen?.().catch(() => {});
   };
 
   return (
-    <div className="tv" onClick={toggleFullScreen}>
+    <div className="tv" data-awake={awake ? true : undefined} onClick={toggleFullScreen}>
       {shown && (shown.view ? <Board roster={shown.roster} view={shown.view} /> : <NothingYet today={shown.today} />)}
+      <nav className="tv-controls" aria-label="TV controls" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="tv-control" onClick={toggleFullScreen}>
+          {fullScreen ? 'Exit full screen' : 'Full screen'}
+        </button>
+        <a className="tv-control" href="index.html">
+          Back to board
+        </a>
+      </nav>
     </div>
   );
+}
+
+/** How long the pointer and the controls stay after the mouse last moved. */
+const AWAKE_MS = 3000;
+
+/** True while the mouse has moved in the last few seconds. */
+function useMouseAwake(): boolean {
+  const [awake, setAwake] = useState(false);
+  useEffect(() => {
+    let timer = 0;
+    const wake = () => {
+      setAwake(true);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setAwake(false), AWAKE_MS);
+    };
+    window.addEventListener('mousemove', wake);
+    window.addEventListener('mousedown', wake);
+    return () => {
+      window.removeEventListener('mousemove', wake);
+      window.removeEventListener('mousedown', wake);
+      window.clearTimeout(timer);
+    };
+  }, []);
+  return awake;
+}
+
+/** True while the page is full screen. */
+function useFullScreen(): boolean {
+  const [fullScreen, setFullScreen] = useState(() => document.fullscreenElement !== null);
+  useEffect(() => {
+    const changed = () => setFullScreen(document.fullscreenElement !== null);
+    document.addEventListener('fullscreenchange', changed);
+    return () => document.removeEventListener('fullscreenchange', changed);
+  }, []);
+  return fullScreen;
 }
 
 function NothingYet({ today }: { today: string }) {

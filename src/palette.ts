@@ -49,9 +49,6 @@ export const PALETTE = {
   quietGround: '#fafaf8',
   /** The grey chip of a name; a Foreman's top line is ink. */
   chip: '#f1f1ee',
-  /** A Send that worked. */
-  goDark: '#12603d',
-  goWash: '#e8f5ee',
   muted: '#55554f',
   disabled: '#a3a39c',
   /** Soft shadows: a resting card, and something lifted above the screen. */

@@ -14,7 +14,64 @@ body {
 
 .tv {
   min-height: 100vh;
-  cursor: none; /* a mouse left on the TV is not drawn over the schedule */
+  cursor: none; /* a mouse left still on the TV is not drawn over the schedule */
+}
+
+/* The mouse moved: the pointer is back, with the controls. */
+.tv[data-awake] {
+  cursor: default;
+}
+
+/* Full screen and Back to board: a small bar at the top right, over the
+   schedule, there only while the mouse is moving. In pixels, not rem: the
+   page's root size is set to fit the schedule, and the bar stays the same. */
+.tv-controls {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease-out;
+}
+
+.tv[data-awake] .tv-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tv-control {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: var(--weight-strong);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tv-control:hover {
+  background: var(--wash);
+}
+
+.tv-control:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .tv-fit {

@@ -9,7 +9,7 @@ export function clipboardDelivery(): CrewDelivery {
     async deliver(picture) {
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': picture })]);
     },
-    nextStep: 'The picture is copied. Now go to Slack, click where you type, and press Ctrl + V to paste it.',
+    nextStep: 'Paste in Slack',
     failureMessage:
       'The picture could not be copied, so nothing was sent. Press "Send to crew" to try again.',
   };

@@ -16,9 +16,9 @@ export type SendStatus =
   | { kind: 'not-sent' }
   /** The picture is being drawn and delivered. */
   | { kind: 'sending' }
-  /** The last Send could not be delivered: what to tell the Scheduler. */
-  | { kind: 'failed'; message: string }
-  /** It has been sent: when (from its send record), and what he does next. */
+  /** The last Send could not be delivered: what to tell the Scheduler (and when it was last Sent, if ever). */
+  | { kind: 'failed'; message: string; sentAt?: string }
+  /** It has been sent: when (from its send record), and what is left to do right after a Send (often nothing). */
   | { kind: 'sent'; sentAt: string; nextStep: string };
 
 /** What the Send bar draws, and what its button does. */
@@ -101,7 +101,7 @@ export function useSend({
 
   const status: SendStatus =
     pressed === 'failed'
-      ? { kind: 'failed', message: failure }
+      ? { kind: 'failed', message: failure, ...(sentAt === undefined ? {} : { sentAt }) }
       : sending
         ? { kind: 'sending' }
         : sentAt === undefined
@@ -109,10 +109,8 @@ export function useSend({
           : {
               kind: 'sent',
               sentAt,
-              nextStep:
-                pressed === 'sent'
-                  ? delivery.nextStep
-                  : 'If you change something, press "Send to crew" again.',
+              // Only right after the press, and only if something is left to do.
+              nextStep: pressed === 'sent' ? delivery.nextStep : '',
             };
 
   return { status, send: () => void send() };
