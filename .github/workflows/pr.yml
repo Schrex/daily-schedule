@@ -1,0 +1,96 @@
+# Every pull request: typecheck and tests, then a preview deploy.
+#
+# The preview is a separate Worker, "daily-schedule-preview", with its own D1
+# database (PREVIEW_D1_DATABASE_ID), so it never touches production data. Each
+# PR gets its own address: https://pr-<number>-daily-schedule-preview.<account>.workers.dev
+# (a Worker version with a preview alias; the preview Worker's live deployment
+# is not changed). See the README's "CI" section for the secrets.
+name: PR
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  preview:
+    name: Preview deploy
+    needs: checks
+    # Secrets aren't given to pull requests from forks.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PREVIEW_D1_DATABASE_ID: ${{ vars.PREVIEW_D1_DATABASE_ID }}
+      ALIAS: pr-${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      # Migrations go to the preview database only. The preview config is
+      # written next to wrangler.jsonc so its paths (migrations_dir) still
+      # resolve. Skipped while the config has no D1 binding.
+      - name: Apply D1 migrations to the preview database
+        run: |
+          node .github/scripts/preview-config.mjs write wrangler.jsonc wrangler.preview.json
+          for binding in $(node .github/scripts/preview-config.mjs bindings wrangler.preview.json); do
+            npx wrangler d1 migrations apply "$binding" --remote --config wrangler.preview.json
+          done
+
+      - run: npm run build
+
+      - name: Upload the preview version
+        id: upload
+        env:
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.json
+        run: |
+          built=dist/daily_schedule
+          node .github/scripts/preview-config.mjs write "$built/wrangler.json" "$built/wrangler.preview.json"
+          # The first preview creates the preview Worker.
+          if ! npx wrangler deployments list --config "$built/wrangler.preview.json" > /dev/null 2>&1; then
+            npx wrangler deploy --config "$built/wrangler.preview.json"
+          fi
+          npx wrangler versions upload --config "$built/wrangler.preview.json" \
+            --preview-alias "$ALIAS" \
+            --message "PR #${{ github.event.pull_request.number }} ${{ github.event.pull_request.head.sha }}"
+          url=$(jq -r 'select(.type == "version-upload") | .preview_alias_url // .preview_url // empty' \
+            "$WRANGLER_OUTPUT_FILE_PATH" | tail -n 1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Post the preview address on the PR
+        if: steps.upload.outputs.url != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          URL: ${{ steps.upload.outputs.url }}
+        run: |
+          body="Preview: ${URL}/daily-schedule/ (preview database, not production data). Commit ${{ github.event.pull_request.head.sha }}."
+          echo "$body" >> "$GITHUB_STEP_SUMMARY"
+          gh pr comment "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" \
+            --edit-last --create-if-none --body "$body"
