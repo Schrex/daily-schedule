@@ -24,6 +24,7 @@ import {
   slackIsSetUp,
   type SlackSettings,
 } from '../send/slackSettings';
+import { UploadSchedules } from './UploadSchedules';
 
 /** What is open over the page: one Crew Member, one Job, or a new one of either. */
 type Open =
@@ -117,6 +118,8 @@ export function SettingsPage({ store, roster: loaded }: { store: ScheduleStore; 
       </section>
 
       <SlackSection />
+
+      <UploadSchedules />
 
       {openCrewMember && (
         <CrewMemberPanel
