@@ -176,7 +176,8 @@
   font-weight: var(--weight-strong);
 }
 
-.settings-field input[type='text'] {
+.settings-field input[type='text'],
+.settings-field input[type='password'] {
   width: 100%;
   min-height: 3rem;
   padding: var(--space-2) var(--space-4);
@@ -190,12 +191,13 @@
   font-weight: var(--weight-strong);
 }
 
-.settings-field input[type='text']:focus {
+.settings-field input[type='text']:focus,
+.settings-field input[type='password']:focus {
   border-color: var(--accent-strong);
   box-shadow: 0 0 0 4px var(--accent-wash);
 }
 
-/* The five colors, each a large swatch wearing its own color. */
+/* The colors, each a large swatch wearing its own color. */
 .colors {
   display: flex;
   flex-wrap: wrap;

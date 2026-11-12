@@ -52,3 +52,16 @@ export function nameMove(before: Seen | undefined, now: Seen): NameMove {
   }
   return Math.abs(dx) < VISIBLE && Math.abs(dy) < VISIBLE ? stay : { kind: 'slide', dx, dy };
 }
+
+/**
+ * A CSS time ("300ms", ".3s") in milliseconds; 0 when there is none or it
+ * cannot be read. The look writes `--move-duration` in milliseconds, but the
+ * production build rewrites times in seconds, so both have to be understood.
+ */
+export function cssTimeMs(value: string): number {
+  const match = /^\s*(-?[\d.]+)(ms|s)\s*$/.exec(value);
+  if (!match) return 0;
+  const amount = parseFloat(match[1]!);
+  if (!Number.isFinite(amount)) return 0;
+  return match[2] === 's' ? amount * 1000 : amount;
+}

@@ -71,6 +71,32 @@ export async function drawCrewPicture(view: CrewView, madeAt: Date, roster?: Ros
   return canvas;
 }
 
+/** The picture's columns: the row keys in each, top to bottom, and how wide each is (a Job column is 1). */
+export interface PictureColumns {
+  columns: { share: number; keys: string[] }[];
+}
+
+/**
+ * Which card goes in which column of the picture, worked out exactly as the
+ * picture does (Jobs into the shorter of two columns, by their drawn heights;
+ * Shop, Trucking and Off Work at the top of a narrower third). For the office
+ * TV, so its columns line up with the picture's.
+ */
+export async function crewPictureColumns(view: CrewView, roster?: Roster): Promise<PictureColumns> {
+  const look = readLook();
+  await Promise.all(Object.values(look.type).map(({ font }) => document.fonts.load(font)));
+  const { layout } = fit(view, roster, document.createElement('canvas').getContext('2d')!, look);
+
+  const lefts = [...new Set(layout.cards.map((card) => card.left))].sort((a, b) => a - b);
+  const jobWidth = Math.max(...layout.cards.filter((card) => card.isJob).map((card) => card.width), 0);
+  return {
+    columns: lefts.map((left) => {
+      const cards = layout.cards.filter((card) => card.left === left).sort((a, b) => a.top - b.top);
+      return { share: jobWidth > 0 ? cards[0]!.width / jobWidth : 1, keys: cards.map((card) => card.key) };
+    }),
+  };
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -220,7 +246,7 @@ const CARD_PAD = 20;
 /** The columns of Jobs. */
 const JOB_COLUMNS = 2;
 /** The right column (Shop, Trucking, Off Work) is this much as wide as a Job column. */
-const YARD_SHARE = 0.75;
+export const YARD_SHARE = 0.75;
 /** The space between the parts of a card: the head, the Tasks, the names. */
 const PART_GAP = 12;
 
@@ -290,6 +316,8 @@ interface NameBox {
 }
 
 interface CardLayout {
+  /** The row's key, so others can tell which card is which. */
+  key: string;
   isJob: boolean;
   /** Off Work: nobody there is working, so the card is quieter (grey ground, grey name). */
   quiet: boolean;
@@ -445,6 +473,7 @@ function layOutCard(
   const { names, height: namesHeight } = stackNames(ctx, row, look, inner);
 
   return {
+    key: row.key,
     isJob,
     quiet: row.destination.kind === 'standing-row' && row.destination.standingRow === 'off-work',
     left: 0,
