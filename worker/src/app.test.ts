@@ -8,6 +8,13 @@ const OLD = 'https://daily-schedule.schrex.workers.dev';
 function fakeAssets(answer: (path: string) => Response = (path) => new Response(`file ${path}`)) {
   const asked: string[] = [];
   const env: Env = {
+    // These requests never reach the database (the API's own tests use a real one: api.test.ts).
+    DB: {
+      prepare: () => {
+        throw new Error('No database here');
+      },
+      batch: async () => [],
+    },
     ASSETS: {
       fetch: async (input: Request | string) => {
         const url = new URL(input instanceof Request ? input.url : input);
@@ -89,9 +96,9 @@ describe('the Daily Schedule Worker', () => {
 
   it('keeps /daily-schedule/api/ for the API, never answering it with a page', async () => {
     const { env, asked } = fakeAssets();
-    const response = await handle(new Request(`${HUB}/daily-schedule/api/me`), env);
+    const response = await handle(new Request(`${HUB}/daily-schedule/api/roster`), env);
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(401);
     expect(await response.json()).toEqual({ error: expect.any(String) });
     expect(asked).toEqual([]);
   });

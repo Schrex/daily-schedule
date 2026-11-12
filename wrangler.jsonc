@@ -11,6 +11,16 @@
   "observability": {
     "enabled": true
   },
+  // The Roster, the Daily Schedules and the access list. The schema is in
+  // migrations/ (applied by CI before each deploy; see the README).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "daily-schedule",
+      "database_id": "REPLACE_WITH_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
   "assets": {
     "binding": "ASSETS",
     "run_worker_first": true,

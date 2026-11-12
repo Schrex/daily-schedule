@@ -10,6 +10,14 @@ The daily crew schedule for Schrex: who works where on the next working day, and
 The one person who builds and sends the Daily Schedule each evening.
 _Avoid_: Manager, project coordinator, admin
 
+**Editor**:
+Someone on the Daily Schedule's access list who may change it: the Scheduler's screen and Settings.
+_Avoid_: Admin, owner
+
+**Viewer**:
+Someone on the Daily Schedule's access list who may only look at it, on the Office TV page.
+_Avoid_: Guest, read-only user
+
 **Crew Member**:
 A person who can be placed on the Daily Schedule.
 _Avoid_: Employee, worker, resource
