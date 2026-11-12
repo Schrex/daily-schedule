@@ -50,6 +50,7 @@ export async function handle(request: Request, env: Env, options: Options = {}):
       { status: 500 },
     );
   }
+  if (url.hostname === OLD_HOST) return oldAddress(request, env);
   if (url.pathname === BASE) {
     url.pathname = `${BASE}/`;
     return Response.redirect(url.toString(), 301);
@@ -66,9 +67,27 @@ export async function handle(request: Request, env: Env, options: Options = {}):
     // The hub forwards only /daily-schedule here; never answer for a hub page.
     return new Response('Not found', { status: 404 });
   }
-  // The old address (daily-schedule.schrex.workers.dev) and local runs: the
-  // pages at the root, as before the move.
+  // Local runs (wrangler dev on localhost): the pages at the root, as before the move.
   return env.ASSETS.fetch(request);
+}
+
+/** The export page's file (export.html), as the assets binding names it. */
+const EXPORT_PAGE = '/export';
+
+/**
+ * The old address (daily-schedule.schrex.workers.dev), told apart by the
+ * request's host: only the export page, which downloads that address's browser
+ * storage as an Export file, and the scripts, styles and fonts it asks for.
+ * Every other page there answers with the export page, and there is no API.
+ */
+async function oldAddress(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  if (url.pathname.startsWith(`${BASE}/assets/`)) {
+    url.pathname = url.pathname.slice(BASE.length);
+    return env.ASSETS.fetch(new Request(url, request));
+  }
+  if (url.pathname.startsWith(API)) return new Response('Not found', { status: 404 });
+  return env.ASSETS.fetch(new Request(new URL(EXPORT_PAGE, url.origin), { headers: request.headers }));
 }
 
 /**
