@@ -4,6 +4,7 @@ import { localD1 } from '../../worker/src/testing/localD1';
 import { onStandingRow, placeCrewMember, type DailySchedule, type Roster } from '../schedule-rules';
 import { apiStore } from './apiStore';
 import { memoryStore } from './memoryStore';
+import { savedInOrder } from './saveQueue';
 import { openDate, openStore, type ScheduleStore } from './index';
 
 const EDITOR = 'editor@example.test';
@@ -22,6 +23,15 @@ const stores: [string, () => ScheduleStore][] = [
       apiStore('http://localhost:8787/daily-schedule/api', (input, init) =>
         handle(new Request(input, init), d1.env({ DEV_AUTH_EMAIL: EDITOR })),
       ),
+  ],
+  [
+    'the API-backed store behind the save queue, as the pages use it',
+    () =>
+      savedInOrder(
+        apiStore('http://localhost:8787/daily-schedule/api', (input, init) =>
+          handle(new Request(input, init), d1.env({ DEV_AUTH_EMAIL: EDITOR })),
+        ),
+      ).store,
   ],
 ];
 
