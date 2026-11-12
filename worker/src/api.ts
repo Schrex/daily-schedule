@@ -1,5 +1,6 @@
 import type { Env } from './app';
 import type { D1Database } from './d1';
+import { handleImport } from './import';
 import { whoIsCalling } from './signIn';
 
 /**
@@ -12,6 +13,8 @@ import { whoIsCalling } from './signIn';
  *   GET /schedules          the saved dates, earliest first
  *   GET /schedules/:date    that Daily Schedule, or null
  *   PUT /schedules/:date    saves it (its date must be :date)  editors
+ *   POST /import            replaces everything from an Export file  editors
+ *                           (409 once a Send is recorded; import.ts)
  *
  * 401: nobody signed in. 403: not on the access list, or a viewer writing.
  * 400: a malformed body or date. Errors are `{ error }` in plain words.
@@ -21,6 +24,11 @@ export async function handleApi(request: Request, env: Env, path: string): Promi
   if (email === null) return refuse(401, 'You are not signed in.');
   const role = await roleOf(env.DB, email);
   if (role === null) return refuse(403, 'You don\'t have access to the Daily Schedule. Ask the Scheduler.');
+
+  if (path === 'import' && request.method === 'POST') {
+    if (role !== 'editor') return refuse(403, 'Only an editor can change the Daily Schedule.');
+    return handleImport(request, env.DB, email);
+  }
 
   const reading = request.method === 'GET';
   const writing = request.method === 'PUT';
@@ -95,17 +103,17 @@ async function bodyOf(request: Request): Promise<unknown> {
   }
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const isDate = (value: unknown): value is string =>
   typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 /** The Roster's shape, checked only as far as keeping it safely needs. */
-const isRoster = (value: unknown): boolean =>
+export const isRoster = (value: unknown): boolean =>
   isRecord(value) && Array.isArray(value.crewMembers) && Array.isArray(value.jobs);
 
-const isDailySchedule = (value: unknown): value is { date: string } =>
+export const isDailySchedule = (value: unknown): value is { date: string } =>
   isRecord(value) &&
   isDate(value.date) &&
   Array.isArray(value.placements) &&
