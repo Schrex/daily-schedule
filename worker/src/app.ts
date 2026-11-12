@@ -11,11 +11,8 @@ const API = `${BASE}/api/`;
 /** The hub's address, which forwards /daily-schedule and /daily-schedule/* here. */
 export const HUB_HOST = 'app.schreiberexcavating.com';
 
-/** The Daily Schedule's own address before the move (it stays on). */
-export const OLD_HOST = 'daily-schedule.schrex.workers.dev';
-
 /** Where the real Daily Schedule answers; the development sign-in is refused there. */
-const PRODUCTION_HOSTS = [HUB_HOST, OLD_HOST];
+const PRODUCTION_HOSTS = [HUB_HOST];
 
 /** The page files, as the Worker's assets binding serves them (built at the root). */
 export interface Assets {
@@ -62,7 +59,6 @@ export async function handle(request: Request, env: Env, options: Options = {}):
       return refuse(500, `${unsafe.join(' and ')} is set on a production address; refusing to answer.`);
     }
   }
-  if (url.hostname === OLD_HOST) return oldAddress(request, env);
   if (url.pathname === BASE) {
     url.pathname = `${BASE}/`;
     return Response.redirect(url.toString(), 301);
@@ -79,27 +75,8 @@ export async function handle(request: Request, env: Env, options: Options = {}):
     // The hub forwards only /daily-schedule here; never answer for a hub page.
     return new Response('Not found', { status: 404 });
   }
-  // Local runs (wrangler dev on localhost): the pages at the root, as before the move.
+  // Local runs (wrangler dev on localhost) and PR previews: the pages at the root too.
   return env.ASSETS.fetch(request);
-}
-
-/** The export page's file (export.html), as the assets binding names it. */
-const EXPORT_PAGE = '/export';
-
-/**
- * The old address (daily-schedule.schrex.workers.dev), told apart by the
- * request's host: only the export page, which downloads that address's browser
- * storage as an Export file, and the scripts, styles and fonts it asks for.
- * Every other page there answers with the export page, and there is no API.
- */
-async function oldAddress(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  if (url.pathname.startsWith(`${BASE}/assets/`)) {
-    url.pathname = url.pathname.slice(BASE.length);
-    return env.ASSETS.fetch(new Request(url, request));
-  }
-  if (url.pathname.startsWith(API)) return new Response('Not found', { status: 404 });
-  return env.ASSETS.fetch(new Request(new URL(EXPORT_PAGE, url.origin), { headers: request.headers }));
 }
 
 /**

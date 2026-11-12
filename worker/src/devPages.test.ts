@@ -9,8 +9,6 @@ describe('the pages under npm run dev', () => {
     ['/daily-schedule/settings.html', 'settings.html'],
     ['/daily-schedule/tv', 'tv.html'],
     ['/daily-schedule/tv.html?day=2026-11-13', 'tv.html'],
-    ['/daily-schedule/export', 'export.html'],
-    ['/daily-schedule/export.html', 'export.html'],
   ])('opens %s from %s', (url, file) => {
     expect(devPageFile(url)).toBe(file);
   });
@@ -20,6 +18,7 @@ describe('the pages under npm run dev', () => {
     '/daily-schedule/src/main.tsx',
     '/daily-schedule/@vite/client',
     '/daily-schedule/nothing.html',
+    '/daily-schedule/export.html',
     '/settings.html',
     '/',
   ])('leaves %s to the Worker and Vite', (url) => {

@@ -2,8 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Plugin } from 'vite';
 
-/** The four pages, as the built Worker serves them under /daily-schedule/. */
-const PAGES = ['index', 'settings', 'tv', 'export'];
+/** The three pages, as the built Worker serves them under /daily-schedule/. */
+const PAGES = ['index', 'settings', 'tv'];
 
 /**
  * The page file (at the project root) for a page address under

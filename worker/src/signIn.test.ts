@@ -99,7 +99,7 @@ describe('the hub sign-in', () => {
     expect(response.status).toBe(401);
   });
 
-  it.each(['https://app.schreiberexcavating.com', 'https://daily-schedule.schrex.workers.dev'])(
+  it.each(['https://app.schreiberexcavating.com'])(
     'refuses to answer on %s when the tests\' key set (HUB_JWKS) is set, so it can never let a made-up key in',
     async (origin) => {
       const response = await handle(

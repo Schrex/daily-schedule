@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { handle, type Env } from './app';
 
 const HUB = 'https://app.schreiberexcavating.com';
-const OLD = 'https://daily-schedule.schrex.workers.dev';
 
 /** Pretend page files: answers like the assets binding, recording the paths it was asked for. */
 function fakeAssets(answer: (path: string) => Response = (path) => new Response(`file ${path}`)) {
@@ -71,35 +70,7 @@ describe('the Daily Schedule Worker', () => {
     },
   );
 
-  it.each(['/', '/settings', '/tv.html', '/index.html', '/daily-schedule/', '/daily-schedule/settings'])(
-    'on the old address, answers %s with the export page only',
-    async (path) => {
-      const { env, asked } = fakeAssets();
-      const response = await handle(new Request(`${OLD}${path}`), env);
-
-      expect(response.status).toBe(200);
-      expect(await response.text()).toBe('file /export');
-      expect(asked).toEqual(['/export']);
-    },
-  );
-
-  it('on the old address, still serves the export page\'s own scripts and fonts', async () => {
-    const { env, asked } = fakeAssets();
-    const response = await handle(new Request(`${OLD}/daily-schedule/assets/export-abc.js`), env);
-
-    expect(response.status).toBe(200);
-    expect(asked).toEqual(['/assets/export-abc.js']);
-  });
-
-  it('on the old address, never answers the API', async () => {
-    const { env, asked } = fakeAssets();
-    const response = await handle(new Request(`${OLD}/daily-schedule/api/roster`), env);
-
-    expect(response.status).toBe(404);
-    expect(asked).toEqual([]);
-  });
-
-  it.each([['/', '/'], ['/settings', '/settings'], ['/export', '/export']])(
+  it.each([['/', '/'], ['/settings', '/settings'], ['/tv', '/tv']])(
     'on this computer (wrangler dev), serves %s from the page file at %s, as before',
     async (path, file) => {
       const { env, asked } = fakeAssets();

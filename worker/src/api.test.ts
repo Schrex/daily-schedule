@@ -128,7 +128,7 @@ describe('the API: who may call it', () => {
     expect(await (await call(EDITOR, '/schedules')).json()).toEqual([]);
   });
 
-  it.each(['https://app.schreiberexcavating.com', 'https://daily-schedule.schrex.workers.dev'])(
+  it.each(['https://app.schreiberexcavating.com'])(
     'refuses to answer on %s when the development sign-in is set, saving nothing',
     async (origin) => {
       const response = await call(EDITOR, '/roster', put(roster), `${origin}/daily-schedule/api`);
@@ -139,7 +139,7 @@ describe('the API: who may call it', () => {
     },
   );
 
-  it.each(['https://app.schreiberexcavating.com/daily-schedule/', 'https://daily-schedule.schrex.workers.dev/'])(
+  it.each(['https://app.schreiberexcavating.com/daily-schedule/'])(
     'serves no page on %s either when the development sign-in is set',
     async (url) => {
       const response = await handle(new Request(url), d1.env({ DEV_AUTH_EMAIL: EDITOR }));
