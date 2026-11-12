@@ -4,7 +4,11 @@ import { emailFromToken, forgetHubKeys, hubKeys } from './signIn';
 import { base64url, hubTokens, TEST_ISSUER, type TokenMaker } from './testing/hubTokens';
 import { localD1 } from './testing/localD1';
 
-const HUB = 'https://app.schreiberexcavating.com/daily-schedule/api';
+/**
+ * A preview address: the tests' key set (HUB_JWKS) is refused on the
+ * production ones (see the last test of 'the hub sign-in').
+ */
+const HUB = 'https://pr-1-daily-schedule-preview.example.workers.dev/daily-schedule/api';
 
 const EDITOR = 'editor@example.test';
 const VIEWER = 'viewer@example.test';
@@ -94,6 +98,21 @@ describe('the hub sign-in', () => {
 
     expect(response.status).toBe(401);
   });
+
+  it.each(['https://app.schreiberexcavating.com', 'https://daily-schedule.schrex.workers.dev'])(
+    'refuses to answer on %s when the tests\' key set (HUB_JWKS) is set, so it can never let a made-up key in',
+    async (origin) => {
+      const response = await handle(
+        new Request(`${origin}/daily-schedule/api/me`, {
+          headers: { Authorization: `Bearer ${await hub.token(EDITOR)}` },
+        }),
+        env(),
+      );
+
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: expect.stringContaining('HUB_JWKS') });
+    },
+  );
 });
 
 describe('the hub\'s keys', () => {

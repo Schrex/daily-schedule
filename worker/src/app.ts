@@ -35,7 +35,10 @@ export interface Env {
    * issuer of its tokens, and where its public keys are published.
    */
   HUB_AUTH_URL?: string;
-  /** The hub's public keys as a JWKS, in place of fetching them (the tests). */
+  /**
+   * The hub's public keys as a JWKS, in place of fetching them (the tests).
+   * Refused on the production addresses, like DEV_AUTH_EMAIL.
+   */
   HUB_JWKS?: string;
 }
 
@@ -50,12 +53,16 @@ export interface Options {
 /** Answers every request the Daily Schedule Worker gets. */
 export async function handle(request: Request, env: Env, options: Options = {}): Promise<Response> {
   const url = new URL(request.url);
-  if (env.DEV_AUTH_EMAIL && PRODUCTION_HOSTS.includes(url.hostname)) {
-    // The development sign-in lets anyone in as that email: never in production.
-    return Response.json(
-      { error: 'The development sign-in (DEV_AUTH_EMAIL) is set on a production address; refusing to answer.' },
-      { status: 500 },
-    );
+  if (PRODUCTION_HOSTS.includes(url.hostname)) {
+    // The development sign-in lets anyone in as that email, and the tests' key
+    // set trusts tokens signed by keys that are not the hub's: never in production.
+    const unsafe = (['DEV_AUTH_EMAIL', 'HUB_JWKS'] as const).filter((name) => env[name]);
+    if (unsafe.length > 0) {
+      return Response.json(
+        { error: `${unsafe.join(' and ')} is set on a production address; refusing to answer.` },
+        { status: 500 },
+      );
+    }
   }
   if (url.hostname === OLD_HOST) return oldAddress(request, env);
   if (url.pathname === BASE) {

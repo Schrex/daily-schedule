@@ -50,7 +50,8 @@ The local database lives in `.wrangler/state/`. On first open, an editor gets th
 Daily Schedule.
 
 The Worker refuses to answer at all on `app.schreiberexcavating.com` or
-`daily-schedule.schrex.workers.dev` if `DEV_AUTH_EMAIL` is set, so it can never reach production.
+`daily-schedule.schrex.workers.dev` if `DEV_AUTH_EMAIL` (or `HUB_JWKS`, the tests' own sign-in
+keys) is set, so neither can ever reach production.
 
 ### Tests
 
