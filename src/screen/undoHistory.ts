@@ -20,7 +20,7 @@ export function remember(history: UndoHistory, before: DailySchedule): UndoHisto
 /**
  * Takes back the latest edit: the schedule as it was before it, and what is
  * left to undo. Undo never takes back a Send: the send record stays as it is
- * now, so a schedule changed back after a Send is still sent as UPDATED.
+ * now, so a schedule changed back after a Send still counts as changed since it.
  * Null when there is nothing to undo.
  */
 export function undo(

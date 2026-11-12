@@ -1,5 +1,5 @@
 import {
-  moveCrewMember,
+  applyEdit,
   NOT_PLACED,
   scheduleView,
   type DailySchedule,
@@ -29,14 +29,15 @@ export function dropTarget(view: ScheduleView, over: DropKey): MoveTo | null {
 }
 
 /**
- * The view to draw while `dragging` (who, and the destination under the
- * pointer). With nothing dragged, or the name over no destination, it is the
- * Daily Schedule as it stands.
+ * The view to draw while `dragging` (who, the destination under the pointer,
+ * and the spot in it: just before `before`, or the end when null). With
+ * nothing dragged, or the name over no destination, it is the Daily Schedule
+ * as it stands.
  */
 export function viewWhileDragging(
   roster: Roster,
   schedule: DailySchedule,
-  dragging: { crewMemberId: string; over: DropKey | null } | null,
+  dragging: { crewMemberId: string; over: DropKey | null; before?: string | null } | null,
 ): ScheduleView {
   const view = scheduleView(roster, schedule);
   if (!dragging || dragging.over === null) return view;
@@ -44,6 +45,7 @@ export function viewWhileDragging(
   const to = dropTarget(view, dragging.over);
   if (to === null) return view;
 
-  const dropped = moveCrewMember(schedule, dragging.crewMemberId, to);
+  const { crewMemberId, before } = dragging;
+  const dropped = applyEdit(schedule, { kind: 'move', crewMemberId, to, before }, roster);
   return dropped === schedule ? view : scheduleView(roster, dropped);
 }

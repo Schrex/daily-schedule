@@ -13,6 +13,7 @@ import {
   moveTo,
   press,
   release,
+  spotAt,
   type DropKey,
   type NameDrag,
   type Point,
@@ -32,17 +33,22 @@ import './drag.css';
  * `nameDrag`), so a click still selects.
  */
 
-/** The name being dragged right now, and the destination under the pointer. */
+/** The name being dragged right now, the destination under the pointer, and the spot in it. */
 export interface Dragging {
   crewMemberId: string;
   over: DropKey | null;
+  /** Just before this Crew Member in the destination, or null for its end. */
+  before: string | null;
 }
 
 export interface NameDragOptions {
   /** The name as it is drawn on the board, for the lifted copy that follows the pointer. */
   drawLifted: (crewMemberId: string) => ReactNode;
-  /** A name was let go over a destination. Not called for a drop outside one, or after Escape. */
-  onDrop: (crewMemberId: string, over: DropKey) => void;
+  /**
+   * A name was let go over a destination, at a spot in it (just before
+   * `before`, or the end when null). Not called for a drop outside one, or after Escape.
+   */
+  onDrop: (crewMemberId: string, over: DropKey, before: string | null) => void;
   /**
    * A drag ended, by a drop or not: where in the window the lifted copy was at
    * that instant, for whoever shows the name going from there to its place.
@@ -91,10 +97,27 @@ function holdDestinationHeights(): () => void {
   };
 }
 
-/** The destination under a point of the window, if any. The lifted copy never counts: it lets the pointer through. */
-function dropKeyAt(point: Point): DropKey | null {
+/**
+ * The destination under a point of the window, if any, and the spot in it by
+ * the pointer's height against the names drawn there (`spotAt`). The lifted
+ * copy never counts: it lets the pointer through.
+ */
+function whereAt(point: Point, dragged: string): { over: DropKey | null; before: string | null } {
   const under = document.elementFromPoint(point.x, point.y);
-  return under?.closest<HTMLElement>('[data-drop]')?.dataset.drop ?? null;
+  const destination = under?.closest<HTMLElement>('[data-drop]');
+  if (!destination) return { over: null, before: null };
+  const names = [...destination.querySelectorAll<HTMLElement>('[data-crew-member]')].map((name) => {
+    const box = name.getBoundingClientRect();
+    return { crewMemberId: name.dataset.crewMember ?? '', top: box.top, bottom: box.bottom };
+  });
+  return { over: destination.dataset.drop ?? null, before: spotAt(point.y, names, dragged) };
+}
+
+/** The drag taken to where the pointer is now. */
+function moveToPointer(drag: NameDrag, point: Point): NameDrag {
+  if (drag.kind === 'idle') return drag;
+  const { over, before } = whereAt(point, drag.crewMemberId);
+  return moveTo(drag, point, over, before);
 }
 
 /**
@@ -157,7 +180,9 @@ export function useNameDrag({
     if (next === drag.current) return;
     drag.current = next;
     setDragging(
-      next.kind === 'dragging' ? { crewMemberId: next.crewMemberId, over: next.over } : null,
+      next.kind === 'dragging'
+        ? { crewMemberId: next.crewMemberId, over: next.over, before: next.before }
+        : null,
     );
     if (next.kind !== 'dragging') setLiftedWidth(null);
     document.body.toggleAttribute('data-name-dragging', next.kind === 'dragging');
@@ -212,7 +237,7 @@ export function useNameDrag({
         // A row out of sight is reached by holding the name at the edge of the schedule.
         stopEdgeScroll = startEdgeScroll(
           () => pointer.current,
-          () => show(moveTo(drag.current, pointer.current, dropKeyAt(pointer.current))),
+          () => show(moveToPointer(drag.current, pointer.current)),
         );
         // Keep hearing the pointer if it leaves the window with the button down.
         try {
@@ -222,7 +247,7 @@ export function useNameDrag({
         }
       }
       moved.preventDefault();
-      show(moveTo(was, pointer.current, dropKeyAt(pointer.current)));
+      show(moveToPointer(was, pointer.current));
       follow();
     };
 
@@ -233,11 +258,11 @@ export function useNameDrag({
       const moved = up.clientX !== pointer.current.x || up.clientY !== pointer.current.y;
       if (drag.current.kind === 'dragging' && moved) {
         pointer.current = { x: up.clientX, y: up.clientY };
-        show(moveTo(drag.current, pointer.current, dropKeyAt(pointer.current)));
+        show(moveToPointer(drag.current, pointer.current));
       }
       const drop = release(drag.current);
       end();
-      if (drop) onDropLatest.current(drop.crewMemberId, drop.over);
+      if (drop) onDropLatest.current(drop.crewMemberId, drop.over, drop.before);
     };
 
     const onKeyDown = (key: KeyboardEvent) => {

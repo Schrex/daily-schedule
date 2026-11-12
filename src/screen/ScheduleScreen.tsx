@@ -45,7 +45,7 @@ interface ScheduleScreenProps {
   onOpenJob: (jobKey: string) => void;
   /** "Put away empty jobs": every open Job with nobody on it folds now. */
   onPutAwayEmptyJobs: () => void;
-  /** Drawn right beside the date: the Settings gear. */
+  /** Drawn right beside the date: the Settings gear and the TV button. */
   dateButtons?: ReactNode;
   /** Drawn at the right end of the header: Change date and Send. */
   toolbarButtons?: ReactNode;
@@ -74,11 +74,13 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * anywhere else lets go of them. Under the Job cards are the Notes for the
  * day (`DayNotes`).
  *
- * A name can also be dragged and dropped on one of those blocks (`useNameDrag`).
- * The drag only says who was dropped where; like a click, it is reported.
+ * A name can also be dragged and dropped on one of those blocks (`useNameDrag`),
+ * at a spot among the names there, its own card included: that is how a card's
+ * names are put in the order wanted (a Job's Foremen always stay first). The
+ * drag only says who was dropped where; like a click, it is reported.
  * While a name is held over a destination, the schedule is drawn as the rules
  * say it would be after the drop (`viewWhileDragging`), so the names there
- * make room where it would land.
+ * make room where it would land. A tap move still puts them last.
  *
  * Every move is shown: a name that is somewhere else after a redraw travels
  * there from where it was (`MoveNames`), whatever moved it.
@@ -133,9 +135,10 @@ export function ScheduleScreen({
         )
       );
     },
-    onDrop: (crewMemberId, over) => {
+    // Let go at a spot: it lands there (the rules keep a Job's Foremen first).
+    onDrop: (crewMemberId, over, before) => {
       const to = dropTarget(view, over);
-      if (to !== null) move(crewMemberId, to);
+      if (to !== null) onEdit({ kind: 'move', crewMemberId, to, before });
     },
     onLetGo: motion.letGoAt,
   });

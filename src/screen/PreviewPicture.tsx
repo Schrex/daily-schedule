@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { crewView, type DailySchedule, type Roster } from '../schedule-rules';
-import { renderCrewPicture } from '../send/crewPicture';
+import { drawCrewPicture } from '../send/crewPicture';
 
-/** The picture being shown: drawing, ready (its address), or it could not be drawn. */
-type Shown = { kind: 'drawing' } | { kind: 'ready'; url: string } | { kind: 'failed' };
+/** The picture being shown: drawing, ready (the canvas it was drawn on), or it could not be drawn. */
+type Shown = { kind: 'drawing' } | { kind: 'ready'; canvas: HTMLCanvasElement } | { kind: 'failed' };
 
 /**
  * "Preview": the picture the crew would get if "Send to crew" were pressed
- * now, drawn exactly as Send draws it (the same crew view, UPDATED marker and
- * all), shown large over the blurred board with nothing else around it.
+ * now, drawn exactly as Send draws it (the same crew view, stamped with the
+ * time now), shown large over the blurred board with nothing else around it.
+ * It is shown straight off the canvas it is drawn on: making it into a PNG
+ * file, as Send must, would take longer than drawing it.
  * Escape, or a click outside it, closes it. It records nothing and copies nothing: only Send does that.
  */
 export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule: DailySchedule }) {
@@ -19,9 +21,9 @@ export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule:
   const open = () => {
     const thisOpening = ++opening.current;
     setShown({ kind: 'drawing' });
-    renderCrewPicture(crewView(roster, schedule), roster)
-      .then((picture) => {
-        if (opening.current === thisOpening) setShown({ kind: 'ready', url: URL.createObjectURL(picture) });
+    drawCrewPicture(crewView(roster, schedule), new Date(), roster)
+      .then((canvas) => {
+        if (opening.current === thisOpening) setShown({ kind: 'ready', canvas });
       })
       .catch((error) => {
         console.error('Could not draw the preview', error);
@@ -45,12 +47,6 @@ export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule:
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen]);
 
-  // The picture's address is let go of once it is no longer shown.
-  useEffect(() => {
-    if (shown?.kind !== 'ready') return;
-    return () => URL.revokeObjectURL(shown.url);
-  }, [shown]);
-
   return (
     <>
       <button type="button" className="button toolbar-button" onClick={open}>
@@ -70,10 +66,25 @@ export function PreviewPicture({ roster, schedule }: { roster: Roster; schedule:
           >
             {shown.kind === 'drawing' && <p className="preview-status">Drawing the picture…</p>}
             {shown.kind === 'failed' && <p className="preview-status">The picture could not be drawn.</p>}
-            {shown.kind === 'ready' && <img src={shown.url} alt="The Daily Schedule picture for the crew" />}
+            {shown.kind === 'ready' && <ShowCanvas canvas={shown.canvas} />}
           </div>
         </div>
       )}
     </>
+  );
+}
+
+/** The drawn picture itself, put in the page as it is, sized by the panel. */
+function ShowCanvas({ canvas }: { canvas: HTMLCanvasElement }) {
+  return (
+    <div
+      className="preview-picture"
+      ref={(holder) => {
+        if (!holder) return;
+        canvas.setAttribute('role', 'img');
+        canvas.setAttribute('aria-label', 'The Daily Schedule picture for the crew');
+        holder.replaceChildren(canvas);
+      }}
+    />
   );
 }

@@ -32,7 +32,7 @@ export const seedRoster: Roster = {
       'Glenn Munger',
     ]),
     ...crew('yellow', false, ['Christian Cirilla', 'Corey Mahoney']),
-    ...crew('red', false, ['Greg Black']),
+    ...crew('gunmetal', false, ['Greg Black']),
   ],
   jobs: [
     { id: 'j2601-tiuny', name: 'TIUNY', jobNumber: 'J2601' },

@@ -35,7 +35,8 @@ describe('the seed roster', () => {
       'Glenn Munger',
     ]);
     expect(namesWith('yellow')).toEqual(['Christian Cirilla', 'Corey Mahoney']);
-    expect(namesWith('red')).toEqual(['Greg Black']);
+    expect(namesWith('red')).toEqual([]);
+    expect(namesWith('gunmetal')).toEqual(['Greg Black']);
   });
 
   it('flags exactly the four grey Crew Members as Foreman', () => {
