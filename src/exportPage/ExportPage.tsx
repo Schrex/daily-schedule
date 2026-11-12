@@ -56,7 +56,8 @@ export function ExportPage({ store, slack }: { store: ScheduleStore; slack: Slac
               : `${count} Daily Schedule${count === 1 ? ' is' : 's are'} saved on this computer, with the Roster and the Slack settings.`}
         </p>
         <p className="settings-hint">
-          Download the file, then open Settings at the new address and choose &ldquo;Upload schedules file&rdquo;.
+          Download the Export file, then open Settings at the new address and choose &ldquo;Upload the Export
+          file&rdquo;.
         </p>
         <div className="settings-buttons">
           <button type="button" className="button button-primary" onClick={download}>

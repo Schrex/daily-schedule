@@ -73,7 +73,8 @@ const KEEP_KEYS_MS = 60 * 60 * 1000;
 /** Asking again for a key the hub doesn't seem to have waits at least this long. */
 const ASK_AGAIN_MS = 60 * 1000;
 
-type Fetch = (input: string) => Promise<Response>;
+/** How the hub's keys are fetched (the tests pass their own). */
+type KeysFetch = (input: string) => Promise<Response>;
 
 interface Kept {
   keys: JsonWebKey[];
@@ -88,7 +89,7 @@ const kept = new Map<string, Kept>();
  */
 export function hubKeys(
   authUrl: string,
-  fetchFn: Fetch = (input) => fetch(input),
+  fetchFn: KeysFetch = (input) => fetch(input),
   clock: () => number = Date.now,
 ): KeySource {
   const url = `${authUrl}/.well-known/jwks.json`;

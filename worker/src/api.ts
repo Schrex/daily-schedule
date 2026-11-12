@@ -1,6 +1,10 @@
+import type { Role } from '../../shared';
 import type { Env } from './app';
 import type { D1Database } from './d1';
 import { handleImport } from './import';
+import { refuse } from './refuse';
+import { saveRoster } from './roster';
+import { isDailySchedule, isDate, isRoster } from './shapes';
 import { whoIsCalling } from './signIn';
 
 /**
@@ -27,14 +31,14 @@ export async function handleApi(request: Request, env: Env, path: string): Promi
   if (role === null) return refuse(403, 'You don\'t have access to the Daily Schedule. Ask the Scheduler.');
 
   if (path === 'import' && request.method === 'POST') {
-    if (role !== 'editor') return refuse(403, 'Only an editor can change the Daily Schedule.');
+    if (role !== 'editor') return refuse(403, 'Only an Editor can change the Daily Schedule.');
     return handleImport(request, env.DB, email);
   }
 
   const reading = request.method === 'GET';
   const writing = request.method === 'PUT';
   if (!reading && !writing) return refuse(405, 'That method is not allowed here.');
-  if (writing && role !== 'editor') return refuse(403, 'Only an editor can change the Daily Schedule.');
+  if (writing && role !== 'editor') return refuse(403, 'Only an Editor can change the Daily Schedule.');
 
   if (path === 'me' && reading) return Response.json({ email, role });
 
@@ -42,12 +46,7 @@ export async function handleApi(request: Request, env: Env, path: string): Promi
     if (reading) return Response.json(await readBody(env.DB.prepare('SELECT body FROM roster WHERE id = 1')));
     const roster = await bodyOf(request);
     if (!isRoster(roster)) return refuse(400, 'That is not a Roster.');
-    await env.DB.prepare(
-      'INSERT INTO roster (id, body, saved_at, saved_by) VALUES (1, ?, ?, ?) ' +
-        'ON CONFLICT (id) DO UPDATE SET body = excluded.body, saved_at = excluded.saved_at, saved_by = excluded.saved_by',
-    )
-      .bind(JSON.stringify(roster), new Date().toISOString(), email)
-      .run();
+    await saveRoster(env.DB, roster, new Date().toISOString(), email).run();
     return new Response(null, { status: 204 });
   }
 
@@ -77,8 +76,6 @@ export async function handleApi(request: Request, env: Env, path: string): Promi
   return refuse(404, 'Not found.');
 }
 
-type Role = 'editor' | 'viewer';
-
 async function roleOf(db: D1Database, email: string): Promise<Role | null> {
   // Emails are compared without regard to case, as sign-in providers do.
   const row = await db
@@ -87,9 +84,6 @@ async function roleOf(db: D1Database, email: string): Promise<Role | null> {
     .first<{ role: Role }>();
   return row?.role ?? null;
 }
-
-/** An error answer: `{ error }` in plain words. */
-const refuse = (status: number, error: string) => Response.json({ error }, { status });
 
 /** The stored JSON of the row found, or null. */
 async function readBody(statement: ReturnType<D1Database['prepare']>): Promise<unknown> {
@@ -105,20 +99,3 @@ async function bodyOf(request: Request): Promise<unknown> {
     return undefined;
   }
 }
-
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const isDate = (value: unknown): value is string =>
-  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
-
-/** The Roster's shape, checked only as far as keeping it safely needs. */
-export const isRoster = (value: unknown): boolean =>
-  isRecord(value) && Array.isArray(value.crewMembers) && Array.isArray(value.jobs);
-
-export const isDailySchedule = (value: unknown): value is { date: string } =>
-  isRecord(value) &&
-  isDate(value.date) &&
-  Array.isArray(value.placements) &&
-  isRecord(value.tasks) &&
-  Array.isArray(value.sends);
