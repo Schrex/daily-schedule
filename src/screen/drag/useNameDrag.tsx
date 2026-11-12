@@ -108,7 +108,10 @@ function whereAt(point: Point, dragged: string): { over: DropKey | null; before:
   if (!destination) return { over: null, before: null };
   const names = [...destination.querySelectorAll<HTMLElement>('[data-crew-member]')].map((name) => {
     const box = name.getBoundingClientRect();
-    return { crewMemberId: name.dataset.crewMember ?? '', top: box.top, bottom: box.bottom };
+    // Where the page puts the name, not where a slide making room has it this
+    // instant: measured mid-slide, the spot would flick back and forth.
+    const shift = new DOMMatrixReadOnly(getComputedStyle(name).transform).m42;
+    return { crewMemberId: name.dataset.crewMember ?? '', top: box.top - shift, bottom: box.bottom - shift };
   });
   return { over: destination.dataset.drop ?? null, before: spotAt(point.y, names, dragged) };
 }

@@ -21,11 +21,27 @@ body[data-name-dragging] * {
   user-select: none;
 }
 
-/* The dragged name's own place on the page, faded: where it came from, or,
-   over a destination, where it would land if let go now. */
+/* The dragged name's own place on the page, drawn as an empty slot the size
+   of the name: where it came from, or, over a destination, the gap the other
+   names open up for it, where it would land if let go now. Each time the slot
+   appears somewhere new it opens out. */
 [data-crew-member][data-dragging] {
-  opacity: 0.35;
-  box-shadow: none;
+  background: color-mix(in srgb, var(--select) 7%, transparent) !important;
+  box-shadow: none !important;
+  outline: 2px dashed color-mix(in srgb, var(--select) 55%, transparent);
+  outline-offset: -2px;
+  animation: name-slot-open var(--move-duration) var(--move-ease);
+}
+
+[data-crew-member][data-dragging] > * {
+  visibility: hidden;
+}
+
+@keyframes name-slot-open {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
 }
 
 /* The lifted copy that follows the pointer: raised off the page (a little
@@ -41,8 +57,8 @@ body[data-name-dragging] * {
   border-radius: var(--radius-chip);
   pointer-events: none;
   box-shadow: var(--ring-selected);
-  transform: scale(1.05);
-  animation: name-lift var(--move-duration) var(--move-ease);
+  transform: scale(1.04) rotate(-1.5deg);
+  animation: name-lift var(--move-duration) var(--lift-ease);
   will-change: translate, transform;
 }
 
@@ -50,13 +66,14 @@ body[data-name-dragging] * {
   box-shadow: none;
 }
 
-/* Its shadow, on a layer of its own so it can fade in without being redrawn. */
+/* Its shadow, on a layer of its own so it can fade in without being redrawn:
+   deep and soft, so the name reads as held well above the page. */
 .name-drag-overlay::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: var(--elevation-lifted);
+  box-shadow: var(--elevation-held);
   animation: name-lift-shadow var(--move-duration) var(--move-ease);
 }
 

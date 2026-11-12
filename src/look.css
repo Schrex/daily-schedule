@@ -71,6 +71,7 @@
   --elevation-3: 0 2px 6px var(--shadow), 0 24px 60px var(--shadow-strong);
   /* Under a name that is off the page: selected, dragged, or travelling. */
   --elevation-lifted: 0 10px 22px 6px var(--shadow-strong);
+  --elevation-held: 0 4px 8px var(--shadow), 0 18px 36px 4px var(--shadow-strong);
 
   /* Rings: what the keyboard is on, and the name selected. */
   --focus-ring: 0 0 0 2px var(--paper), 0 0 0 5px var(--accent-strong);
@@ -82,10 +83,13 @@
 
   --ease: 120ms ease-out;
 
-  /* A name moving from one place to another: quick, easing away and slowing as
-     it arrives. The duration is in milliseconds; script reads it too. */
-  --move-duration: 200ms;
-  --move-ease: cubic-bezier(0.3, 0, 0.2, 1);
+  /* A name moving from one place to another, or the names making room for one
+     being dragged: a smooth glide that starts at once and settles softly. The
+     duration is in milliseconds; script reads it too. */
+  --move-duration: 300ms;
+  --move-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* A name picked up: it springs up off the page, just past its height and back. */
+  --lift-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* --- Reduce motion ---------------------------------------------------------
