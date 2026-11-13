@@ -1,117 +1,90 @@
 # Daily Schedule
 
-## Where things are saved
+The crew's daily schedule for Schreiber Excavating: who works where on the next working day, and
+the picture of it that is sent to the crew in Slack.
 
-The Roster and every Daily Schedule are kept in the Worker's D1 database, `daily-schedule`, and the
-pages read and save them through the Worker's API under `/daily-schedule/api/`
-(`worker/src/api.ts`). The schema is in `migrations/`. The database also holds the access list,
-`people`: the **editors** (the Scheduler's screen and Settings). Everyone else signed in to the hub
-is a **viewer**: the pages send them to the Office TV, and they can't change anything.
+**Open it:** https://app.schreiberexcavating.com/daily-schedule/ (sign in to the hub first).
 
-### The database's name
+## Who can do what
 
-Use the real name everywhere: in commands, in the Cloudflare dashboard (Storage & databases → D1)
-and in CI.
-
-| Database | Used by |
+| Who | Gets |
 | --- | --- |
-| `daily-schedule` | production (app.schreiberexcavating.com/daily-schedule/) |
-| `daily-schedule-preview` | PR previews only, never real data |
+| **Editors** (listed in the database) | The board and Settings: place the crew, write tasks and notes, Send. |
+| **Everyone else signed in to the hub** | The Office TV page, read-only. |
+| **Not signed in** | A link to the hub's sign-in page. |
 
-The code reaches it as `env.DB` (the binding in `wrangler.jsonc`); that name is only for the code,
-which can't use a dash. Don't type `DB` in commands: it works only inside this folder, and
-elsewhere Wrangler offers to create a new, empty database called `DB`. Say no to that. Commands with
-`daily-schedule` work from any folder.
+The database holds the list of editors. To see, add or remove one, see [Everyday tasks](#everyday-tasks).
+Never write anyone's email in this repository.
 
-### Setting up the database (once)
+## How it fits together
 
-1. `npx wrangler d1 create daily-schedule`, and put the `database_id` it prints in `wrangler.jsonc`
-   in place of `REPLACE_WITH_DATABASE_ID`. Deploys fail until this is done.
-2. The tables are created by CI before the next deploy (or by hand:
-   `npx wrangler d1 migrations apply daily-schedule --remote`).
-3. Add the first editor (use the email they sign in to the hub with):
-
-   ```sh
-   npx wrangler d1 execute daily-schedule --remote --command "INSERT INTO people (email, role) VALUES ('name@example.com', 'editor')"
-   ```
-
-   Viewers need no line: anyone else signed in to the hub is one. To remove an editor:
-   `--command "DELETE FROM people WHERE email = 'name@example.com'"`. To see the list:
-   `--command "SELECT * FROM people"`. Never write anyone's email in this repository.
-
-## Sign-in
-
-People sign in to the hub (app.schreiberexcavating.com); the pages reuse that sign-in on the
-shared address, through `supabase-js` configured for the hub's project in
-`src/signIn/hubConfig.ts` (its URL and publishable key, public by design). It is used **for
-sign-in only**: a test fails if anything in `src/` asks the hub's Supabase for data. The pages
-send the sign-in's token with every API call, and the Worker checks it itself
-(`worker/src/signIn.ts`) against the hub's published ES256 keys (`HUB_AUTH_URL` in
-`wrangler.jsonc`), then looks the email up in `people`. Each page first asks `GET /api/me`: an
-editor gets the page, and everyone else signed in is a viewer, sent to the Office TV.
-
-## Running it locally
-
-Locally, the Worker uses a **development-only sign-in**: it takes every request to come from the
-email in `DEV_AUTH_EMAIL`. Put it in `.dev.vars` (git-ignored; never in `wrangler.jsonc`):
-
-```sh
-echo "DEV_AUTH_EMAIL=you@example.com" > .dev.vars
-npx wrangler d1 migrations apply daily-schedule --local
-npx wrangler d1 execute daily-schedule --local --command "INSERT INTO people (email, role) VALUES ('you@example.com', 'editor')"
-npm run preview   # then open http://localhost:8787/daily-schedule/
+```
+ Browser ── app.schreiberexcavating.com/daily-schedule/... ──▶ Hub (Cloudflare Pages)
+                                                                  │ forwards only /daily-schedule
+                                                                  ▼
+                                                 Worker "daily-schedule"  ── checks the hub sign-in
+                                                     │            │
+                                     D1 "daily-schedule"          Slack relay "daily-schedule-slack"
+                                     (Roster, Daily Schedules,    (posts the Send picture
+                                      editors)                     to the crew channel)
 ```
 
-The local database lives in `.wrangler/state/`. On first open, an editor gets the starter Roster and
-Daily Schedule.
+- **The app is its own Cloudflare Worker** with its own database, deployed from this repository.
+  The hub only forwards one path to it, so the app ships without a hub release.
+- **Sign-in is the hub's.** The app never reads or writes the hub's data.
+- **Everything is shared:** every computer, phone and the Office TV sees the same board. Only the
+  Slack settings are kept per browser.
 
-The Worker refuses to answer at all on `app.schreiberexcavating.com` if `DEV_AUTH_EMAIL` (or
-`HUB_JWKS`, the tests' own sign-in keys) is set, so neither can ever reach production.
+## Making a change
 
-The Worker has no workers.dev address (`"workers_dev": false`): the old one,
-`daily-schedule.schrex.workers.dev`, is switched off, and the app is reached only through the hub.
-PR previews keep their own workers.dev address.
+Every change goes through a pull request. Nothing reaches the live app until you merge.
 
-### Tests
+```
+ branch ──▶ pull request ──────────────────────▶ merge to main ─────────────────▶ live in ~2 min
+            tests + a preview on the preview       migrations, then deploy
+            database (never real data)
+```
 
-`npm test` runs the API and the storage tests against a real local D1 (Wrangler's test harness,
-`worker/src/testing/localD1.ts`, migrated from `migrations/`); no Cloudflare account is needed.
+1. Make the change on a branch: yourself, or ask a Claude session.
+2. Open a PR. CI runs the typecheck and the tests, and posts a **preview** link on the PR.
+3. Merge. CI applies any database migrations, then deploys. **To undo:** revert the PR and merge.
 
-## CI
+## Everyday tasks
 
-Two GitHub Actions workflows in `.github/workflows/`:
+Run these from this folder. Each works from any folder, because it names the database.
 
-- **PR** (`pr.yml`), on every pull request: typecheck, tests and build (shown as a check on the PR),
-  then a **preview deploy**. The address is posted on the PR:
-  `https://pr-<number>-daily-schedule-preview.<account>.workers.dev/daily-schedule/`.
-- **Deploy** (`deploy.yml`), on every merge to `main`: typecheck and tests, then the D1 migrations,
-  then `npm run deploy` (the `daily-schedule` Worker). A failed migration stops the deploy.
-  The Slack relay (`npm run deploy:relay`) is deployed only when its own files changed
-  (`worker/wrangler.toml`, `worker/src/index.ts` or `worker/src/relay.ts`; see `.github/scripts/relay-changed.mjs`).
+**Add an editor** (the email they sign in to the hub with):
 
-### Previews never touch production data
+```bash
+npx wrangler d1 execute daily-schedule --remote --command "INSERT INTO people (email, role) VALUES ('name@schrex.com', 'editor')"
+```
 
-A preview is a version of a **separate Worker**, `daily-schedule-preview`, uploaded with
-`wrangler versions upload --preview-alias pr-<number>`. CI writes its config from `wrangler.jsonc`
-(`.github/scripts/preview-config.mjs`), giving it the preview Worker's name and pointing its D1
-binding at the **preview database**. Migrations for a PR are applied to the preview database only.
-If the config has a D1 binding and the preview database id isn't set, the preview fails rather
-than fall back to production. Production secrets are not copied to the preview Worker; set any it
-needs with `npx wrangler secret put <NAME> --name daily-schedule-preview`.
+**Remove an editor:**
 
-### Secrets and variables to set (once)
+```bash
+npx wrangler d1 execute daily-schedule --remote --command "DELETE FROM people WHERE email = 'name@schrex.com'"
+```
 
-In GitHub: **Settings → Secrets and variables → Actions**. Never write the values in this repository.
+**See the editors:**
 
-| Name | Kind | What |
-| --- | --- | --- |
-| `CLOUDFLARE_API_TOKEN` | Secret | A Cloudflare API token from the "Edit Cloudflare Workers" template, plus **Account → D1 → Edit**. |
-| `CLOUDFLARE_ACCOUNT_ID` | Secret | The Cloudflare account id (Workers & Pages overview, right-hand side). |
-| `PREVIEW_D1_DATABASE_ID` | Variable | The id of the preview database. Create it once with `npx wrangler d1 create daily-schedule-preview` and copy the `database_id` it prints. Needed once `wrangler.jsonc` has a D1 binding. |
+```bash
+npx wrangler d1 execute daily-schedule --remote --command "SELECT email, role FROM people"
+```
 
-Or from a terminal: `gh secret set CLOUDFLARE_API_TOKEN` (it asks for the value),
-`gh secret set CLOUDFLARE_ACCOUNT_ID`, and `gh variable set PREVIEW_D1_DATABASE_ID`.
+**Other tasks:**
 
-Previews are skipped for pull requests from forks, which don't get the secrets.
+- **Connect Slack on a computer:** Settings → Slack → **expand** → the relay address, send key and
+  channel. See [docs/slack-setup.md](docs/slack-setup.md).
+- **Look at the data:** queries, the schema and how to undo mistakes are in
+  [docs/database.md](docs/database.md).
+- **Crew members, jobs, placements:** change them in the app, not in the database.
 
-The CI scripts' own tests (`.github/scripts/*.test.mjs`) run as part of `npm test`.
+## Docs
+
+| Read | For |
+| --- | --- |
+| [docs/database.md](docs/database.md) | The database: its name, tables, queries, undo, what removing does |
+| [docs/development.md](docs/development.md) | Running it locally, tests, CI, previews, secrets |
+| [docs/slack-setup.md](docs/slack-setup.md) | Sending the picture to Slack |
+| [docs/hub-integration.md](docs/hub-integration.md) | How the app sits inside the hub, and the pattern for later apps |
+| [GLOSSARY.md](GLOSSARY.md) | The words used for the schedule, in the code and on screen |

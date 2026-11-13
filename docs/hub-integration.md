@@ -1,15 +1,8 @@
-# Plan: the Daily Schedule inside the hub
+# The Daily Schedule inside the hub
 
-Status, 2026-11-12: **built and live.** The hub forwards `/daily-schedule` to the Daily Schedule's
-Worker (hub release 6a8c542, Schrex/schreiber-hub-central#100). The DNS move was dropped
-(see "Why not move DNS"). Below is the plan as it was carried out, with these changes since:
-
-- The data was not carried over in a file: the Scheduler enters it by hand at the new address. #73
-  removed the export page, the upload and the import endpoint, and switched off the old
-  `daily-schedule.schrex.workers.dev` address.
-- Every answer carries browser safety headers; the content security policy is report-only until the
-  logs show it would block nothing (#75, `worker/src/safetyHeaders.ts`).
-- Left, by hand: the signed-in checks and starting to use it for real (#68).
+**Live since 2026-11-12** at `app.schreiberexcavating.com/daily-schedule/`. The hub forwards that
+path to the Daily Schedule's Worker. This document says how that works, why it was built this way,
+and how later apps can follow the same pattern. For day-to-day use, see the [README](../README.md).
 
 "The hub" is the company's main web app at app.schreiberexcavating.com
 (repository `Schrex/schreiber-hub-central`: React on Cloudflare Pages project `schreiber-hub-preview`,
@@ -81,7 +74,8 @@ data and sign-in in Supabase). The hub's owner approved the change to the hub de
 5. **Hub sign-in, no second login.** The app reads the hub's Supabase session on the shared address
    and refreshes it, using `supabase-js` for sign-in only. The Worker checks the token against the hub's
    public keys. The app never reads or writes hub data.
-6. **Own access list in D1.** Editors use the Scheduler's screen. Viewers get the Office TV page.
+6. **Own access list in D1.** The editors listed there use the board and Settings. Everyone else
+   signed in to the hub is a viewer and gets the Office TV page (#70).
 7. **Replace the hub's `/schedule` page** (nobody uses it now). It is parked, not deleted.
 8. **Hub features that use the old schedule data are for later** (see "Later" below).
 9. **Ship through a pipeline:** tests on every PR, preview deploys, automatic deploy on merge.
@@ -105,42 +99,24 @@ Also rejected: a separate address such as `schedule.schreiberexcavating.com` (it
 on each device), and copying the app into the hub (every change would go through the hub's release
 process, with Supabase migrations and a port to React 18 and Tailwind).
 
-## The sequence
+## What was done
 
-- [ ] **1. Build issue #55**: https://github.com/Schrex/daily-schedule/issues/55
-      D1, hub sign-in, editors and viewers, save queue, export and import file, relay accepts both addresses.
-- [ ] **2. Hub change** (in the hub repository, through its release process; see below).
-      Can be built at the same time as step 1, but **released after** step 1 is deployed.
-- [ ] **3. Cloudflare setup** (once): create the D1 database, and add the service binding
-      `DAILY_SCHEDULE` → Worker `daily-schedule` in the hub's Pages project settings.
-- [ ] **4. Release:** deploy the Daily Schedule with #55, then release the hub.
-      Check: the hub's Schedule button opens the board, with no second sign-in.
-- [ ] **5. Move the data.** At the OLD address, the Scheduler pushes "Download this computer's schedules".
-      At the NEW address, they upload the file. Before sending anything new, they check the board and Send to Slack.
-      Then the Office TV is pointed at the new address.
-- [ ] **6. CI pipeline** (its own issue): tests on every PR, preview deploys, automatic deploy on merge,
-      and D1 migrations applied by CI. Keep the Cloudflare token in GitHub secrets.
-- [ ] **7. Make this repository the template** for the next app.
-- [ ] **8. Later:** the hub features that use the old schedule data.
+| Step | Where |
+| --- | --- |
+| The app: D1, hub sign-in, editors and viewers, save queue, CI | `Schrex/daily-schedule` #55 (#60–#66), PR #69 |
+| Everyone who isn't an editor goes to the Office TV | PR #70 |
+| Sign in against the live hub project (`acgqjjbrnkmeazswdnzp`) | PR #71 |
+| The hub forwards `/daily-schedule`; `/schedule` opens it | `Schrex/schreiber-hub-central` #101, #102 |
+| Service binding `DAILY_SCHEDULE` set on the hub's Production config | Hub release PR #103 |
+| Hub released: `6a8c542`, deployment `855a0911-…` | Hub #100 |
+| Data entered by hand (no file import); old `daily-schedule.schrex.workers.dev` switched off | PR #73 |
+| "Page not found" for unknown addresses | PR #74 |
+| Browser safety headers (the CSP is report-only for now) | PR #75 |
 
-## Warnings
+**The order mattered:** the app was deployed before the hub release. A hub release that ships first
+sends the Schedule button to an empty page.
 
-1. **Keep the order.** If the hub release ships before #55 is deployed, the Schedule button opens an
-   empty page.
-2. **Move the data with the file.** Browser storage is attached to one address. The new address can't see
-   the old data, and the old address has no hub sign-in. So: download the file at the old address, then
-   upload it at the new address.
-3. **Upload before the first Send at the new address.** After a Daily Schedule has been Sent at the new
-   address, the import is refused, so that it can't overwrite real work.
-
-## Check before building #55
-
-- Does Cloudflare's Workers Vitest integration work with this repository's Vitest version?
-  If not, run a local D1 through Miniflare directly in the tests.
-- Who creates the Office TV's hub account, and with which hub role?
-  (Default: a dedicated account with the lowest hub role, listed as a viewer.)
-
-## Hub changes (step 2)
+## The hub changes (done: hub-central #101, #102)
 
 Rules of the hub repository: work on a `feature/*` branch from `develop`, never commit to `main`,
 and read its `CLAUDE.md` first. Merging to `main` doesn't deploy; releases are approved by the owner.
@@ -168,8 +144,9 @@ and read its `CLAUDE.md` first. Merging to `main` doesn't deploy; releases are a
 7. Keep the old `Schedule.tsx` code and the `schedule_assignments` table. Delete nothing.
 8. Leave `/schedule/whiteboard` as it is.
 9. Update the hub's codebase map (`docs/codebase/`) and release docs for the function.
-10. Optional: let the hub's sign-in page go back to a `?next=` path on the same address. Today it always
-    goes to `/`. With this change, people who sign in from the Daily Schedule return to it.
+10. Not done yet (optional): let the hub's sign-in page go back to a `?next=` path on the same
+    address. Today it always goes to `/`. With this change, people who sign in from the Daily Schedule
+    would return to it.
 
 Undo: switch the flag back on, and release the hub without the function. The old page and its data return.
 

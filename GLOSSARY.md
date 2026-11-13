@@ -7,7 +7,7 @@ The daily crew schedule for Schrex: who works where on the next working day, and
 ### People
 
 **Scheduler**:
-The one person who builds and sends the Daily Schedule each evening.
+The person who builds and sends the Daily Schedule each evening; one of the Editors.
 _Avoid_: Manager, project coordinator, admin
 
 **Hub**:
@@ -81,5 +81,5 @@ The Scheduler's act of delivering the finished Daily Schedule to the crew.
 _Avoid_: Publish, post, share
 
 **Office TV**:
-The page (tv.html) that shows today's Daily Schedule full screen on the TV in the office: as it was last Sent, or as the board stands if it was never Sent. On a day with no Daily Schedule (a weekend), the next one Sent.
+The page (`/daily-schedule/tv`) that shows today's Daily Schedule full screen on the TV in the office: as it was last Sent, or as the board stands if it was never Sent. On a day with no Daily Schedule (a weekend), the next one Sent.
 _Avoid_: Display, dashboard, kiosk
