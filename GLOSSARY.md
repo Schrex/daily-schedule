@@ -81,7 +81,7 @@ The Scheduler's act of delivering the finished Daily Schedule to the crew.
 _Avoid_: Publish, post, share
 
 **Office TV**:
-The page (`/daily-schedule/tv`) that shows today's Daily Schedule full screen on the TV in the office: as it was last Sent, or as the board stands if it was never Sent. On a day with no Daily Schedule (a weekend), the next one Sent.
+The page (`/daily-schedule/tv`) that shows, full screen on the TV in the office, what the Crew Page shows: the newest Daily Schedule that has been Sent, exactly as the crew got it. A Daily Schedule never Sent, and changes made since the last Send, are not on it.
 _Avoid_: Display, dashboard, kiosk
 
 **Crew Page**:

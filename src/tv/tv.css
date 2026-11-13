@@ -120,15 +120,6 @@ body {
   height: 7vw;
 }
 
-.tv-empty-date {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: var(--weight-display);
-  font-size: 3.5vw;
-  letter-spacing: var(--tracking-heading);
-  text-transform: uppercase;
-}
-
 .tv-empty-text {
   margin: 0;
   color: var(--ink-soft);
@@ -174,10 +165,6 @@ body {
 
   .tv-empty .tv-logo {
     height: 3rem;
-  }
-
-  .tv-empty-date {
-    font-size: 1.75rem;
   }
 
   .tv-empty-text {

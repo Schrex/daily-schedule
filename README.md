@@ -10,7 +10,7 @@ the picture of it that is sent to the crew in Slack.
 | Who | Gets |
 | --- | --- |
 | **Editors** (listed in the database) | The board and Settings: place the crew, write tasks and notes, Send. |
-| **Everyone else signed in to the hub** (Viewers) | The Crew Page, read-only: the newest Daily Schedule that has been Sent, as the crew got it. Never the board, or one not Sent. |
+| **Everyone else signed in to the hub** (Viewers) | The Crew Page, read-only: the newest Daily Schedule that has been Sent, as the crew got it. Never the board, or one not Sent. The Office TV shows the same. |
 | **Not signed in** | A link to the hub's sign-in page. |
 
 The database holds the list of editors. To see, add or remove one, see [Everyday tasks](#everyday-tasks).
@@ -32,8 +32,9 @@ Never write anyone's email in this repository.
 - **The app is its own Cloudflare Worker** with its own database, deployed from this repository.
   The hub only forwards one path to it, so the app ships without a hub release.
 - **Sign-in is the hub's.** The app never reads or writes the hub's data.
-- **Everything is shared:** every computer, phone and the Office TV sees the same board, and Send
-  goes through the Worker, so it works the same on all of them.
+- **Everything is shared:** every computer and phone sees the same board, and Send goes through
+  the Worker, so it works the same on all of them. The Crew Page and the Office TV show the
+  newest Daily Schedule that has been Sent.
 
 ## Making a change
 

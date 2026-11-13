@@ -1,38 +1,35 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
-import { fullDate, onTheTv, scheduleDateOf, type CrewView, type Roster } from '../schedule-rules';
+import { loadCrewPage } from '../crew/CrewPage';
+import { fullDate, sameData, type CrewView, type Roster } from '../schedule-rules';
+import type { Fetch } from '../storage/apiStore';
 import { CrewCards, useCrewColumns } from './CrewCards';
-import type { ScheduleStore } from '../storage';
 
 /** How often the TV looks again, besides whenever the Scheduler's screen saves. */
 const LOOK_AGAIN_MS = 60_000;
 
-/** What the TV last read from the store. */
+/** What the TV last read: the newest Daily Schedule that has been Sent (none: null), and the Jobs its cards are drawn with. */
 interface Shown {
   roster: Roster;
   view: CrewView | null;
-  today: string;
 }
-
-/** Reads what the TV should show: today's Daily Schedule (see `onTheTv`). */
-async function read(store: ScheduleStore): Promise<Shown> {
-  const today = scheduleDateOf(new Date());
-  const roster = (await store.loadRoster()) ?? { crewMembers: [], jobs: [] };
-  const dates = (await store.listScheduleDates()).filter((date) => date >= today);
-  const saved = (await Promise.all(dates.map((date) => store.loadSchedule(date)))).filter(
-    (schedule) => schedule !== null,
-  );
-  return { roster, view: onTheTv(roster, saved, today), today };
-}
-
-/** Whether two reads say the same thing (they are plain data, as stored). */
-const sameShown = (a: Shown, b: Shown): boolean => JSON.stringify(a) === JSON.stringify(b);
 
 /**
- * Today's Daily Schedule, made to be read from across the office: the same
- * cards the crew is sent, side by side in columns across a wide screen,
- * sized to fill it with nothing to scroll. It changes by itself when the
- * Scheduler Sends or changes today's, and at midnight.
+ * Reads what the TV should show: what the Crew Page shows, the newest Daily
+ * Schedule that has been Sent, exactly as the crew got it (the API's
+ * /crew-page). So the office sees what the crew sees, and never a Daily
+ * Schedule that has not been Sent.
+ */
+async function read(fetchFn?: Fetch): Promise<Shown> {
+  const { jobs, sent } = await loadCrewPage(fetchFn);
+  return { roster: { crewMembers: [], jobs }, view: sent?.view ?? null };
+}
+
+/**
+ * The newest Daily Schedule that has been Sent, the same one the Crew Page
+ * shows, made to be read from across the office: the same cards the crew is
+ * sent, side by side in columns across a wide screen, sized to fill it with
+ * nothing to scroll. It changes by itself when the Scheduler Sends.
  *
  * Left alone it is the schedule and nothing else: no pointer, no buttons.
  * Moving the mouse brings back the pointer and a small bar with Full screen
@@ -40,23 +37,23 @@ const sameShown = (a: Shown, b: Shown): boolean => JSON.stringify(a) === JSON.st
  * of stillness.
  * A click anywhere else also puts it full screen (or back).
  */
-export function TvPage({ store, boardLink = true }: { store: ScheduleStore; boardLink?: boolean }) {
+export function TvPage({ fetchFn, boardLink = true }: { fetchFn?: Fetch; boardLink?: boolean }) {
   const [shown, setShown] = useState<Shown | null>(null);
   /** Counts the reads begun, so only the latest one's result is shown. */
   const reads = useRef(0);
 
   const refresh = useCallback(() => {
     const thisRead = ++reads.current;
-    read(store).then(
+    read(fetchFn).then(
       (next) => {
         // A read begun later has already been (or will be) shown: this one is stale.
         if (thisRead !== reads.current) return;
         // The same as what is shown: keep it, so nothing is drawn or fitted again.
-        setShown((current) => (current !== null && sameShown(current, next) ? current : next));
+        setShown((current) => (current !== null && sameData(current, next) ? current : next));
       },
       (error) => console.error('Could not read the Daily Schedule', error),
     );
-  }, [store]);
+  }, [fetchFn]);
 
   useEffect(() => {
     refresh();
@@ -79,7 +76,7 @@ export function TvPage({ store, boardLink = true }: { store: ScheduleStore; boar
 
   return (
     <div className="tv" data-awake={awake ? true : undefined} onClick={toggleFullScreen}>
-      {shown && (shown.view ? <Board roster={shown.roster} view={shown.view} /> : <NothingYet today={shown.today} />)}
+      {shown && (shown.view ? <Board roster={shown.roster} view={shown.view} /> : <NothingYet />)}
       <nav className="tv-controls" aria-label="TV controls" onClick={(event) => event.stopPropagation()}>
         <button type="button" className="tv-control" onClick={toggleFullScreen}>
           {fullScreen ? 'Exit full screen' : 'Full screen'}
@@ -129,12 +126,11 @@ function useFullScreen(): boolean {
   return fullScreen;
 }
 
-function NothingYet({ today }: { today: string }) {
+function NothingYet() {
   return (
     <div className="tv-empty">
       <img className="tv-logo" src={logoUrl} alt="Schreiber Excavating" />
-      <p className="tv-empty-date">{fullDate(today)}</p>
-      <p className="tv-empty-text">Today's schedule shows here as soon as it is made.</p>
+      <p className="tv-empty-text">The Daily Schedule shows here as soon as it is Sent.</p>
     </div>
   );
 }

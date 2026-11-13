@@ -22,7 +22,6 @@ import {
   crewView,
   lastSentAt,
   markSent,
-  onTheTv,
   onTheCrewPage,
   previousOnTheCrewPage,
   addCrewMember,
@@ -798,50 +797,6 @@ describe('marking a Daily Schedule as Sent', () => {
       '2026-11-09T23:06:00.000Z',
     ]);
     expect(again.sends[1]?.sent).toEqual(once.sends[0]?.sent);
-  });
-});
-
-describe('what the office TV shows', () => {
-  const dated = (date: string) => schedule({ date, placements: [placement('ann', onJob('tower'), 1)] });
-
-  it('shows nothing when there is no Daily Schedule for today or later', () => {
-    expect(onTheTv(roster, [dated('2026-11-09')], '2026-11-10')).toBeNull();
-  });
-
-  it("shows today's Daily Schedule as it was Sent, not as it was changed since", () => {
-    const sent = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
-    const changedSince = placeCrewMember(sent, 'bob', onJob('bridge'));
-
-    expect(onTheTv(roster, [changedSince], '2026-11-10')).toEqual(sent.sends[0]!.sent);
-  });
-
-  it("shows today's Daily Schedule as the board stands when it has not been Sent", () => {
-    const notSent = dated('2026-11-10');
-
-    expect(onTheTv(roster, [notSent], '2026-11-10')).toEqual(crewView(roster, notSent));
-  });
-
-  it("keeps showing today's while tomorrow's is Sent, and tomorrow's from midnight", () => {
-    const today = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
-    const tomorrow = send(dated('2026-11-11'), '2026-11-10T23:05:00.000Z');
-
-    expect(onTheTv(roster, [tomorrow, today], '2026-11-10')?.date).toBe('2026-11-10');
-    expect(onTheTv(roster, [tomorrow, today], '2026-11-11')?.date).toBe('2026-11-11');
-  });
-
-  it('on a day with no Daily Schedule of its own, shows the next one Sent', () => {
-    const notSentYet = dated('2026-11-17');
-    const monday = send(dated('2026-11-16'), '2026-11-13T23:05:00.000Z');
-
-    expect(onTheTv(roster, [notSentYet, monday], '2026-11-14')?.date).toBe('2026-11-16');
-    expect(onTheTv(roster, [notSentYet], '2026-11-14')).toBeNull();
-  });
-
-  it('shows the latest Send when there were several', () => {
-    const once = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
-    const twice = send(placeCrewMember(once, 'bob', onJob('bridge')), '2026-11-09T23:40:00.000Z');
-
-    expect(onTheTv(roster, [twice], '2026-11-10')).toEqual(twice.sends[1]!.sent);
   });
 });
 

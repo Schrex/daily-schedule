@@ -48,9 +48,17 @@ describe('the API: the Roster and the Daily Schedules', () => {
     await call(EDITOR, '/schedules/2026-11-13', put(scheduleFor('2026-11-13')));
     await call(EDITOR, '/schedules/2026-11-12', put(thursday));
 
-    expect(await (await call(VIEWER, '/schedules')).json()).toEqual(['2026-11-12', '2026-11-13']);
-    expect(await (await call(VIEWER, '/schedules/2026-11-12')).json()).toEqual(thursday);
-    expect(await (await call(VIEWER, '/schedules/2026-11-16')).json()).toBeNull();
+    expect(await (await call(EDITOR, '/schedules')).json()).toEqual(['2026-11-12', '2026-11-13']);
+    expect(await (await call(EDITOR, '/schedules/2026-11-12')).json()).toEqual(thursday);
+    expect(await (await call(EDITOR, '/schedules/2026-11-16')).json()).toBeNull();
+  });
+
+  it('never gives a Viewer the saved Daily Schedules or their dates: only what the Crew Page shows', async () => {
+    await call(EDITOR, '/schedules/2026-11-12', put(scheduleFor('2026-11-12')));
+
+    expect((await call(VIEWER, '/schedules')).status).toBe(403);
+    expect((await call(VIEWER, '/schedules/2026-11-12')).status).toBe(403);
+    expect((await call(VIEWER, '/crew-page')).status).toBe(200);
   });
 
   it('replaces a saved Daily Schedule with the newer save', async () => {
@@ -166,12 +174,13 @@ describe('the API: who may call it', () => {
     expect(await response.json()).toEqual({ error: expect.any(String) });
   });
 
-  it('treats someone signed in but not on the list as a viewer: they read, and save nothing', async () => {
+  it('treats someone signed in but not on the list as a viewer: they read what a Viewer may, and save nothing', async () => {
     await call(EDITOR, '/roster', put(roster));
 
     expect(await (await call(STRANGER, '/me')).json()).toEqual({ email: STRANGER, role: 'viewer' });
     expect(await (await call(STRANGER, '/roster')).json()).toEqual(roster);
-    expect((await call(STRANGER, '/schedules')).status).toBe(200);
+    expect((await call(STRANGER, '/crew-page')).status).toBe(200);
+    expect((await call(STRANGER, '/schedules')).status).toBe(403);
 
     const response = await call(STRANGER, '/roster', put({ ...roster, jobs: [] }));
     expect(response.status).toBe(403);

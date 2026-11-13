@@ -784,28 +784,6 @@ function lastSend(schedule: DailySchedule): (Pick<SendRecord, 'sentAt'> & Partia
   return typeof last === 'string' ? { sentAt: last } : last;
 }
 
-/**
- * What the office TV shows on `today`: today's Daily Schedule.
- *
- * If it has been Sent, it is the last Send, exactly as the crew got it,
- * whatever has been changed on the board since. If it has not, it is the crew
- * view as the board stands now (anyone Not Placed left out); so is one Sent
- * before send records held the picture, since what was sent is not known. On a day with no
- * Daily Schedule of its own (a weekend), it is the next one that has been
- * Sent, so Monday's shows from Saturday. Nothing to show gives null.
- */
-export function onTheTv(
-  roster: Roster,
-  saved: readonly DailySchedule[],
-  today: ScheduleDate,
-): CrewView | null {
-  const schedule = saved
-    .filter((candidate) => candidate.date === today || (candidate.date > today && lastSend(candidate) !== undefined))
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))[0];
-  if (!schedule) return null;
-  return lastSend(schedule)?.sent ?? crewView(roster, schedule);
-}
-
 /** A Daily Schedule that has been Sent, as the Crew Page shows it. */
 export interface SentSchedule {
   /** What the crew got at its last Send (or, when that is not known, the crew view as it stands). */

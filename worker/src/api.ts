@@ -15,11 +15,12 @@ import { whoIsCalling } from './signIn';
  *   GET /me                 { email, role }                anyone signed in
  *   GET /roster             the Roster, or null           editors and viewers
  *   PUT /roster             saves the Roster              editors
- *   GET /schedules          the saved dates, earliest first
- *   GET /schedules/:date    that Daily Schedule, or null
+ *   GET /schedules          the saved dates, earliest first       editors
+ *   GET /schedules/:date    that Daily Schedule, or null          editors
  *   PUT /schedules/:date    saves it (its date must be :date)  editors
- *   GET /crew-page          { jobs, sent, previous }: what the Crew Page shows, and
- *                           nothing that has not been Sent (`crewPageShown`)
+ *   GET /crew-page          { jobs, sent, previous }: what the Crew Page and the
+ *                           Office TV show, and nothing that has not been Sent
+ *                           (`crewPageShown`)             editors and viewers
  *   GET /slack              { connected, channel }: whether Send reaches Slack,
  *                           and the Slack channel ID it posts to ('' is the
  *                           relay's own channel)          editors and viewers
@@ -30,7 +31,10 @@ import { whoIsCalling } from './signIn';
  * Editors are the people listed as `editor`; everyone else signed in to the
  * hub is a viewer, sent to the Crew Page by the pages.
  *
- * 401: nobody signed in. 403: a viewer writing or sending.
+ * A viewer is never given a saved Daily Schedule, only what has been Sent
+ * (/crew-page): the board as it stands is the Editors' alone.
+ *
+ * 401: nobody signed in. 403: a viewer writing, sending or reading the saved Daily Schedules.
  * 400: a malformed body or date, or a picture that is missing or too big.
  * Errors are `{ error }` in plain words.
  */
@@ -93,6 +97,11 @@ export async function handleApi(
       .bind(JSON.stringify(roster), new Date().toISOString(), email)
       .run();
     return new Response(null, { status: 204 });
+  }
+
+  // The saved Daily Schedules are the board as it stands, Sent or not: Editors only.
+  if ((path === 'schedules' || path.startsWith('schedules/')) && role !== 'editor') {
+    return refuse(403, 'Only an Editor can open the board. The Crew Page shows what has been Sent.');
   }
 
   if (path === 'schedules' && reading) {
