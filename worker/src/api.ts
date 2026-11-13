@@ -2,6 +2,7 @@ import type { Role } from '../../shared';
 import type { Env } from './app';
 import type { D1Database } from './d1';
 import { refuse } from './refuse';
+import { sendToCrew, slackIsConnected } from './send';
 import { isDailySchedule, isDate, isRoster } from './shapes';
 import { whoIsCalling } from './signIn';
 
@@ -16,24 +17,39 @@ import { whoIsCalling } from './signIn';
  *   GET /schedules          the saved dates, earliest first
  *   GET /schedules/:date    that Daily Schedule, or null
  *   PUT /schedules/:date    saves it (its date must be :date)  editors
+ *   GET /slack              { connected }: whether Send reaches Slack
+ *   POST /send              posts the picture (the body, a PNG; its title
+ *                           URI-encoded in X-Title) to Slack (send.ts)  editors
  *
  * Editors are the people listed as `editor`; everyone else signed in to the
  * hub is a viewer, sent to the Office TV by the pages.
  *
- * 401: nobody signed in. 403: a viewer writing.
- * 400: a malformed body or date. Errors are `{ error }` in plain words.
+ * 401: nobody signed in. 403: a viewer writing or sending.
+ * 400: a malformed body or date, or a picture that is missing or too big.
+ * Errors are `{ error }` in plain words.
  */
-export async function handleApi(request: Request, env: Env, path: string): Promise<Response> {
+export async function handleApi(
+  request: Request,
+  env: Env,
+  path: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Response> {
   const email = await whoIsCalling(request, env);
   if (email === null) return refuse(401, 'You are not signed in.');
   const role = await roleOf(env.DB, email);
 
   const reading = request.method === 'GET';
   const writing = request.method === 'PUT';
-  if (!reading && !writing) return refuse(405, 'That method is not allowed here.');
+  const sending = request.method === 'POST' && path === 'send';
+  if (!reading && !writing && !sending) return refuse(405, 'That method is not allowed here.');
   if (writing && role !== 'editor') return refuse(403, 'Only an Editor can change the Daily Schedule.');
+  if (sending && role !== 'editor') return refuse(403, 'Only an Editor can send the Daily Schedule to the crew.');
 
   if (path === 'me' && reading) return Response.json({ email, role });
+
+  // Only whether it is connected: the relay's address and the send key stay here.
+  if (path === 'slack' && reading) return Response.json({ connected: slackIsConnected(env) });
+  if (sending) return sendToCrew(request, env, fetchImpl);
 
   if (path === 'roster') {
     if (reading) return Response.json(await readBody(env.DB.prepare('SELECT body FROM roster WHERE id = 1')));
