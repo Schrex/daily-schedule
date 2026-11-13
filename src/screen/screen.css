@@ -1134,6 +1134,100 @@ body[data-name-dragging] .destination[data-drop-over] {
   }
 }
 
+/* --- A phone: the Jobs get the screen --------------------------------------
+   Undo and Send leave the header for a bar at the bottom, always in reach.
+   Once the page of cards has scrolled (headerCollapse.ts) the header is one
+   line: a short date, Change date and Preview. "Not saved" and a failed Send
+   keep their red strip under that line. Off a phone none of this shows. */
+
+/* Undo and Send in the header: its wrapper is not a box, so they sit among
+   the other buttons as if it were not there. */
+.header-only {
+  display: contents;
+}
+
+.bottom-bar,
+.date-short {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .header-only {
+    display: none;
+  }
+
+  /* The last thing on the screen, under the scrolling page of cards and never
+     over it; clear of the rounded corners and the home bar of the phone. */
+  .bottom-bar {
+    flex: 0 0 auto;
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    display: flex;
+    gap: var(--space-2);
+    margin: 0 calc(-1 * var(--gutter));
+    padding: var(--space-2) max(var(--gutter), env(safe-area-inset-right, 0px))
+      calc(var(--space-2) + env(safe-area-inset-bottom, 0px)) max(var(--gutter), env(safe-area-inset-left, 0px));
+    border-top: var(--hairline);
+    background: var(--paper);
+  }
+
+  .bottom-bar .toolbar-button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .bottom-bar .send-button {
+    flex-grow: 2;
+  }
+
+  .toolbar-collapsed {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .toolbar-collapsed .toolbar-logo,
+  .toolbar-collapsed .last-sent,
+  .toolbar-collapsed .toolbar-links,
+  .toolbar-collapsed .date-full {
+    display: none;
+  }
+
+  .toolbar-collapsed .date-short {
+    display: inline;
+  }
+
+  /* The date takes what the two buttons leave, and is cut short before it
+     pushes them to a second line. */
+  .toolbar-collapsed .toolbar-date {
+    flex: 1 1 0;
+  }
+
+  .toolbar-collapsed .date-heading {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .toolbar-collapsed .toolbar-actions {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+
+  .toolbar-collapsed .toolbar-actions .toolbar-button {
+    flex: 0 0 auto;
+    min-height: var(--touch-target);
+  }
+}
+
+/* A phone's notch or rounded corners (the page reaches under them, so the
+   bottom bar can keep clear of the home bar): the gutters keep clear too. */
+@media (pointer: coarse) {
+  .screen {
+    padding-left: max(var(--gutter), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--gutter), env(safe-area-inset-right, 0px));
+  }
+}
+
 /* --- A window too short to keep the header in sight (a phone on its side) ---
    The page scrolls as a whole. */
 

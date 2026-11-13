@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type MouseEvent, type ReactNode, type UIEvent } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
 import {
   canHaveTasks,
@@ -19,6 +19,7 @@ import { dropTarget, viewWhileDragging } from './dropPreview';
 import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
+import { collapsedDate, headerCollapsed } from './headerCollapse';
 import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
 import { NameLines, nameClass } from './NameChip';
 import { PersonAdd, PersonLines } from './PersonTasks';
@@ -53,6 +54,8 @@ interface ScheduleScreenProps {
   toolbarLinks?: ReactNode;
   /** Drawn across the foot of the header: a Send that failed. */
   sendMessage?: ReactNode;
+  /** Drawn in the bar at the bottom of a phone's screen: Undo and Send. */
+  bottomBar?: ReactNode;
 }
 
 /** How many are on a Job or Standing Row, in plain words. */
@@ -101,6 +104,11 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * It is one screen: the header stays put, and so does the Not Placed list
  * (beside the board on a wide window, above it on a narrow one). Only the
  * board scrolls.
+ *
+ * On a phone the Jobs get the screen: once the page of cards has scrolled the
+ * header is one line (a short date, Change date and Preview, and under it
+ * "Not saved" or a failed Send if there is one), open again at the top; and
+ * Undo and Send are in a bar at the bottom.
  */
 export function ScheduleScreen({
   roster,
@@ -116,7 +124,19 @@ export function ScheduleScreen({
   toolbarButtons,
   toolbarLinks,
   sendMessage,
+  bottomBar,
 }: ScheduleScreenProps) {
+  // On a phone the header is one line once the page of cards has scrolled
+  // (`headerCollapsed`). Only a narrow screen's CSS acts on it.
+  const [collapsed, setCollapsed] = useState(false);
+  const onPageScroll = (event: UIEvent<HTMLDivElement>) => {
+    const page = event.currentTarget;
+    // Only the page's own scrolling counts, not a list scrolling inside it.
+    if (event.target !== page) return;
+    const scroll = { scrolled: page.scrollTop, room: page.scrollHeight - page.clientHeight };
+    setCollapsed((was) => headerCollapsed(was, scroll));
+  };
+
   const view = scheduleView(roster, schedule);
   const selection = selectionOf(view, selectedCrewMemberId);
   const selected = selectedCrewMember(selection);
@@ -338,10 +358,15 @@ export function ScheduleScreen({
 
   return (
     <main className={`screen${moving ? ' moving' : ''}`}>
-      <header className="toolbar">
+      <header className={`toolbar${collapsed ? ' toolbar-collapsed' : ''}`}>
         <img className="toolbar-logo" src={logoUrl} alt="Schreiber Excavating" />
         <div className="toolbar-date">
-          <h1 className="date-heading">{fullDate(view.date)}</h1>
+          <h1 className="date-heading">
+            <span className="date-full">{fullDate(view.date)}</span>
+            <span className="date-short" aria-hidden="true">
+              {collapsedDate(view.date)}
+            </span>
+          </h1>
           {dateNote}
         </div>
 
@@ -352,7 +377,7 @@ export function ScheduleScreen({
         {sendMessage}
       </header>
 
-      <div className="layout">
+      <div className="layout" onScroll={onPageScroll}>
         <div className="schedule-scroll" data-motion-area>
           <div className="board">{jobRows.map(block)}</div>
           {showNoCrewSection(openJobs, view) && (
@@ -422,6 +447,8 @@ export function ScheduleScreen({
         </div>
 
       </div>
+
+      {bottomBar && <div className="bottom-bar">{bottomBar}</div>}
 
       {drag.overlay}
       <MoveNames motion={motion} scene={view.date} />
