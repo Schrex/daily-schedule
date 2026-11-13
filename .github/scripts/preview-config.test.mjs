@@ -44,6 +44,17 @@ test('the preview points every D1 binding at the preview database, never product
   assert.equal(config.d1_databases[0].database_id, 'prod-id');
 });
 
+test('the preview is not given the Slack relay\'s address, so a preview can never post to the crew channel', () => {
+  const config = {
+    name: 'daily-schedule',
+    vars: { HUB_AUTH_URL: 'https://hub.example/auth/v1', SLACK_RELAY_URL: 'https://relay.example' },
+  };
+  const out = previewConfig(config, {});
+  assert.deepEqual(out.vars, { HUB_AUTH_URL: 'https://hub.example/auth/v1' });
+  // The production config is left as it was.
+  assert.equal(config.vars.SLACK_RELAY_URL, 'https://relay.example');
+});
+
 test('a config with D1 but no preview database id is refused', () => {
   const config = { name: 'daily-schedule', d1_databases: [{ binding: 'DB', database_id: 'prod-id' }] };
   assert.throws(() => previewConfig(config, {}), /PREVIEW_D1_DATABASE_ID/);

@@ -6,6 +6,10 @@
   // address, at the root. Later the API under /daily-schedule/api/.
   "main": "worker/src/app-index.ts",
   "compatibility_date": "2026-11-10",
+  // Send posts the picture to the Slack relay, another Worker of this account
+  // on workers.dev. Without this flag Cloudflare refuses a Worker's request to
+  // a Worker on the same address family (error 1042).
+  "compatibility_flags": ["global_fetch_strictly_public"],
   // No workers.dev address: the old one (daily-schedule.schrex.workers.dev) is
   // switched off, so the app is reached only through the hub, at
   // app.schreiberexcavating.com/daily-schedule/. PR previews keep their own
@@ -13,8 +17,14 @@
   "workers_dev": false,
   // The hub's Supabase sign-in: the Worker checks each request's token against
   // the keys published here (worker/src/signIn.ts). Sign-in only, never data.
+  //
+  // The Slack relay's address: where Send posts the picture (worker/src/send.ts).
+  // The send key that goes with it is a secret, never written here:
+  //   npx wrangler secret put SLACK_SEND_KEY
+  // (docs/slack-setup.md). Until it is set, Send copies the picture instead.
   "vars": {
-    "HUB_AUTH_URL": "https://acgqjjbrnkmeazswdnzp.supabase.co/auth/v1"
+    "HUB_AUTH_URL": "https://acgqjjbrnkmeazswdnzp.supabase.co/auth/v1",
+    "SLACK_RELAY_URL": "https://daily-schedule-slack.schrex.workers.dev"
   },
   "observability": {
     "enabled": true
