@@ -48,6 +48,13 @@
   }
 }
 
+/* The TV button is for the office: not shown on a phone or a finger. */
+@media (pointer: coarse), (max-width: 700px) {
+  .tv-link {
+    display: none;
+  }
+}
+
 /* --- The header: the logo, the date and when it was last Sent; the day's buttons and Send; then TV view and Settings */
 
 .toolbar {

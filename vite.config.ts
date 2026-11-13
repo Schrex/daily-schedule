@@ -18,11 +18,11 @@ export default defineConfig(({ mode }) => ({
     // The pages only (the Worker's script is built separately by the plugin).
     client: {
       build: {
-        // Three pages: the Scheduler's screen (index.html), the office's settings
-        // page (settings.html) and the office TV (tv.html), each reached by its
-        // own address.
+        // Four pages: the Scheduler's screen (index.html), the office's settings
+        // page (settings.html), the office TV (tv.html) and the Crew Page
+        // (crew.html), each reached by its own address.
         rollupOptions: {
-          input: ['index.html', 'settings.html', 'tv.html'],
+          input: ['index.html', 'settings.html', 'tv.html', 'crew.html'],
         },
       },
     },

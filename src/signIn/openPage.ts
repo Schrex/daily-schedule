@@ -12,7 +12,7 @@ export const signedInFetch: Fetch = withToken(browserFetch, hubToken);
 /**
  * Opens a page for whoever is calling (see `openingFor`): `start` runs only
  * when the page is theirs to open, and is told their role. A Viewer on the board or Settings is sent
- * to the Office TV; anyone else gets a plain message. If anything fails, the
+ * to the Crew Page; anyone else gets a plain message. If anything fails, the
  * page says so (`what`) and is never left blank.
  */
 export function openPage(page: Page, what: string, start: (role: Role) => unknown): void {
@@ -24,8 +24,8 @@ export function openPage(page: Page, what: string, start: (role: Role) => unknow
           // Only someone on the list (an Editor or a Viewer) is let in.
           if (caller.kind === 'on-the-list') await start(caller.role);
           return;
-        case 'go-to-tv':
-          window.location.replace('tv.html');
+        case 'go-to-crew-page':
+          window.location.replace('crew.html');
           return;
         case 'no-access':
           showPageMessage(

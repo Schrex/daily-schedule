@@ -795,6 +795,47 @@ export function onTheTv(
   return lastSend(schedule)?.sent ?? crewView(roster, schedule);
 }
 
+/** A Daily Schedule that has been Sent, as the Crew Page shows it. */
+export interface SentSchedule {
+  /** What the crew got at its last Send (or, when that is not known, the crew view as it stands). */
+  view: CrewView;
+  /** The time of its last Send, an ISO timestamp. */
+  sentAt: string;
+  /** True when that Send replaced a different picture Sent earlier for the same date. */
+  sentAgain: boolean;
+}
+
+/**
+ * The Daily Schedules that have been Sent, the latest date first, each as its
+ * last Send recorded it, whatever has been changed on the board since. One
+ * Sent before send records held what was sent is given as it stands, since
+ * what was sent is not known. One never Sent is not among them.
+ */
+function sentLatestFirst(roster: Roster, saved: readonly DailySchedule[]): SentSchedule[] {
+  return [...saved]
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .flatMap((schedule) => {
+      const last = lastSend(schedule);
+      if (!last) return [];
+      return [
+        {
+          view: last.sent ?? crewView(roster, schedule),
+          sentAt: last.sentAt,
+          sentAgain: last.sent?.updated ?? false,
+        },
+      ];
+    });
+}
+
+/**
+ * What the Crew Page shows: of the saved Daily Schedules that have been Sent,
+ * the one with the latest date (see `sentLatestFirst`), whenever each was
+ * Sent. None Sent gives null.
+ */
+export function onTheCrewPage(roster: Roster, saved: readonly DailySchedule[]): SentSchedule | null {
+  return sentLatestFirst(roster, saved)[0] ?? null;
+}
+
 /** Whether two pieces of plain data say the same thing, however they were built. */
 function sameData(a: unknown, b: unknown): boolean {
   if (a === b) return true;

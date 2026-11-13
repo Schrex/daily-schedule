@@ -41,6 +41,7 @@ describe('the Daily Schedule Worker', () => {
     ['/daily-schedule/', '/'],
     ['/daily-schedule/settings', '/settings'],
     ['/daily-schedule/tv.html?day=2026-11-13', '/tv.html?day=2026-11-13'],
+    ['/daily-schedule/crew', '/crew'],
     ['/daily-schedule/assets/inter-latin-400.woff2', '/assets/inter-latin-400.woff2'],
   ])('serves %s from the page file at %s', async (path, file) => {
     const { env, asked } = fakeAssets();

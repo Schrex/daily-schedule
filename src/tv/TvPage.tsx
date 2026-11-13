@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
-import {
-  cardTitle,
-  fullDate,
-  onTheTv,
-  scheduleDateOf,
-  type CrewView,
-  type Roster,
-  type ScheduleRow,
-} from '../schedule-rules';
-import { crewPictureColumns, type PictureColumns } from '../send/crewPicture';
+import { fullDate, onTheTv, scheduleDateOf, type CrewView, type Roster } from '../schedule-rules';
+import { CrewCards, useCrewColumns } from './CrewCards';
 import type { ScheduleStore } from '../storage';
 
 /** How often the TV looks again, besides whenever the Scheduler's screen saves. */
@@ -148,27 +140,12 @@ function NothingYet({ today }: { today: string }) {
 }
 
 /**
- * The board in the crew picture's columns: two of Jobs and one at
- * the right for Shop, Trucking and Off Work, each card in the same column as
- * on the picture (worked out by the picture itself). Until that is known, the
- * Jobs and the rest stand in the same columns in order.
+ * The board: the logo and the date over the cards the crew is sent
+ * (CrewCards.tsx), sized to fill the screen.
  */
 function Board({ roster, view }: { roster: Roster; view: CrewView }) {
-  const [columns, setColumns] = useState<PictureColumns | null>(null);
-  useEffect(() => {
-    let current = true;
-    crewPictureColumns(view, roster).then(
-      (worked) => current && setColumns(worked),
-      (error) => console.error('Could not work out the columns', error),
-    );
-    return () => {
-      current = false;
-    };
-  }, [view, roster]);
-
+  const columns = useCrewColumns(view, roster);
   const fitRef = useFit([view, columns]);
-  const byKey = new Map(view.rows.map((row) => [row.key, row]));
-  const shown = columns ?? firstGuess(view);
 
   return (
     <div className="tv-fit" ref={fitRef}>
@@ -176,85 +153,8 @@ function Board({ roster, view }: { roster: Roster; view: CrewView }) {
         <img className="tv-logo" src={logoUrl} alt="Schreiber Excavating" />
         <h1 className="tv-date">{fullDate(view.date)}</h1>
       </header>
-      {/* The Notes for the day first, across the board, as on the crew picture. */}
-      {view.dayNotes && view.dayNotes.length > 0 && (
-        <section className="tv-card tv-day-notes">
-          <h2 className="tv-card-name tv-card-name-yard">Notes</h2>
-          {view.dayNotes.map((note, index) => (
-            <p key={index} className="tv-day-note">
-              {note}
-            </p>
-          ))}
-        </section>
-      )}
-      <main
-        className="tv-cards"
-        style={{ gridTemplateColumns: shown.columns.map(({ share }) => `minmax(0, ${share}fr)`).join(' ') }}
-      >
-        {shown.columns.map(({ keys }, index) => (
-          <div key={index} className="tv-column">
-            {keys.flatMap((key) => {
-              const row = byKey.get(key);
-              return row ? [<Card key={key} roster={roster} row={row} />] : [];
-            })}
-          </div>
-        ))}
-      </main>
+      <CrewCards roster={roster} view={view} columns={columns} />
     </div>
-  );
-}
-
-/** Jobs shared out over two columns in order, and the rest in a third: until the picture's own columns are known. */
-function firstGuess(view: CrewView): PictureColumns {
-  const jobs = view.rows.filter((row) => row.destination.kind === 'job').map((row) => row.key);
-  const yard = view.rows.filter((row) => row.destination.kind !== 'job').map((row) => row.key);
-  const jobColumns = Math.max(1, Math.min(2, jobs.length));
-  const columns = Array.from({ length: jobColumns }, (_, index) => ({
-    share: 1,
-    keys: jobs.filter((_, at) => at % jobColumns === index),
-  }));
-  return { columns: yard.length > 0 ? [...columns, { share: 1, keys: yard }] : columns };
-}
-
-function Card({ roster, row }: { roster: Roster; row: ScheduleRow }) {
-  const isJob = row.destination.kind === 'job';
-  const quiet = row.destination.kind === 'standing-row' && row.destination.standingRow === 'off-work';
-  const { name, number } = cardTitle(roster, row);
-  return (
-    <section className={`tv-card${quiet ? ' tv-card-quiet' : ''}`}>
-      <div className="tv-card-head">
-        <h2 className={`tv-card-name${isJob ? '' : ' tv-card-name-yard'}`}>
-          {name}
-          {number && <span className="tv-card-number">{number}</span>}
-        </h2>
-        <span className="tv-card-count">{row.who.length}</span>
-      </div>
-      {row.tasks.length > 0 && (
-        <ul className={`tv-tasks${isJob ? '' : ' tv-tasks-yard'}`}>
-          {row.tasks.map((task, index) => (
-            <li key={index}>{task}</li>
-          ))}
-        </ul>
-      )}
-      <ul className="tv-names">
-        {row.who.map(({ crewMember, note, personTasks = [] }) => (
-          <li key={crewMember.id} className={`tv-name${crewMember.foreman ? ' tv-name-foreman' : ''}`}>
-            <div className="tv-name-head">
-              <span className={`tv-dot dot-${crewMember.color}`} />
-              <span className="tv-name-text">{crewMember.name}</span>
-            </div>
-            {personTasks.length > 0 && (
-              <ul className="tv-name-subs">
-                {personTasks.map((task, index) => (
-                  <li key={index}>{task}</li>
-                ))}
-              </ul>
-            )}
-            {note && <p className="tv-note">{note}</p>}
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
