@@ -666,6 +666,17 @@ export function fullDate(date: ScheduleDate): string {
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
+/** The date short enough for one line beside buttons, as a phone's collapsed header shows it: "Fri, Nov 13". */
+export function shortDate(date: ScheduleDate): string {
+  const [year = 0, month = 1, day = 1] = date.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
 /**
  * The line the crew picture is sent with, as the Slack message reads and a
  * phone's notification shows it: "Schedule for Thursday, Nov 12", or
@@ -845,8 +856,34 @@ export function previousOnTheCrewPage(roster: Roster, saved: readonly DailySched
   return sentLatestFirst(roster, saved)[1] ?? null;
 }
 
-/** Whether two pieces of plain data say the same thing, however they were built. */
-function sameData(a: unknown, b: unknown): boolean {
+/**
+ * Everything the Crew Page is given: the newest Sent Daily Schedule
+ * (`onTheCrewPage`), the one before it (`previousOnTheCrewPage`), and the
+ * Jobs of the Roster, which the cards need for a Job's name and number.
+ * Nothing that has not been Sent is in it.
+ */
+export interface CrewPageShown {
+  jobs: Job[];
+  sent: SentSchedule | null;
+  /** The Sent Daily Schedule before it, for "Previous"; null when there is none. */
+  previous: SentSchedule | null;
+}
+
+/** What the Crew Page is given, from the Roster and the saved Daily Schedules (those never Sent do not count). */
+export function crewPageShown(roster: Roster, saved: readonly DailySchedule[]): CrewPageShown {
+  return {
+    jobs: roster.jobs,
+    sent: onTheCrewPage(roster, saved),
+    previous: previousOnTheCrewPage(roster, saved),
+  };
+}
+
+/**
+ * Whether two pieces of plain data say the same thing, however they were
+ * built: the order of keys and keys with no value do not count. The one
+ * comparison for a Daily Schedule or Roster as saved and as on a screen.
+ */
+export function sameData(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;

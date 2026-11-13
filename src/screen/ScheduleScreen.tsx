@@ -7,6 +7,7 @@ import {
   NOT_PLACED,
   scheduleDateOf,
   scheduleView,
+  shortDate,
   type CrewMember,
   type DailySchedule,
   type MoveTo,
@@ -19,7 +20,7 @@ import { dropTarget, viewWhileDragging } from './dropPreview';
 import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
-import { collapsedDate, headerCollapsed } from './headerCollapse';
+import { headerCollapsed, sceneOnScreen } from './headerCollapse';
 import { JumpBar } from './JumpBar';
 import { jumpStrip } from './jumpStrip';
 import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
@@ -135,11 +136,16 @@ export function ScheduleScreen({
   // On a phone the header is one line once the page of cards has scrolled
   // (`headerCollapsed`). Only a narrow screen's CSS acts on it.
   const [collapsed, setCollapsed] = useState(false);
+  const header = useRef<HTMLElement>(null);
   const onPageScroll = (event: UIEvent<HTMLDivElement>) => {
     const page = event.currentTarget;
     // Only the page's own scrolling counts, not a list scrolling inside it.
     if (event.target !== page) return;
-    const scroll = { scrolled: page.scrollTop, room: page.scrollHeight - page.clientHeight };
+    const scroll = {
+      scrolled: page.scrollTop,
+      room: page.scrollHeight - page.clientHeight,
+      header: header.current?.offsetHeight ?? 0,
+    };
     setCollapsed((was) => headerCollapsed(was, scroll));
   };
 
@@ -386,13 +392,13 @@ export function ScheduleScreen({
 
   return (
     <main className={`screen${moving ? ' moving' : ''}`}>
-      <header className={`toolbar${collapsed ? ' toolbar-collapsed' : ''}`}>
+      <header ref={header} className={`toolbar${collapsed ? ' toolbar-collapsed' : ''}`}>
         <img className="toolbar-logo" src={logoUrl} alt="Schreiber Excavating" />
         <div className="toolbar-date">
           <h1 className="date-heading">
             <span className="date-full">{fullDate(view.date)}</span>
             <span className="date-short" aria-hidden="true">
-              {collapsedDate(view.date)}
+              {shortDate(view.date)}
             </span>
           </h1>
           {dateNote}
@@ -492,7 +498,7 @@ export function ScheduleScreen({
       {bottomBar && <div className="bottom-bar">{bottomBar}</div>}
 
       {drag.overlay}
-      <MoveNames motion={motion} scene={view.date} />
+      <MoveNames motion={motion} scene={sceneOnScreen(view.date, collapsed)} />
     </main>
   );
 }

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { handle } from '../../worker/src/app';
 import { localD1 } from '../../worker/src/testing/localD1';
 import {
+  addDayNote,
+  applyEdit,
   crewView,
   lastSentAt,
   markSent,
@@ -9,9 +11,11 @@ import {
   placeCrewMember,
   type DailySchedule,
   type Roster,
+  type ScheduleEdit,
 } from '../schedule-rules';
 import { apiStore } from './apiStore';
-import { reloadOnFocus, reloadsOnFocus } from './reloadOnFocus';
+import type { Opened } from './index';
+import { boardReloads, reloadOnFocus, reloadsOnFocus, type Board } from './reloadOnFocus';
 import { savedInOrder, type Saves } from './saveQueue';
 
 /** Resolves once the queue reports everything saved. */
@@ -45,6 +49,8 @@ async function twoDevices() {
   const net = {
     /** Holds the office's saves until let through. */
     holding: false,
+    /** Holds what the office asks the server for until let through. */
+    holdingLoads: false,
     /** How many times the office asked the server for something. */
     loads: 0,
     letThrough: () => held.splice(0).forEach((go) => go()),
@@ -56,7 +62,10 @@ async function twoDevices() {
     apiStore('http://localhost:8787/daily-schedule/api', async (input, init) => {
       if (init?.method === 'PUT') {
         if (net.holding) await new Promise<void>((go) => held.push(go));
-      } else net.loads += 1;
+      } else {
+        net.loads += 1;
+        if (net.holdingLoads) await new Promise<void>((go) => held.push(go));
+      }
       return worker(input, init);
     }),
   );
@@ -154,7 +163,191 @@ describe('the board gets the focus while a change is not saved yet', () => {
   });
 });
 
+/**
+ * The board as the page holds it, without the page: what is on the screen,
+ * whether a text field has the focus, and the Scheduler's edits applied and
+ * saved as the page does.
+ */
+function boardOn(office: Awaited<ReturnType<typeof twoDevices>>['office'], opened: Opened) {
+  const state = { onScreen: opened, typing: false };
+  const board: Board = {
+    onScreen: () => state.onScreen,
+    typing: () => state.typing,
+    show: (found) => {
+      state.onScreen = found;
+    },
+    edit: (edit) => {
+      const schedule = applyEdit(state.onScreen.schedule, edit, state.onScreen.roster);
+      state.onScreen = { ...state.onScreen, schedule };
+      void office.store.saveSchedule(schedule);
+    },
+  };
+  return { state, board, reloads: boardReloads(office.store, office.saves, board) };
+}
+
+const bringThePump: ScheduleEdit = { kind: 'add-day-note', text: 'Bring the pump' };
+
+describe('the Scheduler edits the board while a reload is on its way', () => {
+  it('holds the edit, and applies it on top of what the reload found', async () => {
+    const { phone, office, net } = await twoDevices();
+    await phone.saveSchedule(annInShop);
+    const { state, reloads } = boardOn(office, { roster, schedule: tuesday });
+
+    net.holdingLoads = true;
+    reloads.focus();
+    expect(reloads.hold(bringThePump)).toBe(true);
+    expect(state.onScreen.schedule).toBe(tuesday);
+
+    net.holdingLoads = false;
+    net.letThrough();
+    await reloads.settled();
+    await allSaved(office.saves);
+
+    const both = addDayNote(annInShop, 'Bring the pump');
+    expect(state.onScreen.schedule).toEqual(both);
+    expect(await phone.loadSchedule('2026-11-10')).toEqual(both);
+  });
+
+  it('makes a Send wait: it is settled only once the reload has answered and the held edits are on the board', async () => {
+    const { phone, office, net } = await twoDevices();
+    await phone.saveSchedule(annInShop);
+    const { state, reloads } = boardOn(office, { roster, schedule: tuesday });
+
+    net.holdingLoads = true;
+    reloads.focus();
+    reloads.hold(bringThePump);
+    let onTheBoardWhenSettled: DailySchedule | undefined;
+    const settled = reloads.settled().then(() => {
+      onTheBoardWhenSettled = state.onScreen.schedule;
+    });
+    await new Promise((later) => setTimeout(later, 20));
+    expect(onTheBoardWhenSettled).toBeUndefined();
+
+    net.holdingLoads = false;
+    net.letThrough();
+    await settled;
+    expect(onTheBoardWhenSettled).toEqual(addDayNote(annInShop, 'Bring the pump'));
+    await allSaved(office.saves);
+  });
+
+  it('holds nothing when no reload is on its way', async () => {
+    const { office } = await twoDevices();
+    const { reloads } = boardOn(office, { roster, schedule: tuesday });
+
+    expect(reloads.hold(bringThePump)).toBe(false);
+    reloads.focus();
+    await reloads.settled();
+    expect(reloads.hold(bringThePump)).toBe(false);
+  });
+
+  it('still applies the held edit when the reload fails', async () => {
+    const { office } = await twoDevices();
+    const state = { onScreen: { roster, schedule: tuesday } };
+    const down = { ...office.store, loadRoster: () => Promise.reject(new Error('The server is away.')) };
+    const reloads = boardReloads(down, office.saves, {
+      onScreen: () => state.onScreen,
+      typing: () => false,
+      show: () => {},
+      edit: (edit) => {
+        state.onScreen = { roster, schedule: applyEdit(state.onScreen.schedule, edit, roster) };
+      },
+    });
+
+    reloads.focus();
+    expect(reloads.hold(bringThePump)).toBe(true);
+    await reloads.settled();
+
+    expect(state.onScreen.schedule).toEqual(addDayNote(tuesday, 'Bring the pump'));
+  });
+});
+
+describe('the board gets the focus while a text field on it has the focus', () => {
+  it('does not reload, and asks the server for nothing: the text being typed stays where it is', async () => {
+    const { phone, office, net } = await twoDevices();
+    await phone.saveSchedule(annInShop);
+    const { state, reloads } = boardOn(office, { roster, schedule: tuesday });
+
+    state.typing = true;
+    reloads.focus();
+    await reloads.settled();
+
+    expect(net.loads).toBe(0);
+    expect(state.onScreen.schedule).toBe(tuesday);
+  });
+
+  it('reloads once the field is left', async () => {
+    const { phone, office } = await twoDevices();
+    await phone.saveSchedule(annInShop);
+    const { state, reloads } = boardOn(office, { roster, schedule: tuesday });
+    state.typing = true;
+    reloads.focus();
+
+    state.typing = false;
+    reloads.again();
+    await reloads.settled();
+
+    expect(state.onScreen.schedule).toEqual(annInShop);
+  });
+
+  it('waits, once the field is left, until what was typed is saved', async () => {
+    const { office, net } = await twoDevices();
+    const { state, board, reloads } = boardOn(office, { roster, schedule: tuesday });
+    state.typing = true;
+    reloads.focus();
+
+    // Leaving the field commits its text: a change, not saved yet.
+    state.typing = false;
+    net.holding = true;
+    board.edit(bringThePump);
+    reloads.again();
+    await reloads.settled();
+    expect(net.loads).toBe(0);
+
+    net.holding = false;
+    net.letThrough();
+    await allSaved(office.saves);
+    reloads.again();
+    await reloads.settled();
+    expect(net.loads).toBe(2);
+    expect(state.onScreen.schedule).toEqual(addDayNote(tuesday, 'Bring the pump'));
+  });
+
+  it('reloads only once for the focus it missed', async () => {
+    const { office, net } = await twoDevices();
+    const { reloads } = boardOn(office, { roster, schedule: tuesday });
+
+    reloads.again();
+    await reloads.settled();
+
+    expect(net.loads).toBe(0);
+  });
+
+  it('drops what a reload found when typing began while it was on its way, and reloads once the field is left', async () => {
+    const { phone, office, net } = await twoDevices();
+    await phone.saveSchedule(annInShop);
+    const { state, reloads } = boardOn(office, { roster, schedule: tuesday });
+
+    net.holdingLoads = true;
+    reloads.focus();
+    state.typing = true;
+    net.holdingLoads = false;
+    net.letThrough();
+    await reloads.settled();
+    expect(state.onScreen.schedule).toBe(tuesday);
+
+    state.typing = false;
+    reloads.again();
+    await reloads.settled();
+    expect(state.onScreen.schedule).toEqual(annInShop);
+  });
+});
+
 describe('when a focus reloads', () => {
+  it('never does while a text field on the board has the focus, even with everything saved', () => {
+    expect(reloadsOnFocus('saved', true)).toBe(false);
+  });
+
+
   it.each([
     ['saved', true],
     ['saving', false],

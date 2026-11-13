@@ -20,7 +20,7 @@ import {
   type NameDrag,
   type Point,
 } from './nameDrag';
-import { fingerDown, fingerHeld, fingerLost, fingerMoved, fingerUp, liftsIn, type Finger } from './longPress';
+import { fingerDown, fingerHeld, fingerMoved, liftsIn, type Finger } from './longPress';
 import { startEdgeScroll } from './edgeScroll';
 import './drag.css';
 
@@ -235,9 +235,16 @@ export function useNameDrag({
   // The screen is gone: so is any drag.
   useEffect(() => end, []);
 
-  // iPhone Safari only lets a touch-move listener stop the page scrolling if
-  // one that may do so was already there when the finger went down. This one
-  // does nothing; it is there so the one a lifted name adds is listened to.
+  // A workaround for iPhone Safari, kept on purpose. Safari only lets a
+  // touch-move listener stop the page scrolling if a listener that may do so
+  // (a non-passive one) was already on the window when the finger went down;
+  // one added later, when the name lifts, is ignored for that touch. So this
+  // listener, which does nothing, is there for as long as the screen is, and
+  // makes Safari listen to the one a lifted name adds (`holdThePage`).
+  //
+  // This is not what the ticket (#84) says, which asks for a non-passive
+  // touch-move listener that is removed when the drag ends. `holdThePage` is
+  // that listener, and is removed then; this one has to stay.
   useEffect(() => {
     window.addEventListener('touchmove', nothing, { passive: false });
     return () => window.removeEventListener('touchmove', nothing);
@@ -285,9 +292,7 @@ export function useNameDrag({
 
     /** The finger has turned out not to be holding the name: nothing is picked up. */
     const giveUp = () => {
-      if (finger?.kind !== 'holding') return;
-      finger = fingerLost(finger);
-      end();
+      if (finger?.kind === 'holding') end();
     };
 
     /** The finger may have been held long enough: if so the name lifts, and the drag is on. */
@@ -341,7 +346,6 @@ export function useNameDrag({
 
     const onUp = (up: PointerEvent) => {
       if (up.pointerId !== pointerId) return;
-      if (finger) finger = fingerUp(finger);
       // Let go where the pointer last was: the drop goes to the destination that was
       // highlighted, even if the names making room have since shifted the page under it.
       const moved = up.clientX !== pointer.current.x || up.clientY !== pointer.current.y;

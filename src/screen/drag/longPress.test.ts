@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fingerDown, fingerHeld, fingerLost, fingerMoved, fingerUp, liftsIn } from './longPress';
+import { fingerDown, fingerHeld, fingerMoved, liftsIn } from './longPress';
 
 const at = (x: number, y: number) => ({ x, y });
 
@@ -40,28 +40,5 @@ describe('a finger on a name', () => {
     const lifted = fingerHeld(fingerDown(at(100, 100), 1000), 1350);
 
     expect(fingerMoved(lifted, at(100, 400)).kind).toBe('lifted');
-    expect(fingerUp(lifted).kind).toBe('lifted');
-  });
-
-  it('is a tap when it comes up before the lift, so the click goes ahead', () => {
-    const down = fingerDown(at(100, 100), 1000);
-    const up = fingerUp(fingerMoved(down, at(102, 101)));
-
-    expect(up.kind).toBe('tap');
-    expect(fingerHeld(up, 2000).kind).toBe('tap');
-  });
-
-  it('is not a tap when it comes up after scrolling', () => {
-    const scrolled = fingerMoved(fingerDown(at(100, 100), 1000), at(100, 160));
-
-    expect(fingerUp(scrolled).kind).toBe('scroll');
-  });
-
-  it('lifts nothing once it is lost before the lift: the page scrolled, or the touch was taken away', () => {
-    const lost = fingerLost(fingerDown(at(100, 100), 1000));
-
-    expect(lost.kind).toBe('off');
-    expect(fingerHeld(lost, 2000).kind).toBe('off');
-    expect(fingerMoved(lost, at(100, 100)).kind).toBe('off');
   });
 });

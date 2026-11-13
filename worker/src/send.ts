@@ -64,10 +64,12 @@ export async function sendToCrew(request: Request, env: Env, fetchImpl: typeof f
   }
 
   const tooBig = () => refuse(400, 'The picture is too large to send.');
+  // A picture that says it is too big is refused before any of it is read.
   if (Number(request.headers.get('Content-Length') ?? 0) > MAX_BYTES) return tooBig();
-  const picture = await request.arrayBuffer();
+  // One that does not say (or says less than it is) is read only as far as the limit.
+  const picture = await bodyUpTo(request, MAX_BYTES);
+  if (picture === null) return tooBig();
   if (picture.byteLength === 0) return refuse(400, 'No picture was sent.');
-  if (picture.byteLength > MAX_BYTES) return tooBig();
 
   const title = request.headers.get('X-Title');
   // The channel saved in Settings; with none saved none is named, and the relay posts to its own.
@@ -102,6 +104,34 @@ export async function sendToCrew(request: Request, env: Env, fetchImpl: typeof f
     502,
     typeof answer?.error === 'string' && answer.error ? answer.error : 'The Slack relay did not answer properly.',
   );
+}
+
+/**
+ * The request's body, read a piece at a time and never further than `limit`
+ * bytes: null as soon as it is bigger, with the rest left unread.
+ */
+async function bodyUpTo(request: Request, limit: number): Promise<Uint8Array<ArrayBuffer> | null> {
+  if (request.body === null) return new Uint8Array(0);
+  const reader = request.body.getReader();
+  const pieces: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel();
+      return null;
+    }
+    pieces.push(value);
+  }
+  const whole = new Uint8Array(size);
+  let at = 0;
+  for (const piece of pieces) {
+    whole.set(piece, at);
+    at += piece.byteLength;
+  }
+  return whole;
 }
 
 /** The relay's address without a trailing slash, or null when it is not set or not https. */

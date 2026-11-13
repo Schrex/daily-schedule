@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { applyPalette } from '../palette';
 import { seedRoster } from '../seed/seedRoster';
+import { forgetOldSlackSettings } from '../send/oldSlackSettings';
 import { sharedStore } from '../sharedStore';
 import { openPage, signedInFetch } from '../signIn/openPage';
 import '../look.css'; // the look of the Scheduler's screen, Crew Member colors and all
@@ -9,6 +10,7 @@ import './settings.css';
 import { SettingsPage } from './SettingsPage';
 
 applyPalette();
+forgetOldSlackSettings();
 
 // The settings page: its own address (settings.html), reached from the Settings
 // button on the Scheduler's screen. It reads and saves the roster in the

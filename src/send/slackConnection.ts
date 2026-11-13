@@ -13,14 +13,18 @@ export interface SlackConnection {
   channel: string;
 }
 
-/** Asks the server. Rejects (an ApiError) if it could not say. */
+/**
+ * Asks the server: the one place the pages read /slack. Rejects if it could
+ * not say (an ApiError, or an answer that is not what /slack gives).
+ */
 export async function loadSlackConnection(
   fetchFn: Fetch = browserFetch,
   base: string = API_BASE,
 ): Promise<SlackConnection> {
-  const answer = (await (await apiRequest(fetchFn, `${base}/slack`)).json()) as Partial<SlackConnection>;
+  const answer = (await (await apiRequest(fetchFn, `${base}/slack`)).json()) as Partial<SlackConnection> | null;
+  if (typeof answer?.connected !== 'boolean') throw new Error('The server did not say whether Slack is connected.');
   return {
-    connected: answer.connected === true,
+    connected: answer.connected,
     channel: typeof answer.channel === 'string' ? answer.channel : '',
   };
 }

@@ -37,10 +37,11 @@ interface Outcome {
 }
 
 /**
- * Send, start to finish: draw the crew view as a picture (anyone Not Placed
- * is left out of it), hand it to the delivery, and only when that
- * worked report the crew view that was delivered through `onDelivered`, for
- * the send record.
+ * Send, start to finish: wait until the board is ready (`ready`), draw the
+ * crew view of the Daily Schedule as it stands then (`latest`) as a picture
+ * (anyone Not Placed is left out of it), hand it to the delivery, and only
+ * when that worked report the crew view that was delivered through
+ * `onDelivered`, for the send record.
  *
  * What a press came to is remembered only for the Daily Schedule it was
  * about: as soon as the schedule changes, the failure or the "paste it"
@@ -50,12 +51,13 @@ interface Outcome {
  * on the picture the crew got last.
  */
 export function useSend({
-  roster,
   schedule,
   delivery,
   onDelivered,
+  latest,
+  ready,
 }: {
-  roster: Roster;
+  /** The Daily Schedule on the screen: what the Send bar is drawn for. */
   schedule: DailySchedule;
   delivery: CrewDelivery;
   /**
@@ -65,6 +67,16 @@ export function useSend({
    * returns the result.
    */
   onDelivered: (sent: CrewView, sentAt: string) => DailySchedule;
+  /**
+   * The Roster and the Daily Schedule as they stand when the picture is made,
+   * which may be later than the last draw.
+   */
+  latest: () => { roster: Roster; schedule: DailySchedule };
+  /**
+   * What a press waits for before the picture is made (a reload on its way).
+   * False: there is nothing to send yet after all, and the press does nothing.
+   */
+  ready: () => Promise<boolean>;
 }): SendState {
   const [sending, setSending] = useState(false);
   /** True from press to delivery, so a second press in between does nothing. */
@@ -74,19 +86,24 @@ export function useSend({
   const send = async () => {
     if (inFlight.current) return;
 
-    const view = crewView(roster, schedule);
     // The moment Send was pressed: the time on the picture and in the send record.
     const pressedAt = new Date();
     inFlight.current = true;
     setSending(true);
+    let view: CrewView;
     try {
-      const title = sendTitle(view.date, view.updated);
-      await delivery.deliver(await renderCrewPicture(view, pressedAt, roster), title);
-    } catch (error) {
-      console.error('Could not send the Daily Schedule', error);
-      const message = error instanceof DeliveryFailure ? error.plain : undefined;
-      setOutcome({ kind: 'failed', schedule, message });
-      return;
+      if (!(await ready())) return;
+      const now = latest();
+      view = crewView(now.roster, now.schedule);
+      try {
+        const title = sendTitle(view.date, view.updated);
+        await delivery.deliver(await renderCrewPicture(view, pressedAt, now.roster), title);
+      } catch (error) {
+        console.error('Could not send the Daily Schedule', error);
+        const message = error instanceof DeliveryFailure ? error.plain : undefined;
+        setOutcome({ kind: 'failed', schedule: now.schedule, message });
+        return;
+      }
     } finally {
       inFlight.current = false;
       setSending(false);

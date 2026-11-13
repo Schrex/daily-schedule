@@ -1,4 +1,5 @@
 import type { Role } from '../../shared';
+import { crewPageShown, type DailySchedule, type Roster } from '../../src/schedule-rules';
 import type { Env } from './app';
 import type { D1Database } from './d1';
 import { refuse } from './refuse';
@@ -17,6 +18,8 @@ import { whoIsCalling } from './signIn';
  *   GET /schedules          the saved dates, earliest first
  *   GET /schedules/:date    that Daily Schedule, or null
  *   PUT /schedules/:date    saves it (its date must be :date)  editors
+ *   GET /crew-page          { jobs, sent, previous }: what the Crew Page shows, and
+ *                           nothing that has not been Sent (`crewPageShown`)
  *   GET /slack              { connected, channel }: whether Send reaches Slack,
  *                           and the Slack channel ID it posts to ('' is the
  *                           relay's own channel)          editors and viewers
@@ -25,7 +28,7 @@ import { whoIsCalling } from './signIn';
  *                           URI-encoded in X-Title) to Slack (send.ts)  editors
  *
  * Editors are the people listed as `editor`; everyone else signed in to the
- * hub is a viewer, sent to the Office TV by the pages.
+ * hub is a viewer, sent to the Crew Page by the pages.
  *
  * 401: nobody signed in. 403: a viewer writing or sending.
  * 400: a malformed body or date, or a picture that is missing or too big.
@@ -67,6 +70,16 @@ export async function handleApi(
     return new Response(null, { status: 204 });
   }
   if (sending) return sendToCrew(request, env, fetchImpl);
+
+  if (path === 'crew-page' && reading) {
+    const roster = (await readBody(env.DB.prepare('SELECT body FROM roster WHERE id = 1'))) as Roster | null;
+    // Only the two latest dates that have been Sent are read: the rules need no more, and nothing else leaves here.
+    const { results } = await env.DB.prepare(
+      "SELECT body FROM schedules WHERE json_array_length(body, '$.sends') > 0 ORDER BY date DESC LIMIT 2",
+    ).all<{ body: string }>();
+    const sent = results.map((row) => JSON.parse(row.body) as DailySchedule);
+    return Response.json(crewPageShown(roster ?? { crewMembers: [], jobs: [] }, sent));
+  }
 
   if (path === 'roster') {
     if (reading) return Response.json(await readBody(env.DB.prepare('SELECT body FROM roster WHERE id = 1')));

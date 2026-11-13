@@ -102,6 +102,48 @@ describe('the API: Send', () => {
     expect(relay.calls).toEqual([]);
   });
 
+  it('refuses a picture that says it is too big before reading any of it', async () => {
+    const relay = fakeRelay();
+    let read = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        read += 1;
+        controller.enqueue(png);
+        controller.close();
+      },
+    }, { highWaterMark: 0 });
+    const init = { ...send(body), duplex: 'half' } as RequestInit;
+    (init.headers as Record<string, string>)['Content-Length'] = String(20 * 1024 * 1024 + 1);
+
+    expect((await call(EDITOR, '/send', init, relay)).status).toBe(400);
+    expect(read).toBe(0);
+    expect(relay.calls).toHaveLength(0);
+  });
+
+  it('stops reading a picture that does not say how big it is as soon as it is too big', async () => {
+    const relay = fakeRelay();
+    const megabyte = new Uint8Array(1024 * 1024);
+    let megabytes = 0;
+    // It would go on to 200 MB if it were all read.
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          megabytes += 1;
+          if (megabytes > 200) controller.close();
+          else controller.enqueue(megabyte);
+        },
+      },
+      { highWaterMark: 0 },
+    );
+
+    const response = await call(EDITOR, '/send', { ...send(body), duplex: 'half' } as RequestInit, relay);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: expect.stringContaining('too large') });
+    expect(megabytes).toBeLessThanOrEqual(22);
+    expect(relay.calls).toHaveLength(0);
+  });
+
   it('fails with the relay\'s own words when the relay refuses', async () => {
     const relay = fakeRelay(() =>
       Response.json({ ok: false, error: 'The Daily Schedule bot is not in that Slack channel.' }, { status: 502 }),

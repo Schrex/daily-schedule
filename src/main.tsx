@@ -5,6 +5,7 @@ import { scheduleDateOf } from './schedule-rules';
 import { App } from './screen/App';
 import { seedRoster } from './seed/seedRoster';
 import { seedSchedule } from './seed/seedSchedule';
+import { forgetOldSlackSettings } from './send/oldSlackSettings';
 import { crewDelivery } from './send/serverDelivery';
 import { sharedStore } from './sharedStore';
 import { openStore } from './storage';
@@ -12,6 +13,7 @@ import { openPage, signedInFetch } from './signIn/openPage';
 import './screen/screen.css';
 
 applyPalette();
+forgetOldSlackSettings();
 
 // The shared store (sharedStore.ts). On first ever open it is filled from the
 // seed roster and seed Daily Schedule.
