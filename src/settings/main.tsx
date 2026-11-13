@@ -16,7 +16,7 @@ applyPalette();
 // next time it loads.
 const { store, saves } = sharedStore();
 
-// Only an Editor opens it; a Viewer is sent to the Office TV.
+// Only an Editor opens it; a Viewer is sent to the Crew Page.
 openPage('settings', 'Could not open Settings', () =>
   store.loadRoster().then((saved) => {
     createRoot(document.getElementById('root')!).render(

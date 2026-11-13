@@ -21,7 +21,7 @@ const { store, saves } = sharedStore();
 const today = scheduleDateOf(new Date());
 
 // Only an Editor opens it (and so only an Editor ever creates or saves
-// anything); a Viewer is sent to the Office TV.
+// anything); a Viewer is sent to the Crew Page.
 //
 // Send goes through the server to the Slack channel, the same on every
 // device; only when Slack is not connected on the server is the picture

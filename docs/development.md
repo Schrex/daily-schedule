@@ -4,7 +4,7 @@
 
 | Path | What |
 | --- | --- |
-| `index.html`, `settings.html`, `tv.html` | The three pages: the board, Settings, the Office TV |
+| `index.html`, `settings.html`, `tv.html`, `crew.html` | The four pages: the board, Settings, the Office TV, the Crew Page |
 | `public/404.html` | "Page not found", for any other address under `/daily-schedule/` |
 | `src/` | The pages (React). The rules of the schedule are in `src/schedule-rules/` |
 | `src/storage/` | `apiStore` (the API), `saveQueue` (in-order saves, retries), `reloadOnFocus` (when the board loads again), `memoryStore` (tests) |

@@ -10,7 +10,7 @@ the picture of it that is sent to the crew in Slack.
 | Who | Gets |
 | --- | --- |
 | **Editors** (listed in the database) | The board and Settings: place the crew, write tasks and notes, Send. |
-| **Everyone else signed in to the hub** | The Office TV page, read-only. |
+| **Everyone else signed in to the hub** (Viewers) | The Crew Page, read-only: the newest Daily Schedule that has been Sent, as the crew got it. Never the board, or one not Sent. |
 | **Not signed in** | A link to the hub's sign-in page. |
 
 The database holds the list of editors. To see, add or remove one, see [Everyday tasks](#everyday-tasks).

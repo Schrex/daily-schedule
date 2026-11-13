@@ -85,5 +85,5 @@ The page (`/daily-schedule/tv`) that shows today's Daily Schedule full screen on
 _Avoid_: Display, dashboard, kiosk
 
 **Crew Page**:
-What a Viewer sees, on a phone or a computer: the newest Daily Schedule that has been Sent, exactly as the crew got it, read-only, with one step back to the Sent Daily Schedule before it. A Daily Schedule never Sent, and changes made since the last Send, are not on it.
+The page (`/daily-schedule/crew`) a Viewer gets, on a phone or a computer: the newest Daily Schedule that has been Sent, exactly as the crew got it, read-only, with one step back to the Sent Daily Schedule before it. A Daily Schedule never Sent, and changes made since the last Send, are not on it.
 _Avoid_: Crew view, read-only board, mobile view

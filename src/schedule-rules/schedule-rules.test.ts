@@ -22,6 +22,7 @@ import {
   lastSentAt,
   markSent,
   onTheTv,
+  onTheCrewPage,
   addCrewMember,
   addJob,
   changeCrewMember,
@@ -831,6 +832,56 @@ describe('what the office TV shows', () => {
     const twice = send(placeCrewMember(once, 'bob', onJob('bridge')), '2026-11-09T23:40:00.000Z');
 
     expect(onTheTv(roster, [twice], '2026-11-10')).toEqual(twice.sends[1]!.sent);
+  });
+});
+
+describe('what the Crew Page shows', () => {
+  const dated = (date: string) => schedule({ date, placements: [placement('ann', onJob('tower'), 1)] });
+
+  it('shows nothing when no Daily Schedule has been Sent', () => {
+    expect(onTheCrewPage(roster, [])).toBeNull();
+    expect(onTheCrewPage(roster, [dated('2026-11-10'), dated('2026-11-11')])).toBeNull();
+  });
+
+  it('shows the Sent Daily Schedule with the latest date, whenever each was Sent', () => {
+    const tuesday = send(dated('2026-11-10'), '2026-11-09T23:50:00.000Z');
+    const wednesday = send(dated('2026-11-11'), '2026-11-09T23:05:00.000Z');
+    const notSent = dated('2026-11-12');
+
+    expect(onTheCrewPage(roster, [tuesday, notSent, wednesday])).toEqual({
+      view: wednesday.sends[0]!.sent,
+      sentAt: '2026-11-09T23:05:00.000Z',
+      sentAgain: false,
+    });
+  });
+
+  it('shows it as it was Sent, not as it was changed since', () => {
+    const sent = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
+    const changedSince = placeCrewMember(sent, 'bob', onJob('bridge'));
+
+    expect(onTheCrewPage(roster, [changedSince])?.view).toEqual(sent.sends[0]!.sent);
+    expect(onTheCrewPage(roster, [changedSince])?.sentAgain).toBe(false);
+  });
+
+  it('shows the last Send, as Sent again, when it was Sent again with changes', () => {
+    const once = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
+    const twice = send(placeCrewMember(once, 'bob', onJob('bridge')), '2026-11-09T23:40:00.000Z');
+
+    expect(onTheCrewPage(roster, [twice])).toEqual({
+      view: twice.sends[1]!.sent,
+      sentAt: '2026-11-09T23:40:00.000Z',
+      sentAgain: true,
+    });
+  });
+
+  it('shows one Sent before send records held what was sent as it stands', () => {
+    const old = { ...dated('2026-11-10'), sends: ['2026-11-09T23:05:00.000Z'] } as unknown as DailySchedule;
+
+    expect(onTheCrewPage(roster, [old])).toEqual({
+      view: crewView(roster, old),
+      sentAt: '2026-11-09T23:05:00.000Z',
+      sentAgain: false,
+    });
   });
 });
 

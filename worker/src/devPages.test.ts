@@ -9,6 +9,8 @@ describe('the pages under npm run dev', () => {
     ['/daily-schedule/settings.html', 'settings.html'],
     ['/daily-schedule/tv', 'tv.html'],
     ['/daily-schedule/tv.html?day=2026-11-13', 'tv.html'],
+    ['/daily-schedule/crew', 'crew.html'],
+    ['/daily-schedule/crew.html', 'crew.html'],
   ])('opens %s from %s', (url, file) => {
     expect(devPageFile(url)).toBe(file);
   });
