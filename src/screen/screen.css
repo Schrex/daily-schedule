@@ -1244,54 +1244,6 @@ body[data-name-dragging] .destination[data-drop-over] {
   }
 }
 
-/* --- A phone: a strip of names to jump to a card ---------------------------
-   Under the header: every open Job, then Shop, Trucking and Off Work
-   (jumpStrip.ts). It is swiped sideways by itself, from one edge of the
-   screen to the other; the page never moves sideways. Off a phone it is not
-   shown. */
-
-.jump-strip {
-  display: none;
-}
-
-@media (max-width: 700px) {
-  .jump-strip {
-    flex: 0 0 auto;
-    display: flex;
-    gap: var(--space-2);
-    min-width: 0;
-    /* Room above and under the names for the ring the keyboard draws. */
-    margin: -6px calc(-1 * var(--gutter));
-    padding: 6px max(var(--gutter), env(safe-area-inset-right, 0px)) 6px
-      max(var(--gutter), env(safe-area-inset-left, 0px));
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
-    touch-action: pan-x;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .jump-strip::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* A name keeps one line and its own width, so the strip grows sideways;
-     a very long one is cut short. */
-  .jump-stop {
-    flex: 0 0 auto;
-    display: block;
-    max-width: 14rem;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border-radius: var(--radius-pill);
-    font-size: 0.9375rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-
 /* --- A phone: the Not Placed list is a badge -------------------------------
    One line at the top of the page of cards, with how many are Not Placed. A
    tap opens the list over the board; it steps aside while a name from it is
@@ -1377,6 +1329,36 @@ body[data-name-dragging] .destination[data-drop-over] {
   }
 }
 
+/* --- A phone: the screen is pinned to the window ---------------------------
+   Pinned to the window's own edges, not sized to it: the page behind has
+   nothing to scroll, so the phone can never slide the screen away or leave
+   the bottom bar short of the bottom.
+
+   While the keyboard is up (useKeyboardRoom.ts) the screen is what is left of
+   the window above it, and all of that goes to the cards: the header,
+   the Not Placed badge and the bottom bar are away until the
+   keyboard is. */
+
+@media (max-width: 700px) {
+  .screen {
+    position: fixed;
+    inset: 0;
+    height: auto;
+  }
+
+  .screen[data-keyboard='up'] {
+    top: var(--window-top, 0px);
+    bottom: auto;
+    height: var(--window-height, 100%);
+  }
+
+  .screen[data-keyboard='up'] > .toolbar,
+  .screen[data-keyboard='up'] > .bottom-bar,
+  .screen[data-keyboard='up'] .side > .not-placed {
+    display: none;
+  }
+}
+
 /* A phone's notch or rounded corners (the page reaches under them, so the
    bottom bar can keep clear of the home bar): the gutters keep clear too. */
 @media (pointer: coarse) {
@@ -1387,24 +1369,27 @@ body[data-name-dragging] .destination[data-drop-over] {
 }
 
 /* --- A window too short to keep the header in sight (a phone on its side) ---
-   The page scrolls as a whole. */
+   The page scrolls as a whole. Not while a phone's keyboard is up: that
+   window is short too, and is laid out above (`:where` adds no weight, so
+   these rules win and lose exactly as they would without it). */
 
 @media (max-height: 480px) {
-  .screen {
+  .screen:not([data-keyboard='up']) {
+    position: static;
     height: auto;
     min-height: 100vh;
     min-height: 100dvh;
   }
 
-  .layout,
-  .side,
-  .schedule-scroll {
+  :where(.screen:not([data-keyboard='up'])) .layout,
+  :where(.screen:not([data-keyboard='up'])) .side,
+  :where(.screen:not([data-keyboard='up'])) .schedule-scroll {
     flex: 1 0 auto;
     max-height: none;
     overflow-y: visible;
   }
 
-  .not-placed {
+  :where(.screen:not([data-keyboard='up'])) .not-placed {
     position: static;
     max-height: none;
   }

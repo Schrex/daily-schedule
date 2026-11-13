@@ -21,6 +21,9 @@
   margin-bottom: var(--space-5);
   padding: var(--space-1) var(--space-5);
   font-size: 1.1rem;
+  /* On the narrowest phone its words take two lines; it never runs off the screen. */
+  max-width: 100%;
+  white-space: normal;
 }
 
 .settings h1 {

@@ -83,8 +83,14 @@ export function TasksCell({
       />
       <div className="tasks-editing-foot">
         <span>One task on each line.</span>
-        {/* Leaving the field is what keeps the text; this button is somewhere obvious to click. */}
-        <button type="button" className="button action">
+        {/* Leaving the field is what keeps the text; this button is somewhere obvious to click.
+            An iPhone does not take the focus from the field for a tap on a button, so the tap
+            does it itself. */}
+        <button
+          type="button"
+          className="button action"
+          onClick={(event) => event.currentTarget.closest('.tasks-editing')?.querySelector('textarea')?.blur()}
+        >
           Done
         </button>
       </div>

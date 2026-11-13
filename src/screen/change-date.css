@@ -76,3 +76,47 @@
   min-height: 3.4rem;
   font-size: 1.4rem;
 }
+
+/* A phone: the panel takes the width of the screen and everything in it is a
+   size that fits there, the date whole on one line. */
+@media (max-width: 700px) {
+  .change-date-backdrop {
+    padding-top: var(--space-6);
+  }
+
+  .change-date-panel {
+    width: calc(100vw - 2 * var(--space-3));
+    padding: var(--space-4);
+  }
+
+  .change-date-panel h2 {
+    font-size: 1.25rem;
+  }
+
+  .change-date-input {
+    min-height: 3.25rem;
+    padding: var(--space-2) var(--space-3);
+    font-size: 1.375rem;
+  }
+
+  .change-date-input::-webkit-calendar-picker-indicator {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .change-date-picked {
+    margin: var(--space-3) 0 var(--space-4);
+    font-size: 1.125rem;
+  }
+
+  .change-date-actions {
+    gap: var(--space-2);
+  }
+
+  .change-date-actions button {
+    min-width: 0;
+    min-height: max(3rem, var(--touch-target));
+    padding: 0 var(--space-2);
+    font-size: 1.0625rem;
+  }
+}
