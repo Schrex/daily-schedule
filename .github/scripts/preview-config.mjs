@@ -1,6 +1,7 @@
 // Turns the Worker's Wrangler config into the PR preview's config: a separate
 // Worker ("daily-schedule-preview") whose D1 binding points at a separate
-// preview database, so a preview never reads or writes production data.
+// preview database, so a preview never reads or writes production data, and
+// without the Slack relay's address, so a preview never posts to the crew.
 //
 // CLI:
 //   node .github/scripts/preview-config.mjs write <in> <out>
@@ -89,6 +90,10 @@ export function previewConfig(config, { previewDatabaseId }) {
   // Production has no workers.dev address (only the hub forwards to it); a
   // preview is reached only at its own workers.dev address, so it keeps one.
   out.workers_dev = true;
+  // A preview never posts to the crew's Slack channel: it is not told where
+  // the Slack relay is (and, as a separate Worker, has no send key either),
+  // so its Send copies the picture instead.
+  if (out.vars) delete out.vars.SLACK_RELAY_URL;
   const dbs = out.d1_databases ?? [];
   if (dbs.length > 1) {
     throw new Error('The preview supports one D1 database; add a preview database id per binding first.');

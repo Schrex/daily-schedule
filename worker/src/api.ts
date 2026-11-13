@@ -1,8 +1,10 @@
 import type { Role } from '../../shared';
+import { crewPageShown, type DailySchedule, type Roster } from '../../src/schedule-rules';
 import type { Env } from './app';
 import type { D1Database } from './d1';
 import { refuse } from './refuse';
-import { isDailySchedule, isDate, isRoster } from './shapes';
+import { saveSlackChannel, sendToCrew, slackChannel, slackChannelFrom, slackIsConnected } from './send';
+import { isDailySchedule, isDate, isRecord, isRoster } from './shapes';
 import { whoIsCalling } from './signIn';
 
 /**
@@ -13,27 +15,75 @@ import { whoIsCalling } from './signIn';
  *   GET /me                 { email, role }                anyone signed in
  *   GET /roster             the Roster, or null           editors and viewers
  *   PUT /roster             saves the Roster              editors
- *   GET /schedules          the saved dates, earliest first
- *   GET /schedules/:date    that Daily Schedule, or null
+ *   GET /schedules          the saved dates, earliest first       editors
+ *   GET /schedules/:date    that Daily Schedule, or null          editors
  *   PUT /schedules/:date    saves it (its date must be :date)  editors
+ *   GET /crew-page          { jobs, sent, previous }: what the Crew Page and the
+ *                           Office TV show, and nothing that has not been Sent
+ *                           (`crewPageShown`)             editors and viewers
+ *   GET /slack              { connected, channel }: whether Send reaches Slack,
+ *                           and the Slack channel ID it posts to ('' is the
+ *                           relay's own channel)          editors and viewers
+ *   PUT /slack              { channel }: changes the channel for everyone  editors
+ *   POST /send              posts the picture (the body, a PNG; its title
+ *                           URI-encoded in X-Title) to Slack (send.ts)  editors
  *
  * Editors are the people listed as `editor`; everyone else signed in to the
- * hub is a viewer, sent to the Office TV by the pages.
+ * hub is a viewer, sent to the Crew Page by the pages.
  *
- * 401: nobody signed in. 403: a viewer writing.
- * 400: a malformed body or date. Errors are `{ error }` in plain words.
+ * A viewer is never given a saved Daily Schedule, only what has been Sent
+ * (/crew-page): the board as it stands is the Editors' alone.
+ *
+ * 401: nobody signed in. 403: a viewer writing, sending or reading the saved Daily Schedules.
+ * 400: a malformed body or date, or a picture that is missing or too big.
+ * Errors are `{ error }` in plain words.
  */
-export async function handleApi(request: Request, env: Env, path: string): Promise<Response> {
+export async function handleApi(
+  request: Request,
+  env: Env,
+  path: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Response> {
   const email = await whoIsCalling(request, env);
   if (email === null) return refuse(401, 'You are not signed in.');
   const role = await roleOf(env.DB, email);
 
   const reading = request.method === 'GET';
   const writing = request.method === 'PUT';
-  if (!reading && !writing) return refuse(405, 'That method is not allowed here.');
+  const sending = request.method === 'POST' && path === 'send';
+  if (!reading && !writing && !sending) return refuse(405, 'That method is not allowed here.');
   if (writing && role !== 'editor') return refuse(403, 'Only an Editor can change the Daily Schedule.');
+  if (sending && role !== 'editor') return refuse(403, 'Only an Editor can send the Daily Schedule to the crew.');
 
   if (path === 'me' && reading) return Response.json({ email, role });
+
+  if (path === 'slack') {
+    // Only whether it is connected and the channel: the relay's address and the send key stay here.
+    if (reading) {
+      return Response.json({ connected: slackIsConnected(env), channel: await slackChannel(env.DB) });
+    }
+    const change = await bodyOf(request);
+    const channel = isRecord(change) ? slackChannelFrom(change.channel) : null;
+    if (channel === null) {
+      return refuse(
+        400,
+        'A channel ID looks like C0CHSMJFFPS (in Slack: the channel name, then the foot of About). Leave it empty to use the relay\'s own channel.',
+      );
+    }
+    await saveSlackChannel(env.DB, channel, email);
+    return new Response(null, { status: 204 });
+  }
+  if (sending) return sendToCrew(request, env, fetchImpl);
+
+  if (path === 'crew-page' && reading) {
+    const roster = (await readBody(env.DB.prepare('SELECT body FROM roster WHERE id = 1'))) as Roster | null;
+    // Only the two latest dates that have been Sent are read: the rules need no more, and nothing else leaves here.
+    const { results } = await env.DB.prepare(
+      "SELECT body FROM schedules WHERE json_array_length(body, '$.sends') > 0 ORDER BY date DESC LIMIT 2",
+    ).all<{ body: string }>();
+    const sent = results.map((row) => JSON.parse(row.body) as DailySchedule);
+    return Response.json(crewPageShown(roster ?? { crewMembers: [], jobs: [] }, sent));
+  }
 
   if (path === 'roster') {
     if (reading) return Response.json(await readBody(env.DB.prepare('SELECT body FROM roster WHERE id = 1')));
@@ -47,6 +97,11 @@ export async function handleApi(request: Request, env: Env, path: string): Promi
       .bind(JSON.stringify(roster), new Date().toISOString(), email)
       .run();
     return new Response(null, { status: 204 });
+  }
+
+  // The saved Daily Schedules are the board as it stands, Sent or not: Editors only.
+  if ((path === 'schedules' || path.startsWith('schedules/')) && role !== 'editor') {
+    return refuse(403, 'Only an Editor can open the board. The Crew Page shows what has been Sent.');
   }
 
   if (path === 'schedules' && reading) {

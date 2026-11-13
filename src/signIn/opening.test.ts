@@ -12,22 +12,27 @@ describe('what a page shows to whoever opens it', () => {
     expect(openingFor('board', editor)).toEqual({ kind: 'open' });
     expect(openingFor('settings', editor)).toEqual({ kind: 'open' });
     expect(openingFor('tv', editor)).toEqual({ kind: 'open' });
+    expect(openingFor('crew', editor)).toEqual({ kind: 'open' });
   });
 
-  it('sends a viewer from the board or Settings to the Office TV', () => {
-    expect(openingFor('board', viewer)).toEqual({ kind: 'go-to-tv' });
-    expect(openingFor('settings', viewer)).toEqual({ kind: 'go-to-tv' });
+  it('sends a viewer from the board or Settings to the Crew Page', () => {
+    expect(openingFor('board', viewer)).toEqual({ kind: 'go-to-crew-page' });
+    expect(openingFor('settings', viewer)).toEqual({ kind: 'go-to-crew-page' });
+  });
+
+  it('opens the Crew Page and the Office TV for a viewer', () => {
+    expect(openingFor('crew', viewer)).toEqual({ kind: 'open' });
     expect(openingFor('tv', viewer)).toEqual({ kind: 'open' });
   });
 
   it('tells someone not on the list that they have no access, on every page', () => {
-    for (const page of ['board', 'settings', 'tv'] as const) {
+    for (const page of ['board', 'settings', 'tv', 'crew'] as const) {
       expect(openingFor(page, stranger)).toEqual({ kind: 'no-access' });
     }
   });
 
   it('asks someone not signed in to sign in to the hub, on every page', () => {
-    for (const page of ['board', 'settings', 'tv'] as const) {
+    for (const page of ['board', 'settings', 'tv', 'crew'] as const) {
       expect(openingFor(page, signedOut)).toEqual({ kind: 'sign-in' });
     }
   });

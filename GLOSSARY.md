@@ -19,7 +19,7 @@ Someone listed as an editor on the Daily Schedule's access list, who may change 
 _Avoid_: Admin, owner
 
 **Viewer**:
-Anyone signed in to the Hub who isn't an Editor. They may only look at the Daily Schedule, on the Office TV page.
+Anyone signed in to the Hub who isn't an Editor. They may only look at Daily Schedules that have been Sent, on the Crew Page.
 _Avoid_: Guest, read-only user
 
 **Crew Member**:
@@ -81,5 +81,9 @@ The Scheduler's act of delivering the finished Daily Schedule to the crew.
 _Avoid_: Publish, post, share
 
 **Office TV**:
-The page (`/daily-schedule/tv`) that shows today's Daily Schedule full screen on the TV in the office: as it was last Sent, or as the board stands if it was never Sent. On a day with no Daily Schedule (a weekend), the next one Sent.
+The page (`/daily-schedule/tv`) that shows, full screen on the TV in the office, what the Crew Page shows: the newest Daily Schedule that has been Sent, exactly as the crew got it. A Daily Schedule never Sent, and changes made since the last Send, are not on it.
 _Avoid_: Display, dashboard, kiosk
+
+**Crew Page**:
+The page (`/daily-schedule/crew`) a Viewer gets, on a phone or a computer: the newest Daily Schedule that has been Sent, exactly as the crew got it, read-only, with one step back to the Sent Daily Schedule before it. A Daily Schedule never Sent, and changes made since the last Send, are not on it.
+_Avoid_: Crew view, read-only board, mobile view

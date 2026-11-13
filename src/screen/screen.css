@@ -48,6 +48,13 @@
   }
 }
 
+/* The TV button is for the office: not shown on a phone or a finger. */
+@media (pointer: coarse), (max-width: 700px) {
+  .tv-link {
+    display: none;
+  }
+}
+
 /* --- The header: the logo, the date and when it was last Sent; the day's buttons and Send; then TV view and Settings */
 
 .toolbar {
@@ -1131,6 +1138,251 @@ body[data-name-dragging] .destination[data-drop-over] {
   .layout,
   .board {
     gap: var(--space-3);
+  }
+}
+
+/* --- A phone: the Jobs get the screen --------------------------------------
+   Undo and Send leave the header for a bar at the bottom, always in reach.
+   Once the page of cards has scrolled (headerCollapse.ts) the header is one
+   line: a short date, Change date and Preview. "Not saved" and a failed Send
+   keep their red strip under that line. Off a phone none of this shows. */
+
+/* Undo and Send are in the page twice, and one of each is there at any
+   width: the other's wrapper is `display: none`, so it is not drawn, not
+   reached by the keyboard and not read out. (`visibility` says the same to
+   anything that asks a button itself and not its wrapper.)
+
+   In the header: the wrapper is not a box, so they sit among the other
+   buttons as if it were not there. */
+.header-only {
+  display: contents;
+}
+
+.bottom-bar {
+  display: none;
+  visibility: hidden;
+}
+
+.date-short {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .header-only {
+    display: none;
+    visibility: hidden;
+  }
+
+  /* The last thing on the screen, under the scrolling page of cards and never
+     over it; clear of the rounded corners and the home bar of the phone. */
+  .bottom-bar {
+    flex: 0 0 auto;
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    display: flex;
+    visibility: visible;
+    gap: var(--space-2);
+    margin: 0 calc(-1 * var(--gutter));
+    padding: var(--space-2) max(var(--gutter), env(safe-area-inset-right, 0px))
+      calc(var(--space-2) + env(safe-area-inset-bottom, 0px)) max(var(--gutter), env(safe-area-inset-left, 0px));
+    border-top: var(--hairline);
+    background: var(--paper);
+  }
+
+  .bottom-bar .toolbar-button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .bottom-bar .send-button {
+    flex-grow: 2;
+  }
+
+  .toolbar-collapsed {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .toolbar-collapsed .toolbar-logo,
+  .toolbar-collapsed .last-sent,
+  .toolbar-collapsed .toolbar-links,
+  .toolbar-collapsed .date-full {
+    display: none;
+  }
+
+  .toolbar-collapsed .date-short {
+    display: inline;
+  }
+
+  /* The short date is always whole ("Mon, Nov 16"), a little smaller than in
+     the open header. The two buttons take what it leaves on the one line, a
+     little narrower than usual; on the narrowest phone it is their words
+     that are cut, never the date. */
+  .toolbar-collapsed .toolbar-date {
+    flex: 0 0 auto;
+  }
+
+  .toolbar-collapsed .date-heading {
+    font-size: 1.125rem;
+    white-space: nowrap;
+  }
+
+  .toolbar-collapsed .toolbar-actions {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  .toolbar-collapsed .toolbar-actions .toolbar-button {
+    flex: 0 1 auto;
+    min-width: 0;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-2);
+    font-size: 0.9375rem;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+}
+
+/* --- A phone: a strip of names to jump to a card ---------------------------
+   Under the header: every open Job, then Shop, Trucking and Off Work
+   (jumpStrip.ts). It is swiped sideways by itself, from one edge of the
+   screen to the other; the page never moves sideways. Off a phone it is not
+   shown. */
+
+.jump-strip {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .jump-strip {
+    flex: 0 0 auto;
+    display: flex;
+    gap: var(--space-2);
+    min-width: 0;
+    /* Room above and under the names for the ring the keyboard draws. */
+    margin: -6px calc(-1 * var(--gutter));
+    padding: 6px max(var(--gutter), env(safe-area-inset-right, 0px)) 6px
+      max(var(--gutter), env(safe-area-inset-left, 0px));
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .jump-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* A name keeps one line and its own width, so the strip grows sideways;
+     a very long one is cut short. */
+  .jump-stop {
+    flex: 0 0 auto;
+    display: block;
+    max-width: 14rem;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-pill);
+    font-size: 0.9375rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* --- A phone: the Not Placed list is a badge -------------------------------
+   One line at the top of the page of cards, with how many are Not Placed. A
+   tap opens the list over the board; it steps aside while a name from it is
+   in hand, and the badge is still the place to drop a name or put it back
+   (notPlacedBadge.ts). Off a phone the list is always there, with no badge. */
+
+.not-placed-badge {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .side > .not-placed {
+    position: sticky;
+    gap: 0;
+    min-height: 0;
+    max-height: none;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .not-placed-head > h2,
+  .not-placed-head > .not-placed-count {
+    display: none;
+  }
+
+  .not-placed-badge {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: inherit;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .badge-label {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: var(--weight-strong);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* What a tap does, at the right: Show, Close, Put back. */
+  .badge-does {
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--select);
+    font-size: 0.875rem;
+    font-weight: var(--weight-strong);
+  }
+
+  /* The list, under the badge and over the board. Closed or stepped aside it
+     is out of sight but its names keep their places, so a name put on a Job
+     is seen flying from where it was in the list. */
+  .not-placed .names {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: 0;
+    left: 0;
+    max-height: 45vh;
+    max-height: 45dvh;
+    padding: var(--space-3);
+    border: var(--hairline);
+    border-radius: var(--radius-card);
+    background: var(--paper);
+    box-shadow: var(--elevation-3);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .not-placed:not(.not-placed-shown) .names {
+    max-height: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+}
+
+/* A phone's notch or rounded corners (the page reaches under them, so the
+   bottom bar can keep clear of the home bar): the gutters keep clear too. */
+@media (pointer: coarse) {
+  .screen {
+    padding-left: max(var(--gutter), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--gutter), env(safe-area-inset-right, 0px));
   }
 }
 

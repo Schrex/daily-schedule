@@ -1,0 +1,128 @@
+/* The Crew Page: the newest Daily Schedule that has been Sent, as the cards
+   the crew is sent (shared with the Office TV, ../tv/cards.css), under a
+   small head. The page scrolls; nothing on it edits. Type, corners and the
+   page come from the shared look; colors are the palette. */
+
+@import '../look.css';
+@import '../tv/cards.css';
+
+.crew-page {
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+/* --- The head: the logo, the date with when it was Sent, Previous / Latest,
+   the way back to the Hub */
+
+.crew-head {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.crew-logo {
+  flex: 0 0 auto;
+  height: 3rem;
+  width: auto;
+}
+
+.crew-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.crew-date {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-size: 1.75rem;
+  line-height: 1.1;
+  letter-spacing: var(--tracking-heading);
+  text-transform: uppercase;
+}
+
+.crew-sent {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-weight: var(--weight-medium);
+  font-size: 0.9375rem;
+}
+
+.crew-hub,
+.crew-step {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: max(40px, var(--touch-target));
+  padding: 0 0.875rem;
+  border: var(--hairline);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: var(--weight-strong);
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+
+/* "Previous" and "Latest": a button, drawn as the way back to the Hub is. */
+.crew-step {
+  justify-content: center;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.crew-hub:hover,
+.crew-step:hover {
+  background: var(--wash);
+}
+
+.crew-hub:focus-visible,
+.crew-step:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Nothing Sent yet, or the page could not be loaded. */
+.crew-message {
+  margin: 3rem 0;
+  color: var(--ink-soft);
+  font-size: 1.125rem;
+  text-align: center;
+}
+
+/* --- On a phone: the date under the logo and the way back, the cards in one column */
+@media (max-width: 699px) {
+  .crew-page {
+    padding: 1rem;
+  }
+
+  .crew-head {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .crew-logo {
+    height: 2.5rem;
+    margin-right: auto;
+  }
+
+  .crew-title {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  .crew-date {
+    font-size: 1.5rem;
+  }
+
+  /* Previous / Latest: its own row under the date, the whole width, tall
+     enough for a thumb. */
+  .crew-step {
+    order: 2;
+    flex-basis: 100%;
+    min-height: 48px;
+    font-size: 1rem;
+  }
+}

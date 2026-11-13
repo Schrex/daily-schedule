@@ -1,11 +1,13 @@
 /**
  * Delivery: how the picture of the Daily Schedule reaches the crew.
  *
- * `CrewDelivery` is the whole interface. When Slack is set up in Settings the
- * picture is posted to the chosen Slack channel through the Slack relay
- * (slackDelivery.ts); until then it is copied to the clipboard for the
- * Scheduler to paste into Slack (clipboardDelivery.ts). No rules live here: whether Send is allowed, the send record and
- * what the picture contains all belong to the schedule rules.
+ * `CrewDelivery` is the whole interface. When Slack is connected on the
+ * Daily Schedule's server the picture goes to the server, which posts it to
+ * the crew's Slack channel through the Slack relay (serverDelivery.ts); only
+ * when it is not connected is the picture copied to the clipboard for the
+ * Scheduler to paste into Slack (clipboardDelivery.ts). No rules live here:
+ * whether Send is allowed, the send record and what the picture contains all
+ * belong to the schedule rules.
  */
 
 export interface CrewDelivery {

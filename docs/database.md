@@ -34,6 +34,18 @@ folder; anywhere else, Wrangler offers to create a new, empty database called `D
                                                                 dayNotes: [ ... ] }
 ```
 
+```
+ settings  (exactly one row, once a channel has been set)
+ ─────────────────────────────────────────────────────────
+ id             INTEGER PK (= 1)
+ slack_channel  the Slack channel ID Send posts to; '' is the relay's own channel
+ saved_at       time
+ saved_by       email
+```
+
+- **`settings`:** what every Editor and every device share. It is changed in Settings, under Slack
+  ([slack-setup.md](slack-setup.md)). No row, or an empty `slack_channel`, means the relay's own
+  channel. The send key is never here: it is a secret of the Worker.
 - **A placement's `destination`** is either `{ kind: 'job', jobId }` or
   `{ kind: 'standing-row', standingRow: 'shop' | 'trucking' | 'off-work' }`.
 - **`people`:** only editors need a row. Anyone else signed in to the hub is a viewer automatically.
@@ -101,8 +113,8 @@ WHERE s.date = '2026-11-13';
 ```
 
 **Only `SELECT` here.** `UPDATE`, `DELETE` and `INSERT` change the live board for everyone at once.
-Change crew members, jobs and placements in the app instead. The one exception is the editor list,
-in the README.
+Change crew members, jobs, placements and the Slack channel in the app instead. The one exception
+is the editor list, in the README.
 
 ## What removing does
 

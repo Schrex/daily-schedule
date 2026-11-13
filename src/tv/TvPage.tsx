@@ -1,46 +1,35 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
-import {
-  cardTitle,
-  fullDate,
-  onTheTv,
-  scheduleDateOf,
-  type CrewView,
-  type Roster,
-  type ScheduleRow,
-} from '../schedule-rules';
-import { crewPictureColumns, type PictureColumns } from '../send/crewPicture';
-import type { ScheduleStore } from '../storage';
+import { loadCrewPage } from '../crew/CrewPage';
+import { fullDate, sameData, type CrewView, type Roster } from '../schedule-rules';
+import type { Fetch } from '../storage/apiStore';
+import { CrewCards, useCrewColumns } from './CrewCards';
 
 /** How often the TV looks again, besides whenever the Scheduler's screen saves. */
 const LOOK_AGAIN_MS = 60_000;
 
-/** What the TV last read from the store. */
+/** What the TV last read: the newest Daily Schedule that has been Sent (none: null), and the Jobs its cards are drawn with. */
 interface Shown {
   roster: Roster;
   view: CrewView | null;
-  today: string;
 }
-
-/** Reads what the TV should show: today's Daily Schedule (see `onTheTv`). */
-async function read(store: ScheduleStore): Promise<Shown> {
-  const today = scheduleDateOf(new Date());
-  const roster = (await store.loadRoster()) ?? { crewMembers: [], jobs: [] };
-  const dates = (await store.listScheduleDates()).filter((date) => date >= today);
-  const saved = (await Promise.all(dates.map((date) => store.loadSchedule(date)))).filter(
-    (schedule) => schedule !== null,
-  );
-  return { roster, view: onTheTv(roster, saved, today), today };
-}
-
-/** Whether two reads say the same thing (they are plain data, as stored). */
-const sameShown = (a: Shown, b: Shown): boolean => JSON.stringify(a) === JSON.stringify(b);
 
 /**
- * Today's Daily Schedule, made to be read from across the office: the same
- * cards the crew is sent, side by side in columns across a wide screen,
- * sized to fill it with nothing to scroll. It changes by itself when the
- * Scheduler Sends or changes today's, and at midnight.
+ * Reads what the TV should show: what the Crew Page shows, the newest Daily
+ * Schedule that has been Sent, exactly as the crew got it (the API's
+ * /crew-page). So the office sees what the crew sees, and never a Daily
+ * Schedule that has not been Sent.
+ */
+async function read(fetchFn?: Fetch): Promise<Shown> {
+  const { jobs, sent } = await loadCrewPage(fetchFn);
+  return { roster: { crewMembers: [], jobs }, view: sent?.view ?? null };
+}
+
+/**
+ * The newest Daily Schedule that has been Sent, the same one the Crew Page
+ * shows, made to be read from across the office: the same cards the crew is
+ * sent, side by side in columns across a wide screen, sized to fill it with
+ * nothing to scroll. It changes by itself when the Scheduler Sends.
  *
  * Left alone it is the schedule and nothing else: no pointer, no buttons.
  * Moving the mouse brings back the pointer and a small bar with Full screen
@@ -48,23 +37,23 @@ const sameShown = (a: Shown, b: Shown): boolean => JSON.stringify(a) === JSON.st
  * of stillness.
  * A click anywhere else also puts it full screen (or back).
  */
-export function TvPage({ store, boardLink = true }: { store: ScheduleStore; boardLink?: boolean }) {
+export function TvPage({ fetchFn, boardLink = true }: { fetchFn?: Fetch; boardLink?: boolean }) {
   const [shown, setShown] = useState<Shown | null>(null);
   /** Counts the reads begun, so only the latest one's result is shown. */
   const reads = useRef(0);
 
   const refresh = useCallback(() => {
     const thisRead = ++reads.current;
-    read(store).then(
+    read(fetchFn).then(
       (next) => {
         // A read begun later has already been (or will be) shown: this one is stale.
         if (thisRead !== reads.current) return;
         // The same as what is shown: keep it, so nothing is drawn or fitted again.
-        setShown((current) => (current !== null && sameShown(current, next) ? current : next));
+        setShown((current) => (current !== null && sameData(current, next) ? current : next));
       },
       (error) => console.error('Could not read the Daily Schedule', error),
     );
-  }, [store]);
+  }, [fetchFn]);
 
   useEffect(() => {
     refresh();
@@ -87,7 +76,7 @@ export function TvPage({ store, boardLink = true }: { store: ScheduleStore; boar
 
   return (
     <div className="tv" data-awake={awake ? true : undefined} onClick={toggleFullScreen}>
-      {shown && (shown.view ? <Board roster={shown.roster} view={shown.view} /> : <NothingYet today={shown.today} />)}
+      {shown && (shown.view ? <Board roster={shown.roster} view={shown.view} /> : <NothingYet />)}
       <nav className="tv-controls" aria-label="TV controls" onClick={(event) => event.stopPropagation()}>
         <button type="button" className="tv-control" onClick={toggleFullScreen}>
           {fullScreen ? 'Exit full screen' : 'Full screen'}
@@ -137,38 +126,22 @@ function useFullScreen(): boolean {
   return fullScreen;
 }
 
-function NothingYet({ today }: { today: string }) {
+function NothingYet() {
   return (
     <div className="tv-empty">
       <img className="tv-logo" src={logoUrl} alt="Schreiber Excavating" />
-      <p className="tv-empty-date">{fullDate(today)}</p>
-      <p className="tv-empty-text">Today's schedule shows here as soon as it is made.</p>
+      <p className="tv-empty-text">The Daily Schedule shows here as soon as it is Sent.</p>
     </div>
   );
 }
 
 /**
- * The board in the crew picture's columns: two of Jobs and one at
- * the right for Shop, Trucking and Off Work, each card in the same column as
- * on the picture (worked out by the picture itself). Until that is known, the
- * Jobs and the rest stand in the same columns in order.
+ * The board: the logo and the date over the cards the crew is sent
+ * (CrewCards.tsx), sized to fill the screen.
  */
 function Board({ roster, view }: { roster: Roster; view: CrewView }) {
-  const [columns, setColumns] = useState<PictureColumns | null>(null);
-  useEffect(() => {
-    let current = true;
-    crewPictureColumns(view, roster).then(
-      (worked) => current && setColumns(worked),
-      (error) => console.error('Could not work out the columns', error),
-    );
-    return () => {
-      current = false;
-    };
-  }, [view, roster]);
-
+  const columns = useCrewColumns(view, roster);
   const fitRef = useFit([view, columns]);
-  const byKey = new Map(view.rows.map((row) => [row.key, row]));
-  const shown = columns ?? firstGuess(view);
 
   return (
     <div className="tv-fit" ref={fitRef}>
@@ -176,85 +149,8 @@ function Board({ roster, view }: { roster: Roster; view: CrewView }) {
         <img className="tv-logo" src={logoUrl} alt="Schreiber Excavating" />
         <h1 className="tv-date">{fullDate(view.date)}</h1>
       </header>
-      {/* The Notes for the day first, across the board, as on the crew picture. */}
-      {view.dayNotes && view.dayNotes.length > 0 && (
-        <section className="tv-card tv-day-notes">
-          <h2 className="tv-card-name tv-card-name-yard">Notes</h2>
-          {view.dayNotes.map((note, index) => (
-            <p key={index} className="tv-day-note">
-              {note}
-            </p>
-          ))}
-        </section>
-      )}
-      <main
-        className="tv-cards"
-        style={{ gridTemplateColumns: shown.columns.map(({ share }) => `minmax(0, ${share}fr)`).join(' ') }}
-      >
-        {shown.columns.map(({ keys }, index) => (
-          <div key={index} className="tv-column">
-            {keys.flatMap((key) => {
-              const row = byKey.get(key);
-              return row ? [<Card key={key} roster={roster} row={row} />] : [];
-            })}
-          </div>
-        ))}
-      </main>
+      <CrewCards roster={roster} view={view} columns={columns} />
     </div>
-  );
-}
-
-/** Jobs shared out over two columns in order, and the rest in a third: until the picture's own columns are known. */
-function firstGuess(view: CrewView): PictureColumns {
-  const jobs = view.rows.filter((row) => row.destination.kind === 'job').map((row) => row.key);
-  const yard = view.rows.filter((row) => row.destination.kind !== 'job').map((row) => row.key);
-  const jobColumns = Math.max(1, Math.min(2, jobs.length));
-  const columns = Array.from({ length: jobColumns }, (_, index) => ({
-    share: 1,
-    keys: jobs.filter((_, at) => at % jobColumns === index),
-  }));
-  return { columns: yard.length > 0 ? [...columns, { share: 1, keys: yard }] : columns };
-}
-
-function Card({ roster, row }: { roster: Roster; row: ScheduleRow }) {
-  const isJob = row.destination.kind === 'job';
-  const quiet = row.destination.kind === 'standing-row' && row.destination.standingRow === 'off-work';
-  const { name, number } = cardTitle(roster, row);
-  return (
-    <section className={`tv-card${quiet ? ' tv-card-quiet' : ''}`}>
-      <div className="tv-card-head">
-        <h2 className={`tv-card-name${isJob ? '' : ' tv-card-name-yard'}`}>
-          {name}
-          {number && <span className="tv-card-number">{number}</span>}
-        </h2>
-        <span className="tv-card-count">{row.who.length}</span>
-      </div>
-      {row.tasks.length > 0 && (
-        <ul className={`tv-tasks${isJob ? '' : ' tv-tasks-yard'}`}>
-          {row.tasks.map((task, index) => (
-            <li key={index}>{task}</li>
-          ))}
-        </ul>
-      )}
-      <ul className="tv-names">
-        {row.who.map(({ crewMember, note, personTasks = [] }) => (
-          <li key={crewMember.id} className={`tv-name${crewMember.foreman ? ' tv-name-foreman' : ''}`}>
-            <div className="tv-name-head">
-              <span className={`tv-dot dot-${crewMember.color}`} />
-              <span className="tv-name-text">{crewMember.name}</span>
-            </div>
-            {personTasks.length > 0 && (
-              <ul className="tv-name-subs">
-                {personTasks.map((task, index) => (
-                  <li key={index}>{task}</li>
-                ))}
-              </ul>
-            )}
-            {note && <p className="tv-note">{note}</p>}
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 

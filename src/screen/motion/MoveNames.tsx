@@ -4,8 +4,10 @@ import type { NameMotion, NamesSeen } from './nameMotion';
 interface MoveNamesProps {
   motion: NameMotion;
   /**
-   * What is on the screen, in one word (the date of the Daily Schedule). When
-   * it changes the names are another day's, in other places: nothing travels.
+   * What is on the screen, in one word (`sceneOnScreen`: the date of the
+   * Daily Schedule, and whether a phone's header is collapsed). When it
+   * changes the names are in other places without having moved: nothing
+   * travels.
    */
   scene: string;
 }

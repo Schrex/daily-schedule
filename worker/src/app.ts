@@ -39,6 +39,17 @@ export interface Env {
    * Refused on the production addresses, like DEV_AUTH_EMAIL.
    */
   HUB_JWKS?: string;
+  /**
+   * The Slack relay's address (https://daily-schedule-slack.<account>.workers.dev),
+   * where Send posts the picture (send.ts). Never sent to a browser.
+   */
+  SLACK_RELAY_URL?: string;
+  /**
+   * The send key the Slack relay asks for (its SEND_KEY). A secret: set with
+   * `wrangler secret put`, never written in the repository, the database or
+   * an answer.
+   */
+  SLACK_SEND_KEY?: string;
 }
 
 export interface Options {
@@ -47,6 +58,8 @@ export interface Options {
    * Vite's own and are already served under /daily-schedule/.
    */
   devServer?: boolean;
+  /** How the Worker reaches the Slack relay (the tests pass their own). */
+  fetch?: typeof fetch;
 }
 
 /**
@@ -77,7 +90,7 @@ async function answer(request: Request, env: Env, options: Options): Promise<Res
     return handleCspReport(request);
   }
   if (url.pathname.startsWith(API)) {
-    return handleApi(request, env, url.pathname.slice(API.length));
+    return handleApi(request, env, url.pathname.slice(API.length), options.fetch);
   }
   if (url.pathname.startsWith(`${BASE}/`)) {
     if (options.devServer) return env.ASSETS.fetch(request);

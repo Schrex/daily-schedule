@@ -666,6 +666,17 @@ export function fullDate(date: ScheduleDate): string {
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
+/** The date short enough for one line beside buttons, as a phone's collapsed header shows it: "Fri, Nov 13". */
+export function shortDate(date: ScheduleDate): string {
+  const [year = 0, month = 1, day = 1] = date.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
 /**
  * The line the crew picture is sent with, as the Slack message reads and a
  * phone's notification shows it: "Schedule for Thursday, Nov 12", or
@@ -773,30 +784,84 @@ function lastSend(schedule: DailySchedule): (Pick<SendRecord, 'sentAt'> & Partia
   return typeof last === 'string' ? { sentAt: last } : last;
 }
 
-/**
- * What the office TV shows on `today`: today's Daily Schedule.
- *
- * If it has been Sent, it is the last Send, exactly as the crew got it,
- * whatever has been changed on the board since. If it has not, it is the crew
- * view as the board stands now (anyone Not Placed left out); so is one Sent
- * before send records held the picture, since what was sent is not known. On a day with no
- * Daily Schedule of its own (a weekend), it is the next one that has been
- * Sent, so Monday's shows from Saturday. Nothing to show gives null.
- */
-export function onTheTv(
-  roster: Roster,
-  saved: readonly DailySchedule[],
-  today: ScheduleDate,
-): CrewView | null {
-  const schedule = saved
-    .filter((candidate) => candidate.date === today || (candidate.date > today && lastSend(candidate) !== undefined))
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))[0];
-  if (!schedule) return null;
-  return lastSend(schedule)?.sent ?? crewView(roster, schedule);
+/** A Daily Schedule that has been Sent, as the Crew Page shows it. */
+export interface SentSchedule {
+  /** What the crew got at its last Send (or, when that is not known, the crew view as it stands). */
+  view: CrewView;
+  /** The time of its last Send, an ISO timestamp. */
+  sentAt: string;
+  /** True when that Send replaced a different picture Sent earlier for the same date. */
+  sentAgain: boolean;
 }
 
-/** Whether two pieces of plain data say the same thing, however they were built. */
-function sameData(a: unknown, b: unknown): boolean {
+/**
+ * The Daily Schedules that have been Sent, the latest date first, each as its
+ * last Send recorded it, whatever has been changed on the board since. One
+ * Sent before send records held what was sent is given as it stands, since
+ * what was sent is not known. One never Sent is not among them.
+ */
+function sentLatestFirst(roster: Roster, saved: readonly DailySchedule[]): SentSchedule[] {
+  return [...saved]
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .flatMap((schedule) => {
+      const last = lastSend(schedule);
+      if (!last) return [];
+      return [
+        {
+          view: last.sent ?? crewView(roster, schedule),
+          sentAt: last.sentAt,
+          sentAgain: last.sent?.updated ?? false,
+        },
+      ];
+    });
+}
+
+/**
+ * What the Crew Page shows: of the saved Daily Schedules that have been Sent,
+ * the one with the latest date (see `sentLatestFirst`), whenever each was
+ * Sent. None Sent gives null.
+ */
+export function onTheCrewPage(roster: Roster, saved: readonly DailySchedule[]): SentSchedule | null {
+  return sentLatestFirst(roster, saved)[0] ?? null;
+}
+
+/**
+ * What "Previous" on the Crew Page shows: the Sent Daily Schedule before the
+ * newest one, by date (see `sentLatestFirst`). An earlier Send of the newest
+ * one is not it. Fewer than two Sent gives null: there is no further history.
+ */
+export function previousOnTheCrewPage(roster: Roster, saved: readonly DailySchedule[]): SentSchedule | null {
+  return sentLatestFirst(roster, saved)[1] ?? null;
+}
+
+/**
+ * Everything the Crew Page is given: the newest Sent Daily Schedule
+ * (`onTheCrewPage`), the one before it (`previousOnTheCrewPage`), and the
+ * Jobs of the Roster, which the cards need for a Job's name and number.
+ * Nothing that has not been Sent is in it.
+ */
+export interface CrewPageShown {
+  jobs: Job[];
+  sent: SentSchedule | null;
+  /** The Sent Daily Schedule before it, for "Previous"; null when there is none. */
+  previous: SentSchedule | null;
+}
+
+/** What the Crew Page is given, from the Roster and the saved Daily Schedules (those never Sent do not count). */
+export function crewPageShown(roster: Roster, saved: readonly DailySchedule[]): CrewPageShown {
+  return {
+    jobs: roster.jobs,
+    sent: onTheCrewPage(roster, saved),
+    previous: previousOnTheCrewPage(roster, saved),
+  };
+}
+
+/**
+ * Whether two pieces of plain data say the same thing, however they were
+ * built: the order of keys and keys with no value do not count. The one
+ * comparison for a Daily Schedule or Roster as saved and as on a screen.
+ */
+export function sameData(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;

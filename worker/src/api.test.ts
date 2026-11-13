@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { addDayNote, crewView, markSent, onJob, placeCrewMember, type DailySchedule, type Roster } from '../../src/schedule-rules';
 import { handle } from './app';
 import { localD1 } from './testing/localD1';
 
@@ -14,7 +15,7 @@ const d1 = localD1({ [EDITOR]: 'editor', [VIEWER]: 'viewer' });
 const call = (email: string | undefined, path: string, init?: RequestInit, base = LOCAL) =>
   handle(new Request(base + path, init), d1.env(email === undefined ? {} : { DEV_AUTH_EMAIL: email }));
 
-const roster = {
+const roster: Roster = {
   crewMembers: [{ id: 'ann', name: 'Ann', color: 'blue', foreman: false }],
   jobs: [{ id: 'cobblestone', name: 'Cobblestone' }],
 };
@@ -47,9 +48,17 @@ describe('the API: the Roster and the Daily Schedules', () => {
     await call(EDITOR, '/schedules/2026-11-13', put(scheduleFor('2026-11-13')));
     await call(EDITOR, '/schedules/2026-11-12', put(thursday));
 
-    expect(await (await call(VIEWER, '/schedules')).json()).toEqual(['2026-11-12', '2026-11-13']);
-    expect(await (await call(VIEWER, '/schedules/2026-11-12')).json()).toEqual(thursday);
-    expect(await (await call(VIEWER, '/schedules/2026-11-16')).json()).toBeNull();
+    expect(await (await call(EDITOR, '/schedules')).json()).toEqual(['2026-11-12', '2026-11-13']);
+    expect(await (await call(EDITOR, '/schedules/2026-11-12')).json()).toEqual(thursday);
+    expect(await (await call(EDITOR, '/schedules/2026-11-16')).json()).toBeNull();
+  });
+
+  it('never gives a Viewer the saved Daily Schedules or their dates: only what the Crew Page shows', async () => {
+    await call(EDITOR, '/schedules/2026-11-12', put(scheduleFor('2026-11-12')));
+
+    expect((await call(VIEWER, '/schedules')).status).toBe(403);
+    expect((await call(VIEWER, '/schedules/2026-11-12')).status).toBe(403);
+    expect((await call(VIEWER, '/crew-page')).status).toBe(200);
   });
 
   it('replaces a saved Daily Schedule with the newer save', async () => {
@@ -58,6 +67,75 @@ describe('the API: the Roster and the Daily Schedules', () => {
     await call(EDITOR, '/schedules/2026-11-13', put(changed));
 
     expect(await (await call(EDITOR, '/schedules/2026-11-13')).json()).toEqual(changed);
+  });
+});
+
+describe('the API: what the Crew Page shows', () => {
+  /** A Daily Schedule with Ann on Cobblestone, Sent as it stands at `sentAt`. */
+  const sent = (date: string, sentAt: string): DailySchedule => {
+    const placed = placeCrewMember({ date, placements: [], tasks: {}, sends: [] }, 'ann', onJob('cobblestone'));
+    return markSent(placed, crewView(roster, placed), sentAt);
+  };
+  const annOnCobblestone = (date: string) => ({
+    date,
+    updated: false,
+    rows: [
+      {
+        key: 'job:cobblestone',
+        label: 'Cobblestone',
+        destination: { kind: 'job', jobId: 'cobblestone' },
+        tasks: [],
+        who: [{ crewMember: roster.crewMembers[0] }],
+      },
+    ],
+  });
+
+  it('says nothing has been Sent when nothing has, whatever is saved', async () => {
+    await call(EDITOR, '/roster', put(roster));
+    await call(EDITOR, '/schedules/2026-11-13', put(addDayNote(scheduleFor('2026-11-13'), 'Not sent yet')));
+
+    const response = await call(VIEWER, '/crew-page');
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ jobs: roster.jobs, sent: null, previous: null });
+  });
+
+  it('gives a Viewer the newest Sent Daily Schedule and the one before it, each as the crew got it', async () => {
+    await call(EDITOR, '/roster', put(roster));
+    await call(EDITOR, '/schedules/2026-11-10', put(sent('2026-11-10', '2026-11-09T22:00:00.000Z')));
+    await call(EDITOR, '/schedules/2026-11-11', put(sent('2026-11-11', '2026-11-10T22:00:00.000Z')));
+    await call(EDITOR, '/schedules/2026-11-12', put(sent('2026-11-12', '2026-11-11T22:00:00.000Z')));
+
+    expect(await (await call(VIEWER, '/crew-page')).json()).toEqual({
+      jobs: roster.jobs,
+      sent: { view: annOnCobblestone('2026-11-12'), sentAt: '2026-11-11T22:00:00.000Z', sentAgain: false },
+      previous: { view: annOnCobblestone('2026-11-11'), sentAt: '2026-11-10T22:00:00.000Z', sentAgain: false },
+    });
+  });
+
+  it('has nothing in it that was not Sent: no Daily Schedule never Sent, and no change made since a Send', async () => {
+    await call(EDITOR, '/roster', put(roster));
+    const thursday = sent('2026-11-12', '2026-11-11T22:00:00.000Z');
+    await call(EDITOR, '/schedules/2026-11-12', put(addDayNote(thursday, 'Changed since the Send')));
+    await call(EDITOR, '/schedules/2026-11-13', put(addDayNote(scheduleFor('2026-11-13'), 'Never sent')));
+
+    const response = await call(VIEWER, '/crew-page');
+    const answer = await response.text();
+
+    expect(JSON.parse(answer)).toEqual({
+      jobs: roster.jobs,
+      sent: { view: annOnCobblestone('2026-11-12'), sentAt: '2026-11-11T22:00:00.000Z', sentAgain: false },
+      previous: null,
+    });
+    expect(answer).not.toContain('Changed since the Send');
+    expect(answer).not.toContain('Never sent');
+    expect(answer).not.toContain('2026-11-13');
+  });
+
+  it('is read-only, and for someone signed in only', async () => {
+    expect((await call(undefined, '/crew-page')).status).toBe(401);
+    expect((await call(EDITOR, '/crew-page', put({}))).ok).toBe(false);
+    expect((await call(VIEWER, '/crew-page', { method: 'POST' })).ok).toBe(false);
   });
 });
 
@@ -96,12 +174,13 @@ describe('the API: who may call it', () => {
     expect(await response.json()).toEqual({ error: expect.any(String) });
   });
 
-  it('treats someone signed in but not on the list as a viewer: they read, and save nothing', async () => {
+  it('treats someone signed in but not on the list as a viewer: they read what a Viewer may, and save nothing', async () => {
     await call(EDITOR, '/roster', put(roster));
 
     expect(await (await call(STRANGER, '/me')).json()).toEqual({ email: STRANGER, role: 'viewer' });
     expect(await (await call(STRANGER, '/roster')).json()).toEqual(roster);
-    expect((await call(STRANGER, '/schedules')).status).toBe(200);
+    expect((await call(STRANGER, '/crew-page')).status).toBe(200);
+    expect((await call(STRANGER, '/schedules')).status).toBe(403);
 
     const response = await call(STRANGER, '/roster', put({ ...roster, jobs: [] }));
     expect(response.status).toBe(403);

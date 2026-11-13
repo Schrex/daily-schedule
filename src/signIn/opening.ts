@@ -1,8 +1,8 @@
 import type { Role } from '../../shared';
 import { API_BASE, ApiError, apiRequest, type Fetch } from '../storage/apiStore';
 
-/** The pages: the Scheduler's screen (the board), Settings, and the Office TV. */
-export type Page = 'board' | 'settings' | 'tv';
+/** The pages: the Scheduler's screen (the board), Settings, the Office TV and the Crew Page. */
+export type Page = 'board' | 'settings' | 'tv' | 'crew';
 
 /** Who opened the page, as the API sees them (GET /api/me). */
 export type Caller =
@@ -14,8 +14,8 @@ export type Caller =
 export type Opening =
   /** The page itself. */
   | { kind: 'open' }
-  /** A viewer is sent to the Office TV; they never create or save anything. */
-  | { kind: 'go-to-tv' }
+  /** A viewer is sent to the Crew Page; they never create or save anything. */
+  | { kind: 'go-to-crew-page' }
   /** A plain message: no access, and who to ask. */
   | { kind: 'no-access' }
   /** A link to the hub's sign-in page, and a note to come back. */
@@ -23,14 +23,16 @@ export type Opening =
 
 /**
  * What a page shows to whoever opened it. Only editors open the board and
- * Settings; everyone else signed in is a viewer and opens the Office TV. (The
+ * Settings; everyone else signed in is a viewer and gets the Crew Page in their
+ * place. The Crew Page and the Office TV open for anyone signed in. (The
  * API no longer answers `/me` with 403; 'not-on-the-list' stays as a safe
  * answer if it ever does.)
  */
 export function openingFor(page: Page, caller: Caller): Opening {
   if (caller.kind === 'not-signed-in') return { kind: 'sign-in' };
   if (caller.kind === 'not-on-the-list') return { kind: 'no-access' };
-  if (page !== 'tv' && caller.role !== 'editor') return { kind: 'go-to-tv' };
+  const editorsOnly = page === 'board' || page === 'settings';
+  if (editorsOnly && caller.role !== 'editor') return { kind: 'go-to-crew-page' };
   return { kind: 'open' };
 }
 
