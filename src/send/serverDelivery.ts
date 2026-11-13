@@ -1,6 +1,7 @@
 import { API_BASE, ApiError, apiRequest, browserFetch, type Fetch } from '../storage/apiStore';
 import { clipboardDelivery } from './clipboardDelivery';
 import { DeliveryFailure, type CrewDelivery } from './index';
+import { loadSlackConnection } from './slackConnection';
 
 /**
  * Send through the server: the picture goes to the Daily Schedule's server
@@ -41,8 +42,7 @@ export function serverDelivery(fetchFn: Fetch = browserFetch, base: string = API
  */
 export async function crewDelivery(fetchFn: Fetch = browserFetch, base: string = API_BASE): Promise<CrewDelivery> {
   try {
-    const slack = (await (await apiRequest(fetchFn, `${base}/slack`)).json()) as { connected?: unknown } | null;
-    if (slack?.connected === false) return clipboardDelivery();
+    if (!(await loadSlackConnection(fetchFn, base)).connected) return clipboardDelivery();
   } catch (error) {
     console.error('Could not check whether Slack is connected', error);
   }

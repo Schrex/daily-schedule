@@ -2,47 +2,36 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import logoUrl from '../assets/schreiber-logo.png';
 import {
   fullDate,
-  onTheCrewPage,
-  previousOnTheCrewPage,
+  sameData,
   sentStamp,
-  type DailySchedule,
+  type CrewPageShown,
   type Roster,
   type SentSchedule,
 } from '../schedule-rules';
 import { useOnFocus } from '../screen/useOnFocus';
 import { HUB_HOME } from '../signIn/hubConfig';
-import type { ScheduleStore } from '../storage';
-import { reloadsOnFocus } from '../storage/reloadOnFocus';
-import type { Saves } from '../storage/saveQueue';
+import { API_BASE, apiRequest, browserFetch, type Fetch } from '../storage/apiStore';
 import { CrewCards, useCrewColumns } from '../tv/CrewCards';
 
-/** What the Crew Page last read from the store. */
-interface Shown {
-  roster: Roster;
-  sent: SentSchedule | null;
-  /** The Sent Daily Schedule before it, for "Previous"; null when there is none. */
-  previous: SentSchedule | null;
-}
-
 /**
- * Reads what the Crew Page should show (see `onTheCrewPage`). The saved Daily
- * Schedules are read from the latest date back, only as far as the second one
- * that has been Sent (the one "Previous" shows). Nothing is saved or created.
+ * Asks the server what the Crew Page shows (the API's /crew-page): one
+ * request, answered with only what has been Sent. The server works it out
+ * (`crewPageShown`), so a Daily Schedule that has not been Sent never reaches
+ * this page. Rejects (an ApiError) if the server could not say.
  */
-async function read(store: ScheduleStore): Promise<Shown> {
-  const roster = (await store.loadRoster()) ?? { crewMembers: [], jobs: [] };
-  const dates = [...(await store.listScheduleDates())].sort().reverse();
-  const saved: DailySchedule[] = [];
-  for (const date of dates) {
-    const schedule = await store.loadSchedule(date);
-    if (schedule) saved.push(schedule);
-    if (previousOnTheCrewPage(roster, saved)) break;
-  }
-  return { roster, sent: onTheCrewPage(roster, saved), previous: previousOnTheCrewPage(roster, saved) };
+export async function loadCrewPage(fetchFn: Fetch = browserFetch, base: string = API_BASE): Promise<CrewPageShown> {
+  const answer = (await (await apiRequest(fetchFn, `${base}/crew-page`)).json()) as Partial<CrewPageShown> | null;
+  return {
+    jobs: Array.isArray(answer?.jobs) ? answer.jobs : [],
+    sent: answer?.sent ?? null,
+    previous: answer?.previous ?? null,
+  };
 }
 
-/** Whether two reads say the same thing (they are plain data, as stored). */
-const sameShown = (a: Shown, b: Shown): boolean => JSON.stringify(a) === JSON.stringify(b);
+/** What the Crew Page last read, and its Jobs as the Roster the cards are drawn with. */
+interface Shown extends CrewPageShown {
+  roster: Roster;
+}
 
 /**
  * The Crew Page: the newest Daily Schedule that has been Sent, exactly as the
@@ -53,7 +42,7 @@ const sameShown = (a: Shown, b: Shown): boolean => JSON.stringify(a) === JSON.st
  * whenever it comes back to the front, and goes back to the latest, so a
  * later Send shows.
  */
-export function CrewPage({ store, saves }: { store: ScheduleStore; saves: Saves }) {
+export function CrewPage({ fetchFn }: { fetchFn?: Fetch }) {
   const [shown, setShown] = useState<Shown | null>(null);
   const [failed, setFailed] = useState(false);
   /** Whether "Previous" was tapped: the one before the newest is on the page. */
@@ -63,27 +52,31 @@ export function CrewPage({ store, saves }: { store: ScheduleStore; saves: Saves 
 
   const refresh = useCallback(() => {
     const thisRead = ++reads.current;
-    read(store).then(
+    loadCrewPage(fetchFn).then(
       (next) => {
         // A read begun later has already been (or will be) shown: this one is stale.
         if (thisRead !== reads.current) return;
         setFailed(false);
         // The same as what is shown: keep it, so nothing is drawn again.
-        setShown((current) => (current !== null && sameShown(current, next) ? current : next));
+        setShown((current) =>
+          current !== null && sameData({ ...current, roster: undefined }, next)
+            ? current
+            : { ...next, roster: { crewMembers: [], jobs: next.jobs } },
+        );
       },
       (error) => {
         console.error('Could not read the Daily Schedule', error);
         if (thisRead === reads.current) setFailed(true);
       },
     );
-  }, [store]);
+  }, [fetchFn]);
 
   useEffect(refresh, [refresh]);
-  // Reload on focus, by the same rule as the board. This page never saves, so
-  // there is never a change waiting.
+  // It reads again whenever it comes back to the front. This page never
+  // saves, so there is never a change waiting.
   useOnFocus(() => {
     setSteppedBack(false);
-    if (reloadsOnFocus(saves.state())) refresh();
+    refresh();
   });
 
   const previous = shown?.previous ?? null;

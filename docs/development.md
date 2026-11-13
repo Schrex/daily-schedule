@@ -10,7 +10,7 @@
 | `src/storage/` | `apiStore` (the API), `saveQueue` (in-order saves, retries), `reloadOnFocus` (when the board loads again), `memoryStore` (tests) |
 | `src/signIn/` | The hub sign-in (Supabase, sign-in only) and who sees which page |
 | `worker/src/app.ts` | The Worker: serves the pages under `/daily-schedule/` and routes the API |
-| `worker/src/api.ts` | The API: `/me`, `/roster`, `/schedules`, `/schedules/:date`, `/slack`, `/send` |
+| `worker/src/api.ts` | The API: `/me`, `/roster`, `/schedules`, `/schedules/:date`, `/crew-page`, `/slack`, `/send` |
 | `worker/src/send.ts` | Send: posts the picture to the Slack relay with the send key, to the channel kept in the database |
 | `worker/src/signIn.ts` | Checks the hub's token (ES256, the hub's public keys) |
 | `worker/src/safetyHeaders.ts` | Browser safety headers on every answer (the CSP is report-only for now) |

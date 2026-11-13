@@ -846,6 +846,28 @@ export function previousOnTheCrewPage(roster: Roster, saved: readonly DailySched
 }
 
 /**
+ * Everything the Crew Page is given: the newest Sent Daily Schedule
+ * (`onTheCrewPage`), the one before it (`previousOnTheCrewPage`), and the
+ * Jobs of the Roster, which the cards need for a Job's name and number.
+ * Nothing that has not been Sent is in it.
+ */
+export interface CrewPageShown {
+  jobs: Job[];
+  sent: SentSchedule | null;
+  /** The Sent Daily Schedule before it, for "Previous"; null when there is none. */
+  previous: SentSchedule | null;
+}
+
+/** What the Crew Page is given, from the Roster and the saved Daily Schedules (those never Sent do not count). */
+export function crewPageShown(roster: Roster, saved: readonly DailySchedule[]): CrewPageShown {
+  return {
+    jobs: roster.jobs,
+    sent: onTheCrewPage(roster, saved),
+    previous: previousOnTheCrewPage(roster, saved),
+  };
+}
+
+/**
  * Whether two pieces of plain data say the same thing, however they were
  * built: the order of keys and keys with no value do not count. The one
  * comparison for a Daily Schedule or Roster as saved and as on a screen.
