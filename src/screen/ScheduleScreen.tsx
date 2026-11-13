@@ -23,7 +23,6 @@ import { DayNotes } from './DayNotes';
 import { headerCollapsed, sceneOnScreen } from './headerCollapse';
 import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
 import { NameLines, nameClass } from './NameChip';
-import { badgeTap, badgeWords, listShown, staysOpen } from './notPlacedBadge';
 import { PersonAdd, PersonLines } from './PersonTasks';
 import { inHand as inHandOf, isTarget as isTargetFor, nameClick, selectedCrewMember, selectionOf } from './selection';
 import { TasksCell } from './TasksCell';
@@ -111,9 +110,10 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * On a phone the Jobs get the screen: once the page of cards has scrolled the
  * header is one line (a short date, Change date and Preview, and under it
  * "Not saved" or a failed Send if there is one), open again at the top; and
- * Undo and Send are in a bar at the bottom. The Not Placed list is a badge with
- * its count (`notPlacedBadge`): a tap opens the list over the board, and it
- * steps aside while a name from it is in hand. While the keyboard is up the
+ * Undo and Send are in a bar at the bottom. The Not Placed list is a card like
+ * any other, first on the page of cards; while a name from another card is
+ * dragged, a wide place to drop it on Not Placed is at the top of the page
+ * wherever it has scrolled to. While the keyboard is up the
  * screen is only what is left above it (`useKeyboardRoom`): the cards, with
  * the field being typed in in sight, and none of the bars.
  */
@@ -194,26 +194,8 @@ export function ScheduleScreen({
       </span>
     ) : null;
 
-  // On a phone the Not Placed list is a badge, and the list opens over the
-  // board (`notPlacedBadge`). Only a narrow screen's CSS acts on it.
-  const [listOpen, setListOpen] = useState(false);
-  const notPlacedCount = view.notPlaced.length;
-  useEffect(() => setListOpen((open) => staysOpen(open, notPlacedCount)), [notPlacedCount]);
-  const badge = {
-    notPlaced: notPlacedCount,
-    open: listOpen,
-    // Picked up by a tap: a name being dragged is put back by dropping it on the badge.
-    moving: selection.mode === 'moving' && !drag.dragging ? firstName(selection.crewMember) : undefined,
-  };
-  const says = badgeWords(badge);
-  const listOverBoard = listShown(listOpen, inHand !== undefined);
-  const onBadgeTap = (event: MouseEvent) => {
-    // The badge's own tap: not also a move to the list it sits on.
-    event.stopPropagation();
-    const does = badgeTap(badge);
-    if (does === 'put-back') onDeselect();
-    else if (does !== 'nothing') setListOpen(does === 'open');
-  };
+  /** With nobody waiting for a place, a phone's Not Placed card reads "Everyone is placed". */
+  const everyonePlaced = shown.notPlaced.length === 0;
 
   /**
    * When someone is let go of while the focus was in their panel (Escape in
@@ -415,6 +397,14 @@ export function ScheduleScreen({
       </header>
 
       <div className="layout" onScroll={onPageScroll}>
+        {/* On a phone, while a name from a card is dragged: a wide place to drop it, at the
+            top of the page of cards wherever it has scrolled to. It takes no room, so nothing
+            moves when it comes and goes. */}
+        <div className={`not-placed-drop${isTarget(NOT_PLACED) ? ' not-placed-drop-shown' : ''}`} aria-hidden="true">
+          <div className="not-placed-drop-zone" {...drag.dropProps(NOT_PLACED)}>
+            {inHand ? `Drop ${firstName(inHand.crewMember)} here: not placed yet` : 'Not placed yet'}
+          </div>
+        </div>
         <div className="schedule-scroll" data-motion-area>
           <div className="board">{jobRows.map(block)}</div>
           {showNoCrewSection(openJobs, view) && (
@@ -461,7 +451,7 @@ export function ScheduleScreen({
           <aside
             className={`not-placed destination${shown.notPlaced.length === 0 ? ' not-placed-none' : ''}${
               isTarget(NOT_PLACED) ? ' block-target' : ''
-            }${listOverBoard ? ' not-placed-shown' : ''}`}
+            }`}
             aria-labelledby="not-placed-heading"
             onClick={moveSelectedTo(NOT_PLACED)}
             {...drag.dropProps(NOT_PLACED)}
@@ -469,17 +459,8 @@ export function ScheduleScreen({
             <header className="not-placed-head">
               <h2 id="not-placed-heading">Not placed yet</h2>
               <span className="not-placed-count">{shown.notPlaced.length}</span>
-              {/* On a phone, in place of the heading and the count: the badge. */}
-              <button
-                type="button"
-                className="not-placed-badge"
-                aria-expanded={says.does === null ? undefined : listOverBoard}
-                onClick={onBadgeTap}
-              >
-                <span className="badge-label">{says.label}</span>
-                {shown.notPlaced.length > 0 && <span className="not-placed-count">{shown.notPlaced.length}</span>}
-                {says.does && <span className="badge-does">{says.does}</span>}
-              </button>
+              {/* On a phone, in place of the heading and a count of none. */}
+              {everyonePlaced && <span className="all-placed">Everyone is placed</span>}
             </header>
             {shown.notPlaced.length > 0 && (
               <ul className="names">
