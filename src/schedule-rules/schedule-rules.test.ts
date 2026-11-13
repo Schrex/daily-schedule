@@ -23,6 +23,7 @@ import {
   markSent,
   onTheTv,
   onTheCrewPage,
+  previousOnTheCrewPage,
   addCrewMember,
   addJob,
   changeCrewMember,
@@ -882,6 +883,46 @@ describe('what the Crew Page shows', () => {
       sentAt: '2026-11-09T23:05:00.000Z',
       sentAgain: false,
     });
+  });
+});
+
+describe('the Previous one on the Crew Page', () => {
+  const dated = (date: string) => schedule({ date, placements: [placement('ann', onJob('tower'), 1)] });
+
+  it('is the Sent Daily Schedule before the newest, by date, whenever each was Sent', () => {
+    const monday = send(dated('2026-11-09'), '2026-11-09T23:55:00.000Z');
+    const tuesday = send(dated('2026-11-10'), '2026-11-09T23:50:00.000Z');
+    const neverSent = dated('2026-11-11');
+    const thursday = send(dated('2026-11-12'), '2026-11-09T23:05:00.000Z');
+
+    expect(previousOnTheCrewPage(roster, [thursday, monday, neverSent, tuesday])).toEqual({
+      view: tuesday.sends[0]!.sent,
+      sentAt: '2026-11-09T23:50:00.000Z',
+      sentAgain: false,
+    });
+  });
+
+  it('is nothing with only one Sent Daily Schedule, or none', () => {
+    const tuesday = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
+
+    expect(previousOnTheCrewPage(roster, [])).toBeNull();
+    expect(previousOnTheCrewPage(roster, [tuesday])).toBeNull();
+    expect(previousOnTheCrewPage(roster, [dated('2026-11-09'), tuesday, dated('2026-11-11')])).toBeNull();
+  });
+
+  it('is not an earlier Send of the newest one', () => {
+    const once = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
+    const twice = send(placeCrewMember(once, 'bob', onJob('bridge')), '2026-11-09T23:40:00.000Z');
+
+    expect(previousOnTheCrewPage(roster, [twice])).toBeNull();
+  });
+
+  it('is as it was Sent, not as it was changed since', () => {
+    const tuesday = send(dated('2026-11-10'), '2026-11-09T23:05:00.000Z');
+    const changedSince = placeCrewMember(tuesday, 'bob', onJob('bridge'));
+    const wednesday = send(dated('2026-11-11'), '2026-11-10T23:05:00.000Z');
+
+    expect(previousOnTheCrewPage(roster, [changedSince, wednesday])?.view).toEqual(tuesday.sends[0]!.sent);
   });
 });
 

@@ -12,7 +12,8 @@
   padding: 1.25rem 1.5rem 1.5rem;
 }
 
-/* --- The head: the logo, the date with when it was Sent, the way back to the Hub */
+/* --- The head: the logo, the date with when it was Sent, Previous / Latest,
+   the way back to the Hub */
 
 .crew-head {
   display: flex;
@@ -49,7 +50,8 @@
   font-size: 0.9375rem;
 }
 
-.crew-hub {
+.crew-hub,
+.crew-step {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -64,11 +66,20 @@
   text-decoration: none;
 }
 
-.crew-hub:hover {
+/* "Previous" and "Latest": a button, drawn as the way back to the Hub is. */
+.crew-step {
+  justify-content: center;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.crew-hub:hover,
+.crew-step:hover {
   background: var(--wash);
 }
 
-.crew-hub:focus-visible {
+.crew-hub:focus-visible,
+.crew-step:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
@@ -104,5 +115,14 @@
 
   .crew-date {
     font-size: 1.5rem;
+  }
+
+  /* Previous / Latest: its own row under the date, the whole width, tall
+     enough for a thumb. */
+  .crew-step {
+    order: 2;
+    flex-basis: 100%;
+    min-height: 48px;
+    font-size: 1rem;
   }
 }

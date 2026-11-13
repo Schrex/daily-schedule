@@ -836,6 +836,15 @@ export function onTheCrewPage(roster: Roster, saved: readonly DailySchedule[]): 
   return sentLatestFirst(roster, saved)[0] ?? null;
 }
 
+/**
+ * What "Previous" on the Crew Page shows: the Sent Daily Schedule before the
+ * newest one, by date (see `sentLatestFirst`). An earlier Send of the newest
+ * one is not it. Fewer than two Sent gives null: there is no further history.
+ */
+export function previousOnTheCrewPage(roster: Roster, saved: readonly DailySchedule[]): SentSchedule | null {
+  return sentLatestFirst(roster, saved)[1] ?? null;
+}
+
 /** Whether two pieces of plain data say the same thing, however they were built. */
 function sameData(a: unknown, b: unknown): boolean {
   if (a === b) return true;
