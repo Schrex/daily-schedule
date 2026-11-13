@@ -21,14 +21,13 @@ import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
 import { headerCollapsed, sceneOnScreen } from './headerCollapse';
-import { JumpBar } from './JumpBar';
-import { jumpStrip } from './jumpStrip';
 import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
 import { NameLines, nameClass } from './NameChip';
 import { badgeTap, badgeWords, listShown, staysOpen } from './notPlacedBadge';
 import { PersonAdd, PersonLines } from './PersonTasks';
 import { inHand as inHandOf, isTarget as isTargetFor, nameClick, selectedCrewMember, selectionOf } from './selection';
 import { TasksCell } from './TasksCell';
+import { useKeyboardRoom } from './useKeyboardRoom';
 
 interface ScheduleScreenProps {
   roster: Roster;
@@ -112,10 +111,11 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * On a phone the Jobs get the screen: once the page of cards has scrolled the
  * header is one line (a short date, Change date and Preview, and under it
  * "Not saved" or a failed Send if there is one), open again at the top; and
- * Undo and Send are in a bar at the bottom. Under the header is a strip of
- * names to jump to a card (`JumpBar`). The Not Placed list is a badge with
+ * Undo and Send are in a bar at the bottom. The Not Placed list is a badge with
  * its count (`notPlacedBadge`): a tap opens the list over the board, and it
- * steps aside while a name from it is in hand.
+ * steps aside while a name from it is in hand. While the keyboard is up the
+ * screen is only what is left above it (`useKeyboardRoom`): the cards, with
+ * the field being typed in in sight, and none of the bars.
  */
 export function ScheduleScreen({
   roster,
@@ -148,6 +148,10 @@ export function ScheduleScreen({
     };
     setCollapsed((was) => headerCollapsed(was, scroll));
   };
+
+  // On a phone, while the keyboard is up the screen is what is left above it.
+  const screen = useRef<HTMLElement>(null);
+  useKeyboardRoom(screen);
 
   const view = scheduleView(roster, schedule);
   const selection = selectionOf(view, selectedCrewMemberId);
@@ -252,8 +256,7 @@ export function ScheduleScreen({
   /**
    * While someone's panel is open, a click anywhere outside their chip and
    * the field under it closes it: a card, the header, the empty page. A click
-   * on another name is left to select that name instead, and a tap on the
-   * strip of names on a phone only jumps.
+   * on another name is left to select that name instead.
    */
   useEffect(() => {
     if (!panelOpen) return;
@@ -261,7 +264,7 @@ export function ScheduleScreen({
       // The path as it was when clicked: a × or a task tapped to change it may be gone by now.
       const inside = event
         .composedPath()
-        .some((at) => at instanceof Element && at.matches('.person-open, .person-panel, .name, .jump-strip'));
+        .some((at) => at instanceof Element && at.matches('.person-open, .person-panel, .name'));
       if (inside) return;
       onDeselect();
     };
@@ -391,7 +394,7 @@ export function ScheduleScreen({
   const standingRows = shown.rows.filter((row) => row.destination.kind === 'standing-row');
 
   return (
-    <main className={`screen${moving ? ' moving' : ''}`}>
+    <main ref={screen} className={`screen${moving ? ' moving' : ''}`}>
       <header ref={header} className={`toolbar${collapsed ? ' toolbar-collapsed' : ''}`}>
         <img className="toolbar-logo" src={logoUrl} alt="Schreiber Excavating" />
         <div className="toolbar-date">
@@ -410,8 +413,6 @@ export function ScheduleScreen({
         </div>
         {sendMessage}
       </header>
-
-      <JumpBar stops={jumpStrip(roster, view, openJobs)} />
 
       <div className="layout" onScroll={onPageScroll}>
         <div className="schedule-scroll" data-motion-area>

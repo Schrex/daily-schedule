@@ -32,7 +32,7 @@ const ONE_LINE = 40;
  * than the most it can be handed (the open header, less one line): then the
  * board is still scrolled afterwards, wherever it was, and the header does
  * not open again by itself. That holds at the very end of a short board too,
- * where a jump to Off Work leaves it. On a board with less room than that
+ * where a fling to Off Work leaves it. On a board with less room than that
  * the header stays open: collapsed, there would be nothing left to scroll.
  */
 export function headerCollapsed(was: boolean, { scrolled, room, header }: BoardScroll): boolean {

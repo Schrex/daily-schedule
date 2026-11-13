@@ -23,7 +23,7 @@ describe('the header on a phone', () => {
     expect(headerCollapsed(true, { scrolled: -12, room: 2000, header: 190 })).toBe(false);
   });
 
-  it('collapses on a short board scrolled to its end, as after a jump to Off Work', () => {
+  it('collapses on a short board scrolled to its end, as after a fling to Off Work', () => {
     expect(headerCollapsed(false, { scrolled: 250, room: 250, header: 190 })).toBe(true);
   });
 
