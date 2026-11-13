@@ -845,8 +845,12 @@ export function previousOnTheCrewPage(roster: Roster, saved: readonly DailySched
   return sentLatestFirst(roster, saved)[1] ?? null;
 }
 
-/** Whether two pieces of plain data say the same thing, however they were built. */
-function sameData(a: unknown, b: unknown): boolean {
+/**
+ * Whether two pieces of plain data say the same thing, however they were
+ * built: the order of keys and keys with no value do not count. The one
+ * comparison for a Daily Schedule or Roster as saved and as on a screen.
+ */
+export function sameData(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;

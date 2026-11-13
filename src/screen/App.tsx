@@ -11,7 +11,7 @@ import {
 import type { CrewDelivery } from '../send';
 import { NotSaved, useSaveState } from '../saving/NotSaved';
 import { openDate, type Opened, type ScheduleStore } from '../storage';
-import { reloadOnFocus } from '../storage/reloadOnFocus';
+import { boardReloads, type Board } from '../storage/reloadOnFocus';
 import type { Saves } from '../storage/saveQueue';
 import { ChangeDate } from './ChangeDate';
 import { PreviewPicture } from './PreviewPicture';
@@ -32,7 +32,8 @@ import { useSend } from './useSend';
  * schedule as it stands at that instant and saves the result. The screen
  * below only draws and reports clicks. `opened` is what the store held when
  * the page loaded; both are loaded again whenever the page gets the focus
- * back. `saves` says whether everything is saved yet (saveQueue.ts).
+ * back (`boardReloads`). `saves` says whether everything is saved yet
+ * (saveQueue.ts).
  */
 export function App({
   store,
@@ -46,7 +47,13 @@ export function App({
   /** How the picture of the Daily Schedule reaches the crew. */
   delivery: CrewDelivery;
 }) {
-  const [roster, setRoster] = useState(opened.roster);
+  const [roster, setRosterDrawn] = useState(opened.roster);
+  /** The Roster as it stands this instant, like `latest` below for the Daily Schedule. */
+  const latestRoster = useRef(roster);
+  const setRoster = (next: typeof roster) => {
+    latestRoster.current = next;
+    setRosterDrawn(next);
+  };
   const [schedule, setSchedule] = useState<DailySchedule>(opened.schedule);
   /**
    * The same Daily Schedule as it stands this instant. State only catches up
@@ -64,7 +71,7 @@ export function App({
   );
   const openJobsAfter = (event: OpenJobsEvent) => setOpenJobs((open) => nextOpenJobs(open, event));
   /** The open set starts again from this Daily Schedule: a new date, a successful Send, or a reload. */
-  const rebuildOpenJobs = (from: DailySchedule, withRoster = roster) =>
+  const rebuildOpenJobs = (from: DailySchedule, withRoster = latestRoster.current) =>
     openJobsAfter({ kind: 'rebuild', view: scheduleView(withRoster, from) });
 
   /** Puts a Daily Schedule on the screen. */
@@ -83,7 +90,7 @@ export function App({
     if (next !== latest.current) {
       show(next);
       // Anyone put on a Job, by whatever means, opens it; nothing closes mid-edit.
-      openJobsAfter({ kind: 'changed', view: scheduleView(roster, next) });
+      openJobsAfter({ kind: 'changed', view: scheduleView(latestRoster.current, next) });
       // The save queue tries again until it is saved; `saves` reports how it is going.
       void store.saveSchedule(next);
     }
@@ -101,7 +108,6 @@ export function App({
     if (after.date === sent.date) rebuildOpenJobs(after);
     return after;
   };
-  const send = useSend({ roster, schedule, delivery, onDelivered: recordSend });
   const saveState = useSaveState(saves);
 
   /**
@@ -122,20 +128,101 @@ export function App({
   const deselect = () => select(null);
 
   /**
-   * One edit the Scheduler made, applied by the rules to the schedule as it
-   * stands now. A move (a click-click move or a drop) also lets
-   * go of anyone selected; an edit to someone's Note or Person Tasks keeps
-   * them selected. The rules change nothing if nothing is different.
+   * One edit, applied by the rules to the schedule as it stands now, and
+   * remembered for Undo. The rules change nothing if nothing is different.
+   */
+  const applyNow = (scheduleEdit: ScheduleEdit) => {
+    const before = latest.current;
+    const after = change((current) => applyEdit(current, scheduleEdit, latestRoster.current));
+    if (after !== before) setHistory(remember(history.current, before));
+  };
+
+  /**
+   * The board as its reloads on focus see it (`boardReloads`), as it stands
+   * at the latest draw. A Daily Schedule changed on another device is shown
+   * in place of this one, for the same date: anyone selected is let go, the
+   * open Jobs start again from it, and Undo starts empty, so it never takes
+   * back somebody else's change. Quietly: nothing is said.
+   */
+  const board: Board = {
+    onScreen: () => ({ roster: latestRoster.current, schedule: latest.current }),
+    typing: typingInAField,
+    show: (found) => {
+      setRoster(found.roster);
+      if (found.schedule !== latest.current) {
+        show(found.schedule);
+        deselect();
+        setHistory(emptyHistory);
+        rebuildOpenJobs(found.schedule, found.roster);
+        return;
+      }
+      // Only the Roster changed: the board stays as it is, less anyone selected who is gone from it.
+      setSelectedCrewMemberId((selected) =>
+        found.roster.crewMembers.some((crewMember) => crewMember.id === selected) ? selected : null,
+      );
+    },
+    edit: applyNow,
+  };
+  const boardNow = useRef(board);
+  boardNow.current = board;
+  const [reloads] = useState(() =>
+    boardReloads(store, saves, {
+      onScreen: () => boardNow.current.onScreen(),
+      typing: () => boardNow.current.typing(),
+      show: (found) => boardNow.current.show(found),
+      edit: (scheduleEdit) => boardNow.current.edit(scheduleEdit),
+    }),
+  );
+
+  // Coming back to the board reloads it. A reload put off while a text field
+  // had the focus goes ahead once the field is left and everything is saved.
+  useOnFocus(reloads.focus);
+  useEffect(() => {
+    // After the focus has moved on: by then the page knows which field has it, if any.
+    const fieldLeft = () => setTimeout(reloads.again);
+    document.addEventListener('focusout', fieldLeft);
+    const stopListening = saves.subscribe(reloads.again);
+    return () => {
+      document.removeEventListener('focusout', fieldLeft);
+      stopListening();
+    };
+  }, [reloads, saves]);
+
+  /**
+   * Send draws the Daily Schedule as it stands when the picture is made, and
+   * waits for a reload on its way first (and the edits held for it), so the
+   * crew never gets the picture of an older one. Edits held meanwhile are
+   * not saved yet by then: like the button, Send does nothing until they are.
+   */
+  const send = useSend({
+    schedule,
+    delivery,
+    onDelivered: recordSend,
+    latest: board.onScreen,
+    ready: async () => {
+      await reloads.settled();
+      return saves.state() === 'saved';
+    },
+  });
+
+  /**
+   * One edit the Scheduler made. While a reload is on its way it is held, and
+   * applied on top of what the reload finds (`boardReloads`). A move (a
+   * click-click move or a drop) also lets go of anyone selected; an edit to
+   * someone's Note or Person Tasks keeps them selected.
    */
   const edit = (scheduleEdit: ScheduleEdit) => {
-    const before = latest.current;
-    const after = change((current) => applyEdit(current, scheduleEdit, roster));
-    if (after !== before) setHistory(remember(history.current, before));
+    if (!reloads.hold(scheduleEdit)) applyNow(scheduleEdit);
     if (scheduleEdit.kind === 'move') deselect();
   };
 
-  /** Undo: takes back the Scheduler's latest edit (never a Send), and lets go of anyone selected. */
+  /**
+   * Undo: takes back the Scheduler's latest edit (never a Send), and lets go
+   * of anyone selected. Not while a reload is on its way: what it would take
+   * back may be about to be replaced.
+   */
   const undoLast = () => {
+    if (reloads.reloading()) return;
     const back = undo(history.current, latest.current);
     if (!back) return;
     setHistory(back.history);
@@ -165,52 +252,13 @@ export function App({
     deselect();
     // Undo is for the day on the screen: another day starts with nothing to undo.
     setHistory(emptyHistory);
-    openDate(store, roster, date)
+    openDate(store, latestRoster.current, date)
       .then((next) => {
         show(next);
         rebuildOpenJobs(next);
       })
       .catch((error) => console.error('Could not open the Daily Schedule', error));
   };
-
-  /** True while a reload is on its way, so a second focus in that time does nothing. */
-  const reloading = useRef(false);
-
-  /**
-   * Reload on focus (reloadOnFocus.ts): coming back to the board loads the
-   * Roster and the Daily Schedule for the date on the screen again, unless a
-   * change is still being saved. Quietly: nothing is said, and nothing moves
-   * if what is saved is what is shown. A Daily Schedule changed on another
-   * device is shown in place of this one, for the same date: anyone selected
-   * is let go, the open Jobs start again from it, and Undo starts empty, so
-   * it never takes back somebody else's change.
-   */
-  useOnFocus(() => {
-    if (reloading.current) return;
-    const onScreen = { roster, schedule: latest.current };
-    reloading.current = true;
-    reloadOnFocus(store, saves, onScreen)
-      .then((found) => {
-        // The board has moved on meanwhile (a change, a Send, another date): keep it.
-        if (!found || latest.current !== onScreen.schedule) return;
-        setRoster(found.roster);
-        if (found.schedule !== onScreen.schedule) {
-          show(found.schedule);
-          deselect();
-          setHistory(emptyHistory);
-          rebuildOpenJobs(found.schedule, found.roster);
-          return;
-        }
-        // Only the Roster changed: the board stays as it is, less anyone selected who is gone from it.
-        setSelectedCrewMemberId((selected) =>
-          found.roster.crewMembers.some((crewMember) => crewMember.id === selected) ? selected : null,
-        );
-      })
-      .catch((error) => console.error('Could not reload the Daily Schedule', error))
-      .finally(() => {
-        reloading.current = false;
-      });
-  });
 
   // Undo and Send are drawn twice, and one of each shows: in the header on a
   // wide window, in the bar at the bottom on a phone (screen.css).
@@ -238,7 +286,7 @@ export function App({
       openJobs={openJobs}
       onOpenJob={(jobKey) => openJobsAfter({ kind: 'open', jobKey })}
       onPutAwayEmptyJobs={() =>
-        openJobsAfter({ kind: 'put-away', view: scheduleView(roster, latest.current) })
+        openJobsAfter({ kind: 'put-away', view: scheduleView(latestRoster.current, latest.current) })
       }
       dateNote={<LastSent send={send} />}
       toolbarButtons={
@@ -270,4 +318,9 @@ export function App({
       }
     />
   );
+}
+
+/** Whether a text field has the focus: what is being typed in it is not in the Daily Schedule yet. */
+function typingInAField(): boolean {
+  return document.activeElement?.closest('input, textarea, [contenteditable]') != null;
 }
