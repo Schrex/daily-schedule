@@ -76,9 +76,23 @@ describe('choosing how the picture reaches the crew', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('does not fall back to copying when the server could not say', async () => {
-    const { fetchFn } = network(() => Response.json({ error: 'The database is away.' }, { status: 500 }));
+  it.each([
+    ['answered with an error', () => Response.json({ error: 'The database is away.' }, { status: 500 })],
+    ['could not be reached', () => Promise.reject(new TypeError('Failed to fetch'))],
+    ['answered nonsense', () => new Response('<html>')],
+  ] as [string, () => Response | Promise<Response>][])(
+    'never fails and never copies when the server %s: a Send goes through the server and says what is wrong',
+    async (_what, slackAnswer) => {
+      const { fetchFn, calls } = network((url) =>
+        url.endsWith('/slack')
+          ? slackAnswer()
+          : Response.json({ error: 'Slack is not connected on the Daily Schedule\'s server yet.' }, { status: 503 }),
+      );
+      const delivery = await crewDelivery(fetchFn);
 
-    await expect(crewDelivery(fetchFn)).rejects.toThrow('The database is away.');
-  });
+      expect(delivery.nextStep).toBe('');
+      await expect(delivery.deliver(picture, 'x')).rejects.toThrow('Slack is not connected');
+      expect(calls.map(([url]) => url)).toEqual(['/daily-schedule/api/slack', '/daily-schedule/api/send']);
+    },
+  );
 });

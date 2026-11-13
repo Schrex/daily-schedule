@@ -2,8 +2,8 @@ import type { Role } from '../../shared';
 import type { Env } from './app';
 import type { D1Database } from './d1';
 import { refuse } from './refuse';
-import { sendToCrew, slackIsConnected } from './send';
-import { isDailySchedule, isDate, isRoster } from './shapes';
+import { saveSlackChannel, sendToCrew, slackChannel, slackChannelFrom, slackIsConnected } from './send';
+import { isDailySchedule, isDate, isRecord, isRoster } from './shapes';
 import { whoIsCalling } from './signIn';
 
 /**
@@ -17,7 +17,10 @@ import { whoIsCalling } from './signIn';
  *   GET /schedules          the saved dates, earliest first
  *   GET /schedules/:date    that Daily Schedule, or null
  *   PUT /schedules/:date    saves it (its date must be :date)  editors
- *   GET /slack              { connected }: whether Send reaches Slack
+ *   GET /slack              { connected, channel }: whether Send reaches Slack,
+ *                           and the Slack channel ID it posts to ('' is the
+ *                           relay's own channel)          editors and viewers
+ *   PUT /slack              { channel }: changes the channel for everyone  editors
  *   POST /send              posts the picture (the body, a PNG; its title
  *                           URI-encoded in X-Title) to Slack (send.ts)  editors
  *
@@ -47,8 +50,22 @@ export async function handleApi(
 
   if (path === 'me' && reading) return Response.json({ email, role });
 
-  // Only whether it is connected: the relay's address and the send key stay here.
-  if (path === 'slack' && reading) return Response.json({ connected: slackIsConnected(env) });
+  if (path === 'slack') {
+    // Only whether it is connected and the channel: the relay's address and the send key stay here.
+    if (reading) {
+      return Response.json({ connected: slackIsConnected(env), channel: await slackChannel(env.DB) });
+    }
+    const change = await bodyOf(request);
+    const channel = isRecord(change) ? slackChannelFrom(change.channel) : null;
+    if (channel === null) {
+      return refuse(
+        400,
+        'A channel ID looks like C0CHSMJFFPS (in Slack: the channel name, then the foot of About). Leave it empty to use the relay\'s own channel.',
+      );
+    }
+    await saveSlackChannel(env.DB, channel, email);
+    return new Response(null, { status: 204 });
+  }
   if (sending) return sendToCrew(request, env, fetchImpl);
 
   if (path === 'roster') {

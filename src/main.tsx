@@ -24,8 +24,9 @@ const today = scheduleDateOf(new Date());
 // anything); a Viewer is sent to the Crew Page.
 //
 // Send goes through the server to the Slack channel, the same on every
-// device; only when Slack is not connected on the server is the picture
-// copied for the Scheduler to paste (send/serverDelivery.ts).
+// device; only when the server says Slack is not connected is the picture
+// copied for the Scheduler to paste. Choosing between them never fails, so
+// it never stops the board opening (send/serverDelivery.ts).
 openPage('board', 'Could not open the Daily Schedule', () =>
   Promise.all([
     openStore(store, { roster: seedRoster, schedule: seedSchedule }, today),

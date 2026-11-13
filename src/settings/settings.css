@@ -318,27 +318,9 @@
   color: var(--paper);
 }
 
-/* --- A section folded away until "expand" (Slack) ------------------------ */
+/* --- Slack: whether it is connected, said plainly ----------------------- */
 
-.settings-fold-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.settings-fold-head h2 {
-  margin: 0;
-}
-
-.settings-fold-button {
-  min-height: 2.6rem;
-  padding: var(--space-1) var(--space-4);
-  font-size: 1rem;
-}
-
-.settings-fold-body {
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: var(--hairline);
+.settings-slack-status {
+  margin: 0 0 var(--space-2);
+  font-weight: 700;
 }
