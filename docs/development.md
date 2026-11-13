@@ -7,7 +7,7 @@
 | `index.html`, `settings.html`, `tv.html` | The three pages: the board, Settings, the Office TV |
 | `public/404.html` | "Page not found", for any other address under `/daily-schedule/` |
 | `src/` | The pages (React). The rules of the schedule are in `src/schedule-rules/` |
-| `src/storage/` | `apiStore` (the API), `saveQueue` (in-order saves, retries), `memoryStore` (tests) |
+| `src/storage/` | `apiStore` (the API), `saveQueue` (in-order saves, retries), `reloadOnFocus` (when the board loads again), `memoryStore` (tests) |
 | `src/signIn/` | The hub sign-in (Supabase, sign-in only) and who sees which page |
 | `worker/src/app.ts` | The Worker: serves the pages under `/daily-schedule/` and routes the API |
 | `worker/src/api.ts` | The API: `/me`, `/roster`, `/schedules`, `/schedules/:date` |
