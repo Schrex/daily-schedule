@@ -2,10 +2,10 @@
    puts on the page (data-crew-member, data-dragging, data-drop, data-drop-over),
    not on the screen's own class names. Colors are the palette's. */
 
-/* A name can be picked up with the mouse. Stops the browser's own drag of the
-   text. A finger does not drag names (it taps one, then where they go): a
-   finger that moves is scrolling the page, also when it starts on a name, and
-   two quick taps are two taps, not a zoom. */
+/* A name can be picked up with the mouse, or by holding a finger on it. Stops
+   the browser's own drag of the text, and the phone's own long-press menu. A
+   finger that moves straight away is scrolling the page, also when it starts
+   on a name, and two quick taps are two taps, not a zoom. */
 [data-crew-member] {
   user-select: none;
   -webkit-user-select: none;

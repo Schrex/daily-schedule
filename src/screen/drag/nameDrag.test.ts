@@ -3,6 +3,7 @@ import {
   cancel,
   DRAG_THRESHOLD,
   idle,
+  lift,
   moveTo,
   press,
   release,
@@ -66,6 +67,19 @@ describe('dragging a name', () => {
     expect(cancelled).toBe(idle);
     expect(moveTo(cancelled, at(300, 300), 'job:2')).toBe(idle);
     expect(release(cancelled)).toBeNull();
+  });
+});
+
+describe('lifting a name held under a finger', () => {
+  it('is a drag at once, without the pointer having moved, over the destination the name is in', () => {
+    const lifted = lift(press('bob', at(100, 100)), 'job:1', 'ann');
+
+    expect(lifted).toEqual({ kind: 'dragging', crewMemberId: 'bob', over: 'job:1', before: 'ann' });
+    expect(release(lifted)).toEqual({ crewMemberId: 'bob', over: 'job:1', before: 'ann' });
+  });
+
+  it('lifts nothing when no name is pressed', () => {
+    expect(lift(idle, 'job:1', null)).toBe(idle);
   });
 });
 
