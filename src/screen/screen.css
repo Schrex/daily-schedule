@@ -1244,88 +1244,80 @@ body[data-name-dragging] .destination[data-drop-over] {
   }
 }
 
-/* --- A phone: the Not Placed list is a badge -------------------------------
-   One line at the top of the page of cards, with how many are Not Placed. A
-   tap opens the list over the board; it steps aside while a name from it is
-   in hand, and the badge is still the place to drop a name or put it back
-   (notPlacedBadge.ts). Off a phone the list is always there, with no badge. */
+/* --- A phone: Not Placed is a card like any other --------------------------
+   First on the page of cards and scrolling with them, its names one to a
+   line as on a Job. With nobody waiting it is one line: "Everyone is placed".
 
-.not-placed-badge {
+   While a name from another card is dragged, a wide place to drop it on Not
+   Placed is at the top of the page wherever it has scrolled to. It lies over
+   the cards and takes no room, so nothing moves under the finger when it
+   comes and goes. Off a phone the list is always in sight and needs neither. */
+
+.all-placed,
+.not-placed-drop {
   display: none;
 }
 
 @media (max-width: 700px) {
   .side > .not-placed {
-    position: sticky;
-    gap: 0;
-    min-height: 0;
+    position: relative;
     max-height: none;
-    padding: 0;
     overflow: visible;
+    box-shadow: none;
   }
 
-  .not-placed-head > h2,
-  .not-placed-head > .not-placed-count {
+  .not-placed .names {
+    grid-template-columns: 1fr;
+  }
+
+  .not-placed-none .not-placed-head > h2,
+  .not-placed-none .not-placed-head > .not-placed-count {
     display: none;
   }
 
-  .not-placed-badge {
-    flex: 1 1 auto;
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border: 0;
-    border-radius: inherit;
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .badge-label {
-    min-width: 0;
-    overflow: hidden;
-    font-weight: var(--weight-strong);
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  /* What a tap does, at the right: Show, Close, Put back. */
-  .badge-does {
-    flex: 0 0 auto;
-    margin-left: auto;
-    color: var(--select);
-    font-size: 0.875rem;
+  .all-placed {
+    display: block;
     font-weight: var(--weight-strong);
   }
 
-  /* The list, under the badge and over the board. Closed or stepped aside it
-     is out of sight but its names keep their places, so a name put on a Job
-     is seen flying from where it was in the list. */
-  .not-placed .names {
+  /* No height of its own, and the gap after it taken back. */
+  .not-placed-drop {
+    order: -1;
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    display: block;
+    height: 0;
+    margin-bottom: calc(-1 * var(--space-3));
+    visibility: hidden;
+  }
+
+  .not-placed-drop-shown {
+    visibility: visible;
+  }
+
+  .not-placed-drop-zone {
     position: absolute;
-    top: calc(100% + var(--space-2));
+    top: 0;
     right: 0;
     left: 0;
-    max-height: 45vh;
-    max-height: 45dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 5rem;
     padding: var(--space-3);
-    border: var(--hairline);
+    border: 2px dashed var(--accent-strong);
     border-radius: var(--radius-card);
     background: var(--paper);
     box-shadow: var(--elevation-3);
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    font-weight: var(--weight-strong);
+    text-align: center;
   }
 
-  .not-placed:not(.not-placed-shown) .names {
-    max-height: 0;
-    overflow: hidden;
-    visibility: hidden;
+  .not-placed-drop-zone[data-drop-over] {
+    border-style: solid;
+    border-color: var(--select);
+    background: var(--select-wash);
   }
 }
 
@@ -1335,8 +1327,8 @@ body[data-name-dragging] .destination[data-drop-over] {
    the bottom bar short of the bottom.
 
    While the keyboard is up (useKeyboardRoom.ts) the screen is what is left of
-   the window above it, and all of that goes to the cards: the header,
-   the Not Placed badge and the bottom bar are away until the
+   the window above it, and all of that goes to the cards: the header
+   and the bottom bar are away until the
    keyboard is. */
 
 @media (max-width: 700px) {
@@ -1353,8 +1345,7 @@ body[data-name-dragging] .destination[data-drop-over] {
   }
 
   .screen[data-keyboard='up'] > .toolbar,
-  .screen[data-keyboard='up'] > .bottom-bar,
-  .screen[data-keyboard='up'] .side > .not-placed {
+  .screen[data-keyboard='up'] > .bottom-bar {
     display: none;
   }
 }
