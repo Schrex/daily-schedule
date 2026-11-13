@@ -1219,6 +1219,139 @@ body[data-name-dragging] .destination[data-drop-over] {
   }
 }
 
+/* --- A phone: a strip of names to jump to a card ---------------------------
+   Under the header: every open Job, then Shop, Trucking and Off Work
+   (jumpStrip.ts). It is swiped sideways by itself, from one edge of the
+   screen to the other; the page never moves sideways. Off a phone it is not
+   shown. */
+
+.jump-strip {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .jump-strip {
+    flex: 0 0 auto;
+    display: flex;
+    gap: var(--space-2);
+    min-width: 0;
+    /* Room above and under the names for the ring the keyboard draws. */
+    margin: -6px calc(-1 * var(--gutter));
+    padding: 6px max(var(--gutter), env(safe-area-inset-right, 0px)) 6px
+      max(var(--gutter), env(safe-area-inset-left, 0px));
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .jump-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* A name keeps one line and its own width, so the strip grows sideways;
+     a very long one is cut short. */
+  .jump-stop {
+    flex: 0 0 auto;
+    display: block;
+    max-width: 14rem;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-pill);
+    font-size: 0.9375rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* --- A phone: the Not Placed list is a badge -------------------------------
+   One line at the top of the page of cards, with how many are Not Placed. A
+   tap opens the list over the board; it steps aside while a name from it is
+   in hand, and the badge is still the place to drop a name or put it back
+   (notPlacedBadge.ts). Off a phone the list is always there, with no badge. */
+
+.not-placed-badge {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .side > .not-placed {
+    position: sticky;
+    gap: 0;
+    min-height: 0;
+    max-height: none;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .not-placed-head > h2,
+  .not-placed-head > .not-placed-count {
+    display: none;
+  }
+
+  .not-placed-badge {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: inherit;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .badge-label {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: var(--weight-strong);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* What a tap does, at the right: Show, Close, Put back. */
+  .badge-does {
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--select);
+    font-size: 0.875rem;
+    font-weight: var(--weight-strong);
+  }
+
+  /* The list, under the badge and over the board. Closed or stepped aside it
+     is out of sight but its names keep their places, so a name put on a Job
+     is seen flying from where it was in the list. */
+  .not-placed .names {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: 0;
+    left: 0;
+    max-height: 45vh;
+    max-height: 45dvh;
+    padding: var(--space-3);
+    border: var(--hairline);
+    border-radius: var(--radius-card);
+    background: var(--paper);
+    box-shadow: var(--elevation-3);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .not-placed:not(.not-placed-shown) .names {
+    max-height: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+}
+
 /* A phone's notch or rounded corners (the page reaches under them, so the
    bottom bar can keep clear of the home bar): the gutters keep clear too. */
 @media (pointer: coarse) {
