@@ -1267,6 +1267,91 @@ body[data-name-dragging] .destination[data-drop-over] {
   }
 }
 
+/* --- A phone: the Not Placed list is a badge -------------------------------
+   One line at the top of the page of cards, with how many are Not Placed. A
+   tap opens the list over the board; it steps aside while a name from it is
+   in hand, and the badge is still the place to drop a name or put it back
+   (notPlacedBadge.ts). Off a phone the list is always there, with no badge. */
+
+.not-placed-badge {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .side > .not-placed {
+    position: sticky;
+    gap: 0;
+    min-height: 0;
+    max-height: none;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .not-placed-head > h2,
+  .not-placed-head > .not-placed-count {
+    display: none;
+  }
+
+  .not-placed-badge {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: inherit;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .badge-label {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: var(--weight-strong);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* What a tap does, at the right: Show, Close, Put back. */
+  .badge-does {
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--select);
+    font-size: 0.875rem;
+    font-weight: var(--weight-strong);
+  }
+
+  /* The list, under the badge and over the board. Closed or stepped aside it
+     is out of sight but its names keep their places, so a name put on a Job
+     is seen flying from where it was in the list. */
+  .not-placed .names {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: 0;
+    left: 0;
+    max-height: 45vh;
+    max-height: 45dvh;
+    padding: var(--space-3);
+    border: var(--hairline);
+    border-radius: var(--radius-card);
+    background: var(--paper);
+    box-shadow: var(--elevation-3);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .not-placed:not(.not-placed-shown) .names {
+    max-height: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+}
+
 /* A phone's notch or rounded corners (the page reaches under them, so the
    bottom bar can keep clear of the home bar): the gutters keep clear too. */
 @media (pointer: coarse) {
