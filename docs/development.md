@@ -46,6 +46,14 @@ Then run one of these:
 - On first open of an empty database, an editor gets the starter Roster and Daily Schedule from
   `src/seed/`.
 
+**After pulling a new migration**, apply it to the local database again, or the API fails on what
+it adds. Without `migrations/0002_settings.sql`, for one, `/api/slack` answers 500 (the board's
+Send and the Slack section of Settings ask it):
+
+```bash
+npx wrangler d1 migrations apply daily-schedule --local
+```
+
 **Send, locally:** a local run has no send key, so Slack is not connected and **Send to crew**
 copies the picture. That is what you want: `SLACK_RELAY_URL` in `wrangler.jsonc` is the real relay,
 which posts to the real crew channel. To try Send through the server, deploy a relay of your own
