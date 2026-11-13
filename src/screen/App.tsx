@@ -11,6 +11,7 @@ import {
 import type { CrewDelivery } from '../send';
 import { NotSaved, useSaveState } from '../saving/NotSaved';
 import { openDate, type Opened, type ScheduleStore } from '../storage';
+import { reloadOnFocus } from '../storage/reloadOnFocus';
 import type { Saves } from '../storage/saveQueue';
 import { ChangeDate } from './ChangeDate';
 import { PreviewPicture } from './PreviewPicture';
@@ -21,6 +22,7 @@ import { TvLink } from './TvLink';
 import { ScheduleScreen } from './ScheduleScreen';
 import { SendButton, SendFailure, LastSent } from './SendBar';
 import { emptyHistory, remember, undo, type UndoHistory } from './undoHistory';
+import { useOnFocus } from './useOnFocus';
 import { useSend } from './useSend';
 
 /**
@@ -29,7 +31,8 @@ import { useSend } from './useSend';
  * change, a Send being recorded) goes through `change`, which works on the
  * schedule as it stands at that instant and saves the result. The screen
  * below only draws and reports clicks. `opened` is what the store held when
- * the page loaded. `saves` says whether everything is saved yet (saveQueue.ts).
+ * the page loaded; both are loaded again whenever the page gets the focus
+ * back. `saves` says whether everything is saved yet (saveQueue.ts).
  */
 export function App({
   store,
@@ -43,7 +46,7 @@ export function App({
   /** How the picture of the Daily Schedule reaches the crew. */
   delivery: CrewDelivery;
 }) {
-  const roster = opened.roster;
+  const [roster, setRoster] = useState(opened.roster);
   const [schedule, setSchedule] = useState<DailySchedule>(opened.schedule);
   /**
    * The same Daily Schedule as it stands this instant. State only catches up
@@ -60,9 +63,9 @@ export function App({
     nextOpenJobs(new Set(), { kind: 'rebuild', view: scheduleView(roster, opened.schedule) }),
   );
   const openJobsAfter = (event: OpenJobsEvent) => setOpenJobs((open) => nextOpenJobs(open, event));
-  /** The open set starts again from this Daily Schedule: a new date, or a successful Send. */
-  const rebuildOpenJobs = (from: DailySchedule) =>
-    openJobsAfter({ kind: 'rebuild', view: scheduleView(roster, from) });
+  /** The open set starts again from this Daily Schedule: a new date, a successful Send, or a reload. */
+  const rebuildOpenJobs = (from: DailySchedule, withRoster = roster) =>
+    openJobsAfter({ kind: 'rebuild', view: scheduleView(withRoster, from) });
 
   /** Puts a Daily Schedule on the screen. */
   const show = (next: DailySchedule) => {
@@ -169,6 +172,45 @@ export function App({
       })
       .catch((error) => console.error('Could not open the Daily Schedule', error));
   };
+
+  /** True while a reload is on its way, so a second focus in that time does nothing. */
+  const reloading = useRef(false);
+
+  /**
+   * Reload on focus (reloadOnFocus.ts): coming back to the board loads the
+   * Roster and the Daily Schedule for the date on the screen again, unless a
+   * change is still being saved. Quietly: nothing is said, and nothing moves
+   * if what is saved is what is shown. A Daily Schedule changed on another
+   * device is shown in place of this one, for the same date: anyone selected
+   * is let go, the open Jobs start again from it, and Undo starts empty, so
+   * it never takes back somebody else's change.
+   */
+  useOnFocus(() => {
+    if (reloading.current) return;
+    const onScreen = { roster, schedule: latest.current };
+    reloading.current = true;
+    reloadOnFocus(store, saves, onScreen)
+      .then((found) => {
+        // The board has moved on meanwhile (a change, a Send, another date): keep it.
+        if (!found || latest.current !== onScreen.schedule) return;
+        setRoster(found.roster);
+        if (found.schedule !== onScreen.schedule) {
+          show(found.schedule);
+          deselect();
+          setHistory(emptyHistory);
+          rebuildOpenJobs(found.schedule, found.roster);
+          return;
+        }
+        // Only the Roster changed: the board stays as it is, less anyone selected who is gone from it.
+        setSelectedCrewMemberId((selected) =>
+          found.roster.crewMembers.some((crewMember) => crewMember.id === selected) ? selected : null,
+        );
+      })
+      .catch((error) => console.error('Could not reload the Daily Schedule', error))
+      .finally(() => {
+        reloading.current = false;
+      });
+  });
 
   // Undo and Send are drawn twice, and one of each shows: in the header on a
   // wide window, in the bar at the bottom on a phone (screen.css).
