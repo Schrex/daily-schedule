@@ -1,8 +1,9 @@
 /**
- * How to reach Slack: the Slack relay's address, the send key it asks for, and
- * the channel the picture goes to. Kept in browser storage on the Scheduler's
- * computer, set on the settings page. The Slack token itself is never here:
- * it stays in the relay.
+ * The Slack fields on the Settings page: the Slack relay's address, the send
+ * key and the channel, kept in this browser's storage. Send no longer reads
+ * them: it goes through the server (serverDelivery.ts), which has its own
+ * send key. They are still shown in Settings until the channel moves to the
+ * database.
  */
 export interface SlackSettings {
   /** The relay's address, e.g. https://daily-schedule-slack.example.workers.dev */
