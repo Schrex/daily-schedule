@@ -20,6 +20,8 @@ import { MoveNames } from './motion/MoveNames';
 import { createNameMotion } from './motion/nameMotion';
 import { DayNotes } from './DayNotes';
 import { collapsedDate, headerCollapsed } from './headerCollapse';
+import { JumpBar } from './JumpBar';
+import { jumpStrip } from './jumpStrip';
 import { foldedHeading, showNoCrewSection, showPutAway, type OpenJobs } from './openJobs';
 import { NameLines, nameClass } from './NameChip';
 import { PersonAdd, PersonLines } from './PersonTasks';
@@ -108,7 +110,8 @@ const firstName = (crewMember: CrewMember): string => crewMember.name.split(' ')
  * On a phone the Jobs get the screen: once the page of cards has scrolled the
  * header is one line (a short date, Change date and Preview, and under it
  * "Not saved" or a failed Send if there is one), open again at the top; and
- * Undo and Send are in a bar at the bottom.
+ * Undo and Send are in a bar at the bottom. Under the header is a strip of
+ * names to jump to a card (`JumpBar`).
  */
 export function ScheduleScreen({
   roster,
@@ -219,7 +222,8 @@ export function ScheduleScreen({
   /**
    * While someone's panel is open, a click anywhere outside their chip and
    * the field under it closes it: a card, the header, the empty page. A click
-   * on another name is left to select that name instead.
+   * on another name is left to select that name instead, and a tap on the
+   * strip of names on a phone only jumps.
    */
   useEffect(() => {
     if (!panelOpen) return;
@@ -227,7 +231,7 @@ export function ScheduleScreen({
       // The path as it was when clicked: a × or a task tapped to change it may be gone by now.
       const inside = event
         .composedPath()
-        .some((at) => at instanceof Element && at.matches('.person-open, .person-panel, .name'));
+        .some((at) => at instanceof Element && at.matches('.person-open, .person-panel, .name, .jump-strip'));
       if (inside) return;
       onDeselect();
     };
@@ -376,6 +380,8 @@ export function ScheduleScreen({
         </div>
         {sendMessage}
       </header>
+
+      <JumpBar stops={jumpStrip(roster, view, openJobs)} />
 
       <div className="layout" onScroll={onPageScroll}>
         <div className="schedule-scroll" data-motion-area>

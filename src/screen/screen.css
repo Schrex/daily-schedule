@@ -1219,6 +1219,54 @@ body[data-name-dragging] .destination[data-drop-over] {
   }
 }
 
+/* --- A phone: a strip of names to jump to a card ---------------------------
+   Under the header: every open Job, then Shop, Trucking and Off Work
+   (jumpStrip.ts). It is swiped sideways by itself, from one edge of the
+   screen to the other; the page never moves sideways. Off a phone it is not
+   shown. */
+
+.jump-strip {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .jump-strip {
+    flex: 0 0 auto;
+    display: flex;
+    gap: var(--space-2);
+    min-width: 0;
+    /* Room above and under the names for the ring the keyboard draws. */
+    margin: -6px calc(-1 * var(--gutter));
+    padding: 6px max(var(--gutter), env(safe-area-inset-right, 0px)) 6px
+      max(var(--gutter), env(safe-area-inset-left, 0px));
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .jump-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* A name keeps one line and its own width, so the strip grows sideways;
+     a very long one is cut short. */
+  .jump-stop {
+    flex: 0 0 auto;
+    display: block;
+    max-width: 14rem;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-pill);
+    font-size: 0.9375rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 /* A phone's notch or rounded corners (the page reaches under them, so the
    bottom bar can keep clear of the home bar): the gutters keep clear too. */
 @media (pointer: coarse) {
