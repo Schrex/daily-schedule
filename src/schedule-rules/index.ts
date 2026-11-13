@@ -666,6 +666,17 @@ export function fullDate(date: ScheduleDate): string {
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
+/** The date short enough for one line beside buttons, as a phone's collapsed header shows it: "Fri, Nov 13". */
+export function shortDate(date: ScheduleDate): string {
+  const [year = 0, month = 1, day = 1] = date.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
 /**
  * The line the crew picture is sent with, as the Slack message reads and a
  * phone's notification shows it: "Schedule for Thursday, Nov 12", or

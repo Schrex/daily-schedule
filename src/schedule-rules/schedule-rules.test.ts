@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dailyScheduleFor,
   fullDate,
+  shortDate,
   sendTitle,
   sentStamp,
   nextWorkingDay,
@@ -698,6 +699,14 @@ describe('the full date', () => {
   it('spells out the weekday, month, day and year', () => {
     expect(fullDate('2026-11-10')).toBe('Tuesday, November 10, 2026');
     expect(fullDate('2027-01-01')).toBe('Friday, January 1, 2027');
+  });
+});
+
+describe('the short date', () => {
+  it('is the weekday, month and day, short enough for one line beside the buttons', () => {
+    expect(shortDate('2026-11-13')).toBe('Fri, Nov 13');
+    expect(shortDate('2026-11-16')).toBe('Mon, Nov 16');
+    expect(shortDate('2027-01-01')).toBe('Fri, Jan 1');
   });
 });
 

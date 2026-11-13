@@ -1147,13 +1147,22 @@ body[data-name-dragging] .destination[data-drop-over] {
    line: a short date, Change date and Preview. "Not saved" and a failed Send
    keep their red strip under that line. Off a phone none of this shows. */
 
-/* Undo and Send in the header: its wrapper is not a box, so they sit among
-   the other buttons as if it were not there. */
+/* Undo and Send are in the page twice, and one of each is there at any
+   width: the other's wrapper is `display: none`, so it is not drawn, not
+   reached by the keyboard and not read out. (`visibility` says the same to
+   anything that asks a button itself and not its wrapper.)
+
+   In the header: the wrapper is not a box, so they sit among the other
+   buttons as if it were not there. */
 .header-only {
   display: contents;
 }
 
-.bottom-bar,
+.bottom-bar {
+  display: none;
+  visibility: hidden;
+}
+
 .date-short {
   display: none;
 }
@@ -1161,6 +1170,7 @@ body[data-name-dragging] .destination[data-drop-over] {
 @media (max-width: 700px) {
   .header-only {
     display: none;
+    visibility: hidden;
   }
 
   /* The last thing on the screen, under the scrolling page of cards and never
@@ -1171,6 +1181,7 @@ body[data-name-dragging] .destination[data-drop-over] {
     bottom: 0;
     z-index: 3;
     display: flex;
+    visibility: visible;
     gap: var(--space-2);
     margin: 0 calc(-1 * var(--gutter));
     padding: var(--space-2) max(var(--gutter), env(safe-area-inset-right, 0px))
@@ -1203,26 +1214,33 @@ body[data-name-dragging] .destination[data-drop-over] {
     display: inline;
   }
 
-  /* The date takes what the two buttons leave, and is cut short before it
-     pushes them to a second line. */
+  /* The short date is always whole ("Mon, Nov 16"), a little smaller than in
+     the open header. The two buttons take what it leaves on the one line, a
+     little narrower than usual; on the narrowest phone it is their words
+     that are cut, never the date. */
   .toolbar-collapsed .toolbar-date {
-    flex: 1 1 0;
+    flex: 0 0 auto;
   }
 
   .toolbar-collapsed .date-heading {
-    overflow: hidden;
+    font-size: 1.125rem;
     white-space: nowrap;
-    text-overflow: ellipsis;
   }
 
   .toolbar-collapsed .toolbar-actions {
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
     flex-wrap: nowrap;
   }
 
   .toolbar-collapsed .toolbar-actions .toolbar-button {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
     min-height: var(--touch-target);
+    padding: 0 var(--space-2);
+    font-size: 0.9375rem;
+    white-space: nowrap;
+    overflow: hidden;
   }
 }
 
