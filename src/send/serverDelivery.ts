@@ -33,11 +33,18 @@ export function serverDelivery(fetchFn: Fetch = browserFetch, base: string = API
 }
 
 /**
- * How the picture reaches the crew from this page: through the server when
- * the server says Slack is connected there, and copied for pasting only when
- * it says it is not. Rejects (an ApiError) if the server could not say.
+ * How the picture reaches the crew from this page: through the server, and
+ * copied for pasting only when the server says Slack is not connected there.
+ * Never rejects: if the server could not say, it is the server delivery, so
+ * that a Send says what is wrong in plain words. A failed check never stops
+ * the board opening, and never quietly copies.
  */
 export async function crewDelivery(fetchFn: Fetch = browserFetch, base: string = API_BASE): Promise<CrewDelivery> {
-  const slack = (await (await apiRequest(fetchFn, `${base}/slack`)).json()) as { connected?: boolean };
-  return slack.connected === true ? serverDelivery(fetchFn, base) : clipboardDelivery();
+  try {
+    const slack = (await (await apiRequest(fetchFn, `${base}/slack`)).json()) as { connected?: unknown } | null;
+    if (slack?.connected === false) return clipboardDelivery();
+  } catch (error) {
+    console.error('Could not check whether Slack is connected', error);
+  }
+  return serverDelivery(fetchFn, base);
 }

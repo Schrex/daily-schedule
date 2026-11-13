@@ -38,6 +38,13 @@ const call = (
     { fetch: relay.fetch },
   );
 
+/** A change of the Slack channel, as Settings asks for it. */
+const channel = (to: unknown): RequestInit => ({
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ channel: to }),
+});
+
 const send = (body: BodyInit | null = png, title = 'Schedule for Thursday, Nov 12'): RequestInit => ({
   method: 'POST',
   headers: { 'Content-Type': 'image/png', 'X-Title': encodeURIComponent(title) },
@@ -57,9 +64,21 @@ describe('the API: Send', () => {
     expect(init.method).toBe('POST');
     expect(headers.get('Authorization')).toBe('Bearer test-send-key');
     expect(decodeURIComponent(headers.get('X-Title')!)).toBe('Schedule for Thursday, Nov 12');
-    // No channel is named: the picture goes to the relay's own channel.
+    // No channel is saved, so none is named: the picture goes to the relay's own channel.
     expect(headers.has('X-Channel')).toBe(false);
     expect(new Uint8Array(init.body as ArrayBuffer)).toEqual(png);
+  });
+
+  it('posts to the channel saved in Settings, and to the relay\'s own again once it is emptied', async () => {
+    const relay = fakeRelay();
+    await call(EDITOR, '/slack', channel('C0TESTCHANNEL'), relay);
+
+    expect((await call(EDITOR, '/send', send(), relay)).status).toBe(204);
+    expect(new Headers(relay.calls[0]!.init.headers).get('X-Channel')).toBe('C0TESTCHANNEL');
+
+    await call(EDITOR, '/slack', channel(''), relay);
+    expect((await call(EDITOR, '/send', send(), relay)).status).toBe(204);
+    expect(new Headers(relay.calls[1]!.init.headers).has('X-Channel')).toBe(false);
   });
 
   it('answers 401 signed out and 403 to a Viewer, asking the relay nothing', async () => {
@@ -130,7 +149,7 @@ describe('the API: Send', () => {
     expect(response.ok).toBe(false);
     expect(await response.json()).toEqual({ error: expect.stringMatching(/not connected/) });
     expect(relay.calls).toEqual([]);
-    expect(await (await call(EDITOR, '/slack', undefined, relay, vars)).json()).toEqual({ connected: false });
+    expect(await (await call(EDITOR, '/slack', undefined, relay, vars)).json()).toEqual({ connected: false, channel: '' });
   });
 });
 
@@ -141,7 +160,7 @@ describe('the API: whether Slack is connected', () => {
     for (const email of [EDITOR, VIEWER]) {
       const response = await call(email, '/slack', undefined, relay);
       const text = await response.text();
-      expect(JSON.parse(text)).toEqual({ connected: true });
+      expect(JSON.parse(text)).toEqual({ connected: true, channel: '' });
       expect(text).not.toContain('test-send-key');
       expect(text).not.toContain('relay.example');
     }
@@ -155,5 +174,57 @@ describe('the API: whether Slack is connected', () => {
 
     expect(text).not.toContain('test-send-key');
     expect(text).not.toContain('relay.example');
+  });
+});
+
+describe('the API: the Slack channel', () => {
+  it('is empty until an Editor sets one, and is then the same for everyone on the list', async () => {
+    const relay = fakeRelay();
+    expect(await (await call(EDITOR, '/slack', undefined, relay)).json()).toEqual({ connected: true, channel: '' });
+
+    expect((await call(EDITOR, '/slack', channel('C0TESTCHANNEL'), relay)).status).toBe(204);
+
+    for (const email of [EDITOR, VIEWER]) {
+      expect(await (await call(email, '/slack', undefined, relay)).json()).toEqual({
+        connected: true,
+        channel: 'C0TESTCHANNEL',
+      });
+    }
+    expect(relay.calls).toEqual([]);
+  });
+
+  it('is kept tidy: without stray spaces, in capitals; empty goes back to the relay\'s own channel', async () => {
+    const relay = fakeRelay();
+    await call(EDITOR, '/slack', channel(' c0testchannel '), relay);
+    expect(await (await call(VIEWER, '/slack', undefined, relay)).json()).toMatchObject({ channel: 'C0TESTCHANNEL' });
+
+    expect((await call(EDITOR, '/slack', channel(''), relay)).status).toBe(204);
+    expect(await (await call(VIEWER, '/slack', undefined, relay)).json()).toMatchObject({ channel: '' });
+  });
+
+  it('answers 401 signed out and 403 to a Viewer, keeping the saved channel', async () => {
+    const relay = fakeRelay();
+    await call(EDITOR, '/slack', channel('C0TESTCHANNEL'), relay);
+
+    expect((await call(undefined, '/slack', channel('C0OTHERCHANNEL'), relay)).status).toBe(401);
+    const refused = await call(VIEWER, '/slack', channel('C0OTHERCHANNEL'), relay);
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toEqual({ error: expect.any(String) });
+    expect(await (await call(EDITOR, '/slack', undefined, relay)).json()).toMatchObject({ channel: 'C0TESTCHANNEL' });
+  });
+
+  it.each([
+    ['a channel name', '#crew'],
+    ['too short', 'C0'],
+    ['not text', 42],
+    ['missing', undefined],
+  ])('refuses in plain words a channel that is %s, keeping the saved one', async (_what, bad) => {
+    const relay = fakeRelay();
+    await call(EDITOR, '/slack', channel('C0TESTCHANNEL'), relay);
+    const response = await call(EDITOR, '/slack', channel(bad), relay);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: expect.stringMatching(/channel ID looks like/) });
+    expect(await (await call(EDITOR, '/slack', undefined, relay)).json()).toMatchObject({ channel: 'C0TESTCHANNEL' });
   });
 });

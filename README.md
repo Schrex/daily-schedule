@@ -74,7 +74,8 @@ npx wrangler d1 execute daily-schedule --remote --command "SELECT email, role FR
 **Other tasks:**
 
 - **Connect Slack:** once, on the server: `npx wrangler secret put SLACK_SEND_KEY --config wrangler.jsonc`.
-  Nothing is set up per computer or phone. See [docs/slack-setup.md](docs/slack-setup.md).
+  Nothing is set up per computer or phone. The channel is changed in Settings, for everyone.
+  See [docs/slack-setup.md](docs/slack-setup.md).
 - **Look at the data:** queries, the schema and how to undo mistakes are in
   [docs/database.md](docs/database.md).
 - **Crew members, jobs, placements:** change them in the app, not in the database.

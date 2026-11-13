@@ -18,14 +18,8 @@ import { COLOR_NAMES } from '../palette';
 import { NotSaved, useSaveState } from '../saving/NotSaved';
 import type { ScheduleStore } from '../storage';
 import type { Saves } from '../storage/saveQueue';
-import {
-  channelLooksRight,
-  cleanSlackSettings,
-  loadSlackSettings,
-  saveSlackSettings,
-  slackIsSetUp,
-  type SlackSettings,
-} from '../send/slackSettings';
+import { ApiError, type Fetch } from '../storage/apiStore';
+import { changeSlackChannel, loadSlackConnection, type SlackConnection } from '../send/slackConnection';
 
 /** What is open over the page: one Crew Member, one Job, or a new one of either. */
 type Open =
@@ -41,9 +35,20 @@ type Open =
  * panel for that one Crew Member or Job, so nothing that changes or removes
  * anything is on show until one has been chosen. Thin: every change applies one
  * roster rule and saves the result straight away, so there is no Save button.
- * `roster` is what the store held when the page loaded.
+ * `roster` is what the store held when the page loaded. `fetchFn` is how the
+ * Slack section asks the server (the signed-in fetch).
  */
-export function SettingsPage({ store, saves, roster: loaded }: { store: ScheduleStore; saves: Saves; roster: Roster }) {
+export function SettingsPage({
+  store,
+  saves,
+  roster: loaded,
+  fetchFn,
+}: {
+  store: ScheduleStore;
+  saves: Saves;
+  roster: Roster;
+  fetchFn: Fetch;
+}) {
   const [roster, setRoster] = useState<Roster>(loaded);
   const saveState = useSaveState(saves);
   const [open, setOpen] = useState<Open>(null);
@@ -121,8 +126,7 @@ export function SettingsPage({ store, saves, roster: loaded }: { store: Schedule
         </button>
       </section>
 
-      <SlackSection />
-
+      <SlackSection fetchFn={fetchFn} />
 
       {openCrewMember && (
         <CrewMemberPanel
@@ -508,88 +512,102 @@ function NewJobPanel({
   );
 }
 
-/**
- * Where "Send to crew" posts the picture: the Slack relay's address, its send
- * key and the Slack channel. Saved on this computer when a box is left. Until
- * the address and key are both filled in, Send copies the picture instead.
- * Folded away until "expand" is pressed: it is set up once and rarely touched.
- */
-function SlackSection() {
-  const [open, setOpen] = useState(false);
-  const [settings, setSettings] = useState<SlackSettings>(() => loadSlackSettings());
-  const [saved, setSaved] = useState(false);
-  const set = (changes: Partial<SlackSettings>) => {
-    setSettings((current) => ({ ...current, ...changes }));
-    setSaved(false);
-  };
-  const save = () => {
-    const clean = cleanSlackSettings(settings);
-    setSettings(clean);
-    try {
-      saveSlackSettings(clean);
-      setSaved(true);
-    } catch (error) {
-      console.error('Could not save the Slack settings', error);
-    }
-  };
+/** How the last change of the channel went; a refusal is in the server's own words. */
+type ChannelChange = { kind: 'none' } | { kind: 'saved' } | { kind: 'refused'; why: string };
 
-  const ready = slackIsSetUp(settings);
-  const channelOk = channelLooksRight(settings.channel);
+/**
+ * Slack, as the Daily Schedule's server has it: whether "Send to crew" reaches
+ * Slack, and the channel the picture goes to. The channel is kept on the
+ * server, so a change here is for every Editor and every device; it is saved
+ * when the box is left. Nothing about Slack is kept in this browser.
+ */
+function SlackSection({ fetchFn }: { fetchFn: Fetch }) {
+  /** What the server said: not yet, could not say, or its answer. */
+  const [slack, setSlack] = useState<SlackConnection | 'asking' | 'unknown'>('asking');
+  const [channel, setChannel] = useState('');
+  const [change, setChange] = useState<ChannelChange>({ kind: 'none' });
+
+  useEffect(() => {
+    let gone = false;
+    loadSlackConnection(fetchFn).then(
+      (answer) => {
+        if (gone) return;
+        setSlack(answer);
+        setChannel(answer.channel);
+      },
+      (error: unknown) => {
+        console.error('Could not ask the server about Slack', error);
+        if (!gone) setSlack('unknown');
+      },
+    );
+    return () => {
+      gone = true;
+    };
+  }, [fetchFn]);
+
+  if (slack === 'asking' || slack === 'unknown') {
+    return (
+      <section aria-labelledby="slack-heading">
+        <h2 id="slack-heading">Slack</h2>
+        <p className="settings-hint" role={slack === 'unknown' ? 'alert' : undefined}>
+          {slack === 'asking'
+            ? 'Checking…'
+            : 'The Daily Schedule\'s server could not say whether Slack is connected. Reload this page to try again.'}
+        </p>
+      </section>
+    );
+  }
+
+  const save = () => {
+    const typed = channel.trim().toUpperCase();
+    setChannel(typed);
+    if (typed === slack.channel) return;
+    changeSlackChannel(typed, fetchFn).then(
+      () => {
+        setSlack({ ...slack, channel: typed });
+        setChange({ kind: 'saved' });
+      },
+      (error: unknown) => {
+        console.error('Could not change the Slack channel', error);
+        setChange({
+          kind: 'refused',
+          why:
+            error instanceof ApiError && error.status !== 0
+              ? error.message
+              : 'The Daily Schedule\'s server could not be reached. Check the internet connection and try again.',
+        });
+      },
+    );
+  };
 
   return (
     <section aria-labelledby="slack-heading">
-      <div className="settings-fold-head">
-        <h2 id="slack-heading">Slack</h2>
-        <button
-          type="button"
-          className="button settings-fold-button"
-          aria-expanded={open}
-          aria-controls="slack-settings"
-          onClick={() => setOpen((was) => !was)}
-        >
-          {open ? 'collapse' : 'expand'}
-        </button>
-      </div>
-      {open && (
-        <div id="slack-settings" className="settings-fold-body">
-          <p className="settings-hint">
-            {ready
-              ? '"Send to crew" posts the picture straight to the Slack channel below.'
-              : 'Until these are filled in, "Send to crew" copies the picture for you to paste into Slack.'}
-          </p>
-          <Field
-            label="Slack relay address"
-            value={settings.relayUrl}
-            onChange={(relayUrl) => set({ relayUrl })}
-            onLeave={save}
-          />
-          <label className="settings-field">
-            <span className="settings-label">Send key</span>
-            <input
-              type="password"
-              autoComplete="off"
-              value={settings.sendKey}
-              onChange={(event) => set({ sendKey: event.target.value })}
-              onBlur={save}
-            />
-          </label>
-          <Field
-            label="Slack channel ID (in Slack: the channel name, then the foot of About)"
-            value={settings.channel}
-            onChange={(channel) => set({ channel })}
-            onLeave={save}
-          />
-          {!channelOk && (
-            <p className="settings-hint" role="alert">
-              A channel ID looks like C0CHSMJFFPS. Leave it empty to use the relay&apos;s own channel.
-            </p>
-          )}
-          {saved && channelOk && (
-            <p className="settings-hint" role="status">
-              Saved. Reload the Daily Schedule for it to take effect.
-            </p>
-          )}
-        </div>
+      <h2 id="slack-heading">Slack</h2>
+      <p className="settings-slack-status">Slack: {slack.connected ? 'connected' : 'not connected'}</p>
+      <p className="settings-hint">
+        {slack.connected
+          ? '"Send to crew" posts the picture straight to the Slack channel below, from every computer and phone.'
+          : 'Until whoever looks after the app connects Slack on the server, "Send to crew" copies the picture for you to paste into Slack.'}
+      </p>
+      <Field
+        label="Slack channel ID (in Slack: the channel name, then the foot of About)"
+        value={channel}
+        onChange={(typed) => {
+          setChannel(typed);
+          setChange({ kind: 'none' });
+        }}
+        onLeave={save}
+      />
+      <p className="settings-hint">Leave it empty to use the relay&apos;s own channel.</p>
+      {change.kind === 'refused' && (
+        <p className="settings-hint" role="alert">
+          Not saved. {change.why}
+        </p>
+      )}
+      {change.kind === 'saved' && (
+        <p className="settings-hint" role="status">
+          Saved, for every Editor and every device.
+        </p>
       )}
     </section>
   );

@@ -10,7 +10,7 @@ workers_dev = true
 preview_urls = false
 
 [vars]
-# The channel the picture goes to when Settings names none.
+# The relay's own channel: where the picture goes when Settings names none.
 SLACK_CHANNEL = "C0CHSMJFFPS"
 # The addresses the Scheduler's screen may send from, separated by commas,
 # e.g. "https://a.example, https://b.example". "*" allows any.
@@ -19,4 +19,5 @@ ALLOWED_ORIGIN = "https://app.schreiberexcavating.com"
 
 # Secrets, set once with `npx wrangler secret put <NAME>` (never written here):
 #   SLACK_BOT_TOKEN  the Slack app's Bot User OAuth Token (xoxb-…)
-#   SEND_KEY         a long random password the Settings page will also hold
+#   SEND_KEY         a long random password; the Daily Schedule's server holds the same
+#                    one as its own secret, SLACK_SEND_KEY. Never in a browser.

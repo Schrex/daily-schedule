@@ -1,4 +1,5 @@
 import type { Env } from './app';
+import type { D1Database } from './d1';
 import { refuse } from './refuse';
 
 /**
@@ -9,6 +10,10 @@ import { refuse } from './refuse';
  * The relay's address (SLACK_RELAY_URL) and the send key (SLACK_SEND_KEY, a
  * secret) are this Worker's configuration. Neither is ever in an answer or in
  * the database: a page only learns whether Slack is connected.
+ *
+ * The Slack channel is kept in the database (the settings row), one for every
+ * Editor and every device, and changed in Settings. Empty means the relay's
+ * own channel.
  */
 
 /** The biggest picture accepted, as the relay's. The 4K picture is a few MB at most. */
@@ -17,6 +22,34 @@ const MAX_BYTES = 20 * 1024 * 1024;
 /** Slack is connected once the relay's https address and the send key are both set. */
 export function slackIsConnected(env: Env): boolean {
   return relayAddress(env) !== null && sendKey(env) !== '';
+}
+
+/**
+ * What was typed as the Slack channel, tidied (no stray spaces, in capitals):
+ * a channel ID like C0CHSMJFFPS, or '' for the relay's own channel. Null when
+ * it does not look like a channel ID.
+ */
+export function slackChannelFrom(typed: unknown): string | null {
+  if (typeof typed !== 'string') return null;
+  const channel = typed.trim().toUpperCase();
+  return channel === '' || /^[CG][A-Z0-9]{6,}$/.test(channel) ? channel : null;
+}
+
+/** The saved Slack channel ID, or '' when none is set (the relay's own channel). */
+export async function slackChannel(db: D1Database): Promise<string> {
+  const row = await db.prepare('SELECT slack_channel FROM settings WHERE id = 1').first<{ slack_channel: string }>();
+  return row?.slack_channel ?? '';
+}
+
+/** Keeps `channel` as the Slack channel for everyone, with who changed it and when. */
+export async function saveSlackChannel(db: D1Database, channel: string, email: string): Promise<void> {
+  await db
+    .prepare(
+      'INSERT INTO settings (id, slack_channel, saved_at, saved_by) VALUES (1, ?, ?, ?) ' +
+        'ON CONFLICT (id) DO UPDATE SET slack_channel = excluded.slack_channel, saved_at = excluded.saved_at, saved_by = excluded.saved_by',
+    )
+    .bind(channel, new Date().toISOString(), email)
+    .run();
 }
 
 /**
@@ -37,15 +70,17 @@ export async function sendToCrew(request: Request, env: Env, fetchImpl: typeof f
   if (picture.byteLength > MAX_BYTES) return tooBig();
 
   const title = request.headers.get('X-Title');
+  // The channel saved in Settings; with none saved none is named, and the relay posts to its own.
+  const channel = await slackChannel(env.DB);
   let response: Response;
   try {
-    // No channel is named, so the relay posts to its own channel.
     response = await fetchImpl(`${relay}/send`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${sendKey(env)}`,
         'Content-Type': 'image/png',
         ...(title ? { 'X-Title': title } : {}),
+        ...(channel ? { 'X-Channel': channel } : {}),
       },
       body: picture,
     });

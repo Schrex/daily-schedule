@@ -38,7 +38,7 @@ export function localD1(people: Record<string, 'editor' | 'viewer'> = {}) {
   beforeEach(async () => {
     const DB = database();
     await DB.batch([
-      ...['roster', 'schedules', 'people'].map((table) => DB.prepare(`DELETE FROM ${table}`)),
+      ...['roster', 'schedules', 'people', 'settings'].map((table) => DB.prepare(`DELETE FROM ${table}`)),
       ...Object.entries(people).map(([email, role]) =>
         DB.prepare('INSERT INTO people (email, role) VALUES (?, ?)').bind(email, role),
       ),

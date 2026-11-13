@@ -45,7 +45,8 @@ computer and phone with nothing to set up on any of them.
    **Bot User OAuth Token** (`xoxb-…`). Keep it private.
 5. In Slack, open the channel and type `/invite @Daily Schedule`.
 6. Click the channel name, then the foot of **About**, and copy the **Channel ID**
-   (for the crew channel: `C0CHSMJFFPS`, already the relay's default).
+   (for the crew channel: `C0CHSMJFFPS`, already the relay's own channel).
+   Any other channel is chosen in Settings (step 4).
 
 ## 2. The Slack relay (done once)
 
@@ -120,12 +121,28 @@ Paste the same password as `SEND_KEY` when asked. It should say
 If nobody has the password any more, make a new one and set it in both places:
 `SEND_KEY` on the relay (step 2) and `SLACK_SEND_KEY` here.
 
-Reload the Daily Schedule. **Send to crew** now posts to the relay's channel
-(`SLACK_CHANNEL` in `worker/wrangler.toml`) from every computer and phone.
-Until the secret is set, Send copies the picture for pasting, as before.
+Reload the Daily Schedule. **Send to crew** now posts to Slack from every
+computer and phone, and Settings says **Slack: connected**. Until the secret is
+set, Settings says **Slack: not connected** and Send copies the picture for
+pasting, as before.
 
-The **Slack** box in Settings (relay address, send key, channel) is no longer
-used by Send. Nothing needs typing there.
+## 4. The channel (in Settings, any time)
+
+The picture goes to the relay's own channel (`SLACK_CHANNEL` in
+`worker/wrangler.toml`) until an Editor names another:
+
+1. In Slack, invite the bot to the new channel: `/invite @Daily Schedule`.
+2. Copy its **Channel ID** (the channel name, then the foot of **About**).
+3. In the Daily Schedule, open **Settings**, then **Slack**, and put the ID in
+   **Slack channel ID**. It is saved when you leave the box.
+
+The channel is kept in the database, not in a browser, so the change is for
+every Editor and every device at once, with no deploy. Emptying the box goes
+back to the relay's own channel. Something that does not look like a channel
+ID (like `#crew`) is refused, and Settings says why.
+
+Settings has no relay address or send key any more. What earlier versions kept
+in a browser for Slack is not read; nothing needs doing about it.
 
 **Previews and local runs do not post to Slack.** A pull request's preview is
 not given the relay's address and has no send key, and a local run has no send
@@ -154,9 +171,8 @@ npm run deploy:relay
 It should say `Uploaded daily-schedule-slack`. (`npm run deploy` is the screen,
 `daily-schedule`; the two are deployed separately.)
 
-To change the channel later, invite the bot to the new channel
-(`/invite @Daily Schedule`), put its ID in `SLACK_CHANNEL` in
-`worker/wrangler.toml` and deploy the relay again.
+To change the channel later, use Settings (step 4). `SLACK_CHANNEL` in
+`worker/wrangler.toml` is only where the picture goes when Settings names none.
 
 ## When it goes wrong
 
@@ -165,8 +181,9 @@ The screen says why, in plain words. The usual ones:
 | The screen says | Fix |
 | --- | --- |
 | The bot is not in that Slack channel | In the channel, type `/invite @Daily Schedule` |
+| A channel ID looks like C0CHSMJFFPS | In Settings, put the channel's ID (not its name), or leave it empty (step 4) |
 | The Daily Schedule's send key does not match the Slack relay's | Set `SLACK_SEND_KEY` again (step 3) to the same password as the relay's `SEND_KEY` |
 | Slack did not accept the relay's token | Reinstall the app and `wrangler secret put SLACK_BOT_TOKEN` again |
 | The Slack relay could not be reached | Check `SLACK_RELAY_URL` in `wrangler.jsonc`, and that the relay is deployed |
 | The Daily Schedule's server could not be reached | Check the internet connection |
-| Send copies the picture ("Paste in Slack") | Slack is not connected on the server: set `SLACK_SEND_KEY` (step 3) |
+| Send copies the picture ("Paste in Slack"), and Settings says "Slack: not connected" | Slack is not connected on the server: set `SLACK_SEND_KEY` (step 3) |
