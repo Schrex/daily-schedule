@@ -41,7 +41,7 @@ export interface Drop {
 
 export const idle: NameDrag = { kind: 'idle' };
 
-/** The mouse button went down on a name. Not a drag yet. */
+/** The mouse button, or a finger, went down on a name. Not a drag yet. */
 export const press = (crewMemberId: string, at: Point): NameDrag => ({
   kind: 'pressed',
   crewMemberId,
@@ -70,6 +70,16 @@ export function moveTo(
   return { kind: 'dragging', crewMemberId: drag.crewMemberId, over, before };
 }
 
+/**
+ * A finger has held the pressed name long enough (see `longPress`): it is a
+ * drag at once, though the pointer has not moved. `over` and `before` are
+ * where the finger is, as in `moveTo`.
+ */
+export function lift(drag: NameDrag, over: DropKey | null, before: string | null = null): NameDrag {
+  if (drag.kind !== 'pressed') return drag;
+  return { kind: 'dragging', crewMemberId: drag.crewMemberId, over, before };
+}
+
 /** Where one name is drawn in a destination, top to bottom (CSS pixels). */
 export interface NameBox {
   crewMemberId: string;
@@ -95,7 +105,7 @@ export function spotAt(y: number, names: readonly NameBox[], dragged: string): s
 export const cancel = (_drag: NameDrag): NameDrag => idle;
 
 /**
- * The mouse button came up. A drag over a destination is a drop there; a press
+ * The mouse button, or the finger, came up. A drag over a destination is a drop there; a press
  * that never became a drag, or a drag let go outside every destination, is not.
  */
 export function release(drag: NameDrag): Drop | null {

@@ -3,6 +3,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
@@ -10,6 +11,7 @@ import { createPortal } from 'react-dom';
 import {
   cancel,
   idle,
+  lift,
   moveTo,
   press,
   release,
@@ -18,20 +20,40 @@ import {
   type NameDrag,
   type Point,
 } from './nameDrag';
+import { fingerDown, fingerHeld, fingerLost, fingerMoved, fingerUp, liftsIn, type Finger } from './longPress';
 import { startEdgeScroll } from './edgeScroll';
 import './drag.css';
 
 /**
- * Dragging a Crew Member's name with the mouse, built on pointer events (not
- * the browser's own drag and drop, which gives no say over what is drawn under
- * the pointer). A finger never drags a name: on a touch screen a finger that
- * moves is scrolling the page, and names are moved by tapping. It knows names and destinations only by the marks put on them
+ * Dragging a Crew Member's name, built on pointer events (not the browser's
+ * own drag and drop, which gives no say over what is drawn under the
+ * pointer). It knows names and destinations only by the marks put on them
  * (`nameProps`, `dropProps`) and applies no schedule rule: on a drop it reports
  * who was let go over which destination, and that is all.
  *
- * A press is only a drag once the pointer has moved a few pixels (see
- * `nameDrag`), so a click still selects.
+ * With the mouse or a pen, a press is a drag once the pointer has moved a few
+ * pixels (see `nameDrag`), so a click still selects.
+ *
+ * With a finger, a press is a drag only once the finger has been held still on
+ * the name for a moment (see `longPress`): a finger that moves straight away is
+ * scrolling the page, and one that comes up straight away is a tap. From the
+ * lift on, it is the same drag as the mouse's.
  */
+
+/**
+ * How far above the fingertip (CSS pixels) the lifted copy is drawn, so the
+ * finger does not hide it or the gap the names open under it.
+ */
+const ABOVE_THE_FINGER = 40;
+
+/**
+ * How long after a finger comes up (milliseconds) its click may still arrive.
+ * A mouse's click comes in the same turn as the release; a finger's comes a
+ * little later.
+ */
+const FINGER_CLICK_WITHIN = 400;
+
+const nothing = () => {};
 
 /** The name being dragged right now, the destination under the pointer, and the spot in it. */
 export interface Dragging {
@@ -65,6 +87,7 @@ export interface NameDragHandle {
     'data-crew-member': string;
     'data-dragging': true | undefined;
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
+    onContextMenu: (event: ReactMouseEvent<HTMLElement>) => void;
   };
   /** Spread on an element that is a destination: anywhere inside it is a drop there. */
   dropProps: (key: DropKey) => { 'data-drop': DropKey; 'data-drop-over': true | undefined };
@@ -127,9 +150,10 @@ function moveToPointer(drag: NameDrag, point: Point): NameDrag {
  * The browser follows a press and release with a click. After a drag that
  * click is not one the Scheduler made: it must not select a name or pick a
  * destination. This swallows it, whether the drag ended in a drop or was
- * cancelled with the button still down, and then stops listening.
+ * cancelled with the button still down, and then stops listening. It listens
+ * until `within` milliseconds after the release.
  */
-function swallowNextClick(): void {
+function swallowNextClick(within = 0): void {
   const swallow = (click: MouseEvent) => {
     click.stopPropagation();
     click.preventDefault();
@@ -140,7 +164,7 @@ function swallowNextClick(): void {
     window.removeEventListener('pointerdown', stop, true);
   };
   // The click comes right after the release, in the same turn: listen just past it.
-  const stopSoon = () => setTimeout(stop, 0);
+  const stopSoon = () => setTimeout(stop, within);
   window.addEventListener('click', swallow, true);
   window.addEventListener('pointerup', stopSoon, true);
   window.addEventListener('pointerdown', stop, true);
@@ -167,6 +191,8 @@ export function useNameDrag({
   onDropLatest.current = onDrop;
   const onLetGoLatest = useRef(onLetGo);
   onLetGoLatest.current = onLetGo;
+  /** Whether the last press on a name was a finger's: its long press must not open a menu. */
+  const pressedByFinger = useRef(false);
 
   /** Puts the lifted copy under the pointer, held where it was taken hold of. No redraw. */
   const follow = () => {
@@ -209,10 +235,18 @@ export function useNameDrag({
   // The screen is gone: so is any drag.
   useEffect(() => end, []);
 
+  // iPhone Safari only lets a touch-move listener stop the page scrolling if
+  // one that may do so was already there when the finger went down. This one
+  // does nothing; it is there so the one a lifted name adds is listened to.
+  useEffect(() => {
+    window.addEventListener('touchmove', nothing, { passive: false });
+    return () => window.removeEventListener('touchmove', nothing);
+  }, []);
+
   const onPointerDown = (crewMemberId: string, event: ReactPointerEvent<HTMLElement>) => {
     if (event.button !== 0 || !event.isPrimary || drag.current.kind !== 'idle') return;
-    // A finger scrolls; it does not pick names up.
-    if (event.pointerType === 'touch') return;
+    const byFinger = event.pointerType === 'touch';
+    pressedByFinger.current = byFinger;
 
     const source = event.currentTarget;
     const pointerId = event.pointerId;
@@ -221,33 +255,84 @@ export function useNameDrag({
     drag.current = press(crewMemberId, at);
     let stopEdgeScroll = () => {};
     let releaseHeights = () => {};
+    /** What the finger is doing, when it is a finger that pressed. */
+    let finger: Finger | null = byFinger ? fingerDown(at, performance.now()) : null;
+    let liftTimer: ReturnType<typeof setTimeout> | undefined;
+
+    /** The drag begins: lift a copy of the name, as wide as it is, held where it was pressed. */
+    const begin = () => {
+      const box = source.getBoundingClientRect();
+      grip.current = {
+        x: at.x - box.left,
+        y: at.y - box.top + (byFinger ? ABOVE_THE_FINGER : 0),
+      };
+      setLiftedWidth(box.width);
+      swallowNextClick(byFinger ? FINGER_CLICK_WITHIN : 0);
+      releaseHeights = holdDestinationHeights();
+      // A row out of sight is reached by holding the name at the edge of the schedule.
+      stopEdgeScroll = startEdgeScroll(
+        () => pointer.current,
+        () => show(moveToPointer(drag.current, pointer.current)),
+      );
+      // Keep hearing the pointer if it leaves the window with the button down,
+      // or if the name it went down on is taken off the page.
+      try {
+        pointerHolder().setPointerCapture(pointerId);
+      } catch {
+        // The pointer is already gone; the window listeners still end the drag.
+      }
+    };
+
+    /** The finger has turned out not to be holding the name: nothing is picked up. */
+    const giveUp = () => {
+      if (finger?.kind !== 'holding') return;
+      finger = fingerLost(finger);
+      end();
+    };
+
+    /** The finger may have been held long enough: if so the name lifts, and the drag is on. */
+    const liftIfHeld = () => {
+      if (finger?.kind !== 'holding' || drag.current.kind !== 'pressed') return;
+      const now = performance.now();
+      finger = fingerHeld(finger, now);
+      if (finger.kind !== 'lifted') {
+        // The timer rang a moment early: wait out the rest.
+        liftTimer = setTimeout(liftIfHeld, liftsIn(finger, now));
+        return;
+      }
+      // From here the board is scrolled on purpose, by holding the name at its edge.
+      window.removeEventListener('scroll', giveUp, true);
+      begin();
+      const { over, before } = whereAt(pointer.current, crewMemberId);
+      show(lift(drag.current, over, before));
+      // A short buzz, where the phone can (an iPhone cannot).
+      try {
+        navigator.vibrate?.(10);
+      } catch {
+        // No buzz, then.
+      }
+    };
+
+    /** Once the name is lifted, a finger that moves drags it: the page must not scroll under it. */
+    const holdThePage = (moved: TouchEvent) => {
+      if (finger?.kind === 'lifted' && moved.cancelable) moved.preventDefault();
+    };
 
     const onMove = (moved: PointerEvent) => {
       if (moved.pointerId !== pointerId) return;
       const was = drag.current;
       pointer.current = { x: moved.clientX, y: moved.clientY };
 
+      if (finger && was.kind === 'pressed') {
+        // Before the lift a finger only ever scrolls: too far, and that is what it is doing.
+        finger = fingerMoved(finger, pointer.current);
+        if (finger.kind === 'scroll') end();
+        return;
+      }
       if (was.kind === 'pressed') {
         // Still within a shaky click of where it was pressed: not a drag yet.
         if (moveTo(was, pointer.current, null).kind !== 'dragging') return;
-
-        // The drag begins: lift a copy of the name, as wide as it is, held where it was pressed.
-        const box = source.getBoundingClientRect();
-        grip.current = { x: at.x - box.left, y: at.y - box.top };
-        setLiftedWidth(box.width);
-        swallowNextClick();
-        releaseHeights = holdDestinationHeights();
-        // A row out of sight is reached by holding the name at the edge of the schedule.
-        stopEdgeScroll = startEdgeScroll(
-          () => pointer.current,
-          () => show(moveToPointer(drag.current, pointer.current)),
-        );
-        // Keep hearing the pointer if it leaves the window with the button down.
-        try {
-          pointerHolder().setPointerCapture(pointerId);
-        } catch {
-          // The pointer is already gone; the window listeners still end the drag.
-        }
+        begin();
       }
       moved.preventDefault();
       show(moveToPointer(was, pointer.current));
@@ -256,6 +341,7 @@ export function useNameDrag({
 
     const onUp = (up: PointerEvent) => {
       if (up.pointerId !== pointerId) return;
+      if (finger) finger = fingerUp(finger);
       // Let go where the pointer last was: the drop goes to the destination that was
       // highlighted, even if the names making room have since shifted the page under it.
       const moved = up.clientX !== pointer.current.x || up.clientY !== pointer.current.y;
@@ -280,8 +366,22 @@ export function useNameDrag({
     window.addEventListener('pointercancel', end);
     window.addEventListener('blur', end);
     window.addEventListener('keydown', onKeyDown, true);
+    if (finger) {
+      liftTimer = setTimeout(liftIfHeld, liftsIn(finger, performance.now()));
+      // The page, or a list in it, scrolled under the finger: it is not holding a name.
+      window.addEventListener('scroll', giveUp, true);
+      // On the name as well as the window: once the names make room, the name
+      // the finger went down on may be off the page, and a finger's touch-moves
+      // go only to what it went down on.
+      source.addEventListener('touchmove', holdThePage, { passive: false });
+      window.addEventListener('touchmove', holdThePage, { passive: false });
+    }
 
     stopListening.current = () => {
+      clearTimeout(liftTimer);
+      window.removeEventListener('scroll', giveUp, true);
+      source.removeEventListener('touchmove', holdThePage);
+      window.removeEventListener('touchmove', holdThePage);
       stopEdgeScroll();
       releaseHeights();
       window.removeEventListener('pointermove', onMove);
@@ -314,6 +414,10 @@ export function useNameDrag({
       'data-crew-member': crewMemberId,
       'data-dragging': dragging?.crewMemberId === crewMemberId ? true : undefined,
       onPointerDown: (event) => onPointerDown(crewMemberId, event),
+      // A finger held on a name lifts it; the phone's own long-press menu stays away.
+      onContextMenu: (event) => {
+        if (pressedByFinger.current) event.preventDefault();
+      },
     }),
     dropProps: (key) => ({
       'data-drop': key,

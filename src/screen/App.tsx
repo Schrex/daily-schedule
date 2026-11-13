@@ -212,6 +212,21 @@ export function App({
       });
   });
 
+  // Undo and Send are drawn twice, and one of each shows: in the header on a
+  // wide window, in the bar at the bottom on a phone (screen.css).
+  const undoButton = (
+    <button
+      type="button"
+      className="button toolbar-button"
+      disabled={!canUndo}
+      title="Undo the last change (Ctrl+Z)"
+      onClick={undoLast}
+    >
+      Undo
+    </button>
+  );
+  const sendButton = <SendButton send={send} allSaved={saveState === 'saved'} />;
+
   return (
     <ScheduleScreen
       roster={roster}
@@ -228,18 +243,16 @@ export function App({
       dateNote={<LastSent send={send} />}
       toolbarButtons={
         <>
-          <button
-            type="button"
-            className="button toolbar-button"
-            disabled={!canUndo}
-            title="Undo the last change (Ctrl+Z)"
-            onClick={undoLast}
-          >
-            Undo
-          </button>
+          <span className="header-only">{undoButton}</span>
           <ChangeDate date={schedule.date} onChangeDate={changeDate} />
           <PreviewPicture roster={roster} schedule={schedule} />
-          <SendButton send={send} allSaved={saveState === 'saved'} />
+          <span className="header-only">{sendButton}</span>
+        </>
+      }
+      bottomBar={
+        <>
+          {undoButton}
+          {sendButton}
         </>
       }
       toolbarLinks={
